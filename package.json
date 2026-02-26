@@ -1,0 +1,41 @@
+{
+  "name": "eleni-sound-safari",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "generate:audio": "tsx scripts/generate-audio.ts",
+    "generate:images": "tsx scripts/generate-images.ts"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "framer-motion": "^11.18.2",
+    "howler": "^2.2.4",
+    "idb-keyval": "^6.2.1",
+    "next": "^15.3.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.36.0",
+    "@google/genai": "^1.41.0",
+    "@tailwindcss/postcss": "^4.1.7",
+    "@types/howler": "^2.2.12",
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "eslint": "^9.27.0",
+    "eslint-config-next": "^15.3.3",
+    "postcss": "^8.5.3",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.1.7",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
