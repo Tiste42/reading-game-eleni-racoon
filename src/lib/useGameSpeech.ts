@@ -4,21 +4,20 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { speak, stopSpeaking } from './speech';
 
 export function useGameSpeech(text: string | null, deps: unknown[] = []) {
-  const mountedRef = useRef(false);
+  const spokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!text) return;
 
-    // Skip the first Strict Mode mount, play on the second
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      // In production (no Strict Mode), this IS the only mount, so play
-      const timer = setTimeout(() => { speak(text); }, 400);
-      return () => { clearTimeout(timer); mountedRef.current = false; };
-    }
+    // Prevent double-speak in Strict Mode: only speak if text/deps actually changed
+    if (spokenRef.current === text) return;
+    spokenRef.current = text;
 
     const timer = setTimeout(() => { speak(text); }, 400);
-    return () => { clearTimeout(timer); };
+    return () => {
+      clearTimeout(timer);
+      spokenRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, ...deps]);
 
@@ -33,22 +32,18 @@ export function useGameSpeechWithOptions(
   deps: unknown[] = [],
 ) {
   const [activeOption, setActiveOption] = useState<number>(-1);
-  const [doneSpeaking, setDoneSpeaking] = useState(false);
   const cancelledRef = useRef(false);
   const runIdRef = useRef(0);
 
-  // Serialize deps into a stable string for the effect dependency
   const depsKey = JSON.stringify(deps);
 
   useEffect(() => {
     if (!instruction) {
-      setDoneSpeaking(true);
       return;
     }
 
     const thisRun = ++runIdRef.current;
     cancelledRef.current = false;
-    setDoneSpeaking(false);
     setActiveOption(-1);
 
     const run = async () => {
@@ -66,7 +61,6 @@ export function useGameSpeechWithOptions(
 
       if (cancelledRef.current || thisRun !== runIdRef.current) return;
       setActiveOption(-1);
-      setDoneSpeaking(true);
     };
 
     const timer = setTimeout(run, 500);
@@ -85,7 +79,8 @@ export function useGameSpeechWithOptions(
     };
   }, []);
 
-  return { activeOption, doneSpeaking };
+  // Never block interaction — speech is assistive, not gating
+  return { activeOption, doneSpeaking: true };
 }
 
 export function useWrongAttempts(roundKey: unknown, maxAttempts = 3) {

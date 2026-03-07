@@ -5,7 +5,7 @@ import base64
 import sys
 import os
 
-GEMINI_API_KEY = "AIzaSyDNMHbyKxRw4t8_-ewbPMf7j_su-uZV7OY"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={GEMINI_API_KEY}"
 
 ref_path = "eleniracoontransparent.png"

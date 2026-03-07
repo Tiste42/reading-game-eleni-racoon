@@ -10,7 +10,7 @@ import json
 import urllib.request
 from pathlib import Path
 
-GEMINI_API_KEY = "AIzaSyDNMHbyKxRw4t8_-ewbPMf7j_su-uZV7OY"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROJECT_ROOT = Path(__file__).parent.parent
 REFERENCE_IMAGE = PROJECT_ROOT / "eleniracoontransparent.png"
 OUTPUT_DIR = PROJECT_ROOT / "public" / "images" / "generated" / "eleni"

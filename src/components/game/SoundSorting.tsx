@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface SortRound {
@@ -58,6 +58,10 @@ interface Props {
   onComplete: () => void;
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
 export default function SoundSorting({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [sorted, setSorted] = useState<string[]>([]);
@@ -65,13 +69,18 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
   const [showCelebration, setShowCelebration] = useState(false);
   const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
 
-  const currentRound = SORT_ROUNDS[round];
-  const isLastRound = round >= SORT_ROUNDS.length - 1;
+  // Shuffle round order and item positions within each round
+  const [rounds] = useState(() =>
+    shuffle(SORT_ROUNDS).map(r => ({ ...r, items: shuffle(r.items) }))
+  );
+
+  const currentRound = rounds[round];
+  const isLastRound = round >= rounds.length - 1;
   const targetCount = currentRound.items.filter((i) => i.startsWithTarget).length;
   const roundComplete = sorted.length >= targetCount;
 
   const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `Which one starts with the same sound as ${currentRound.targetLetter}?`,
+    `Tap everything that starts with ${PHONEME_PRONUNCIATIONS[currentRound.targetLetter] || currentRound.targetLetter}!`,
     currentRound.items.map(i => i.word),
     [round],
   );
@@ -143,7 +152,7 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
 
       {/* Progress dots */}
       <div className="flex justify-center gap-2 mb-4">
-        {SORT_ROUNDS.map((_, i) => (
+        {rounds.map((_, i) => (
           <div
             key={i}
             className={`w-4 h-4 rounded-full transition-all ${

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface HuntRound {
@@ -71,14 +71,16 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [wrongWord, setWrongWord] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(ROUNDS).slice(0, 4));
+  const [rounds] = useState(() =>
+    shuffle(ROUNDS).slice(0, 4).map(r => ({ ...r, items: shuffle(r.items) }))
+  );
   const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
 
   const current = rounds[roundIdx];
   const targetCount = current.items.filter((i) => i.startsWithTarget).length;
 
   const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `Find everything that starts with ${current.targetSound}! Tap them all!`,
+    `Find everything that starts with ${PHONEME_PRONUNCIATIONS[current.targetSound] || current.targetSound}! Tap them all!`,
     current.items.map(i => i.word),
     [roundIdx],
   );

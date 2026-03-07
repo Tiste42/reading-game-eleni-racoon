@@ -20,7 +20,7 @@ const WORDS: SyllableWord[] = [
   { word: 'sun', syllables: 1, icon: '☀️' },
   { word: 'apple', syllables: 2, icon: '🍎' },
   { word: 'monkey', syllables: 2, icon: '🐵' },
-  { word: 'table', syllables: 2, icon: '🪑' },
+  { word: 'rabbit', syllables: 2, icon: '🐰' },
   { word: 'banana', syllables: 3, icon: '🍌' },
   { word: 'elephant', syllables: 3, icon: '🐘' },
   { word: 'tomato', syllables: 3, icon: '🍅' },
@@ -225,7 +225,7 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
               exit={{ opacity: 0 }}
               className="text-xl text-white font-bold"
             >
-              Try {current.syllables} claps!
+              Not quite! Try again!
             </motion.p>
           )}
           {shouldReveal && (

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface OddOneOutRound {
@@ -14,16 +14,30 @@ interface OddOneOutRound {
   commonSound: string;
 }
 
-const ROUNDS: OddOneOutRound[] = [
-  { words: [{ word: 'cat', icon: '🐱' }, { word: 'cap', icon: '🧢' }, { word: 'dog', icon: '🐶' }], oddIndex: 2, commonSound: 'c' },
-  { words: [{ word: 'sun', icon: '☀️' }, { word: 'sit', icon: '🪑' }, { word: 'hat', icon: '🧢' }], oddIndex: 2, commonSound: 's' },
-  { words: [{ word: 'pen', icon: '🖊️' }, { word: 'pot', icon: '🍲' }, { word: 'net', icon: '🥅' }], oddIndex: 2, commonSound: 'p' },
-  { words: [{ word: 'bat', icon: '🦇' }, { word: 'bin', icon: '🗑️' }, { word: 'cup', icon: '☕' }], oddIndex: 2, commonSound: 'b' },
-  { words: [{ word: 'man', icon: '👨' }, { word: 'mug', icon: '☕' }, { word: 'fan', icon: '🌬️' }], oddIndex: 2, commonSound: 'm' },
-  { words: [{ word: 'red', icon: '🔴' }, { word: 'rat', icon: '🐀' }, { word: 'log', icon: '🪵' }], oddIndex: 2, commonSound: 'r' },
-  { words: [{ word: 'hen', icon: '🐔' }, { word: 'hot', icon: '🔥' }, { word: 'van', icon: '🚐' }], oddIndex: 2, commonSound: 'h' },
-  { words: [{ word: 'fig', icon: '🍎' }, { word: 'fin', icon: '🦈' }, { word: 'dog', icon: '🐶' }], oddIndex: 2, commonSound: 'f' },
+// Odd item stored separately; position randomized at runtime
+interface RoundData {
+  common: { word: string; icon: string }[];
+  odd: { word: string; icon: string };
+  commonSound: string;
+}
+
+const ROUND_DATA: RoundData[] = [
+  { common: [{ word: 'cat', icon: '🐱' }, { word: 'cap', icon: '🧢' }], odd: { word: 'dog', icon: '🐶' }, commonSound: 'c' },
+  { common: [{ word: 'sun', icon: '☀️' }, { word: 'soap', icon: '🧼' }], odd: { word: 'hat', icon: '🧢' }, commonSound: 's' },
+  { common: [{ word: 'pen', icon: '🖊️' }, { word: 'pot', icon: '🍲' }], odd: { word: 'net', icon: '🥅' }, commonSound: 'p' },
+  { common: [{ word: 'bat', icon: '🦇' }, { word: 'bin', icon: '🗑️' }], odd: { word: 'cup', icon: '🥤' }, commonSound: 'b' },
+  { common: [{ word: 'man', icon: '👨' }, { word: 'mug', icon: '☕' }], odd: { word: 'fan', icon: '🌬️' }, commonSound: 'm' },
+  { common: [{ word: 'red', icon: '🔴' }, { word: 'rat', icon: '🐀' }], odd: { word: 'log', icon: '🪵' }, commonSound: 'r' },
+  { common: [{ word: 'hen', icon: '🐔' }, { word: 'hot', icon: '🔥' }], odd: { word: 'van', icon: '🚐' }, commonSound: 'h' },
+  { common: [{ word: 'fox', icon: '🦊' }, { word: 'fin', icon: '🦈' }], odd: { word: 'dog', icon: '🐶' }, commonSound: 'f' },
 ];
+
+function buildRound(data: RoundData): OddOneOutRound {
+  const oddIndex = Math.floor(Math.random() * 3);
+  const words = [...data.common];
+  words.splice(oddIndex, 0, data.odd);
+  return { words, oddIndex, commonSound: data.commonSound };
+}
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -38,14 +52,14 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(ROUNDS).slice(0, 6));
+  const [rounds] = useState(() => shuffle(ROUND_DATA).slice(0, 6).map(buildRound));
   const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
 
   const current = rounds[round];
   const oddWord = current.words[current.oddIndex];
 
   const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `Which one does NOT start with the same sound? Find the odd one out!`,
+    `Two of these start with ${PHONEME_PRONUNCIATIONS[current.commonSound] || current.commonSound}. Which one doesn't? Find the odd one out!`,
     current.words.map(w => w.word),
     [round],
   );
@@ -153,7 +167,6 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
                   }`}
                 >
                   <span className="text-5xl">{item.icon}</span>
-                  <span className="text-xs text-gray-500 lowercase font-[Nunito]">{item.word}</span>
                 </motion.button>
               );
             })}

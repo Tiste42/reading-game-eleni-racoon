@@ -153,7 +153,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
 
         <div className="bg-gray-800/20 rounded-[2rem] px-8 py-6 min-w-[280px]">
           <p className="text-center text-white/70 text-sm font-[Nunito] mb-3">
-            {phase === 'build' ? 'Drag letters into the cauldron!' : 'Swap a letter!'}
+            {phase === 'build' ? 'Tap letters into the cauldron!' : 'Swap a letter!'}
           </p>
           <div className="flex gap-3 justify-center">
             {current.letters.map((_, i) => (

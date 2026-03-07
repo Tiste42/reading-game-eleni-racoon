@@ -47,6 +47,10 @@ interface Props {
   onComplete: () => void;
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
 export default function RhymeBeach({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
@@ -54,16 +58,18 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
   const [score, setScore] = useState(0);
   const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
 
-  const currentRound = RHYME_ROUNDS[round];
-  const isLastRound = round >= RHYME_ROUNDS.length - 1;
+  // Shuffle round order and choices within each round
+  const [rounds] = useState(() => {
+    const shuffled = shuffle(RHYME_ROUNDS);
+    return shuffled.map(r => ({
+      ...r,
+      choices: shuffle([r.match, ...r.distractors]),
+    }));
+  });
 
-  const [allChoices] = useState(() =>
-    RHYME_ROUNDS.map(r =>
-      [r.match, ...r.distractors].sort(() => Math.random() - 0.5)
-    )
-  );
-
-  const roundChoices = allChoices[round];
+  const currentRound = rounds[round];
+  const isLastRound = round >= rounds.length - 1;
+  const roundChoices = currentRound.choices;
 
   const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
     `What rhymes with ${currentRound.target.word}?`,
@@ -134,7 +140,7 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
 
       {/* Progress dots */}
       <div className="flex justify-center gap-2 mb-4">
-        {RHYME_ROUNDS.map((_, i) => (
+        {rounds.map((_, i) => (
           <div
             key={i}
             className={`w-4 h-4 rounded-full transition-all ${

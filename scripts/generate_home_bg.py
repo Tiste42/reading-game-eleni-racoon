@@ -7,7 +7,7 @@ import os
 import urllib.request
 from pathlib import Path
 
-GEMINI_API_KEY = "AIzaSyDNMHbyKxRw4t8_-ewbPMf7j_su-uZV7OY"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PROJECT_ROOT = Path(__file__).parent.parent
 OUTPUT_DIR = PROJECT_ROOT / "public" / "images" / "generated" / "backgrounds"
 

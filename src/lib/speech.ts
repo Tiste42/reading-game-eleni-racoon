@@ -72,6 +72,7 @@ export async function speak(text: string): Promise<void> {
 
   const thisGen = ++speakGeneration;
 
+  // Cancel any previous speech immediately
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.currentTime = 0;
@@ -88,11 +89,22 @@ export async function speak(text: string): Promise<void> {
       if (thisGen !== speakGeneration) { resolve(); return; }
       const audio = new Audio(url);
       currentAudio = audio;
-      audio.onended = () => { currentAudio = null; resolve(); };
+
+      const done = () => {
+        currentAudio = null;
+        resolve();
+      };
+
+      audio.onended = done;
       audio.onerror = () => {
         currentAudio = null;
         browserSpeak(text).then(resolve);
       };
+      // If another speak() call pauses this audio, resolve immediately
+      audio.addEventListener('pause', () => {
+        if (thisGen !== speakGeneration) done();
+      });
+
       audio.play().catch((err) => {
         console.warn('Audio play blocked:', err.message);
         currentAudio = null;
@@ -101,6 +113,7 @@ export async function speak(text: string): Promise<void> {
     });
   }
 
+  if (thisGen !== speakGeneration) return;
   return browserSpeak(text);
 }
 
@@ -108,7 +121,7 @@ export async function speakWord(word: string): Promise<void> {
   return speak(word);
 }
 
-const PHONEME_PRONUNCIATIONS: Record<string, string> = {
+export const PHONEME_PRONUNCIATIONS: Record<string, string> = {
   a: 'aah', b: 'buh', c: 'kuh', d: 'duh',
   e: 'eh', f: 'fff', g: 'guh', h: 'huh',
   i: 'ih', j: 'juh', k: 'kuh', l: 'lll',
@@ -140,7 +153,7 @@ export async function speakInstruction(gameId: string): Promise<void> {
     'sailboat-race': "Sailboat race! Read the word and sail to the right island!",
     'sound-telescope': "I see something through my telescope! Can you figure out the word?",
     'plaza-puzzle': "Let's build a puzzle! Read the word and pick the matching picture!",
-    'potion-lab': "Welcome to the potion lab! Drag letters into the cauldron to make a word!",
+    'potion-lab': "Welcome to the potion lab! Tap letters into the cauldron to make a word!",
     'word-towers': "Let's build a word tower! Find words that end the same way!",
     'knights-doors': "Three doors in the castle! Read the words and find the right one!",
     'dragon-feed': "The baby dragon is hungry! Read the word and pick the matching picture!",
@@ -218,6 +231,7 @@ export async function speakReveal(correctWord: string): Promise<void> {
 }
 
 export function stopSpeaking(): void {
+  speakGeneration++;
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.currentTime = 0;
