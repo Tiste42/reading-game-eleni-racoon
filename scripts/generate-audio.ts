@@ -53,16 +53,28 @@ function buildManifest(): AudioClip[] {
     });
   }
 
-  // --- CVC Words (clean pronunciation) ---
+  // --- CVC Words + game option words (clean pronunciation) ---
   const words = [
+    // Original CVC words
     'sat', 'sit', 'pat', 'tap', 'tip', 'pit', 'pin', 'pan', 'nap', 'nip',
     'tan', 'tin', 'sip', 'ten', 'net', 'let', 'pen', 'pet', 'set',
     'cat', 'hat', 'mat', 'bat', 'rat', 'fat', 'can', 'man', 'van', 'ran',
     'fan', 'fin', 'bin', 'win', 'dog', 'log', 'fog', 'hog', 'bug', 'rug',
     'mug', 'hug', 'cup', 'hot', 'pot', 'dot', 'bed', 'red', 'hen', 'den',
     'men', 'wet', 'jet', 'pup', 'cut', 'hut',
+    // Digraph words
     'ship', 'shop', 'shin', 'shed', 'chip', 'chop', 'chin', 'chat',
     'thin', 'this', 'that', 'then', 'them', 'with',
+    // Game option words (animals, objects, descriptors used across games)
+    'snake', 'ant', 'tiger', 'penguin', 'iguana', 'nut', 'egg', 'lemon',
+    'apple', 'tent', 'insect', 'igloo', 'lion', 'sun', 'moon', 'banana',
+    'soap', 'ball', 'bird', 'fish', 'bus', 'sock', 'mouse', 'milk',
+    'tree', 'top', 'leg', 'rain', 'star', 'map', 'turtle', 'pig',
+    'nest', 'elephant', 'din', 'cog', 'jog', 'dug', 'jug', 'cap',
+    'car', 'fox', 'lamp', 'elf', 'ink', 'fed', 'lip', 'cot', 'run',
+    'cold', 'big', 'small', 'blue', 'green', 'yellow', 'happy', 'sad',
+    'fast', 'mad', 'yes', 'pug',
+    'monkey', 'rabbit', 'tomato', 'butterfly', 'dinosaur', 'watermelon',
   ];
 
   for (const w of words) {
@@ -226,6 +238,359 @@ function buildManifest(): AudioClip[] {
       id: `narration-${n.id}`,
       text: n.text,
       outputPath: `narration/${n.id}.mp3`,
+      category: 'narration',
+    });
+  }
+
+  // --- Per-round instruction narrations ---
+  // These are the dynamic instruction strings spoken each round in games.
+  // File naming: narration/inst-{slug}.mp3 where slug = textToSlug(text)
+  const instructionNarrations: { text: string; ttsText?: string }[] = [
+    // World 1: SoundSafari
+    { text: 'Find the picture that starts with s!' },
+    { text: 'Find the picture that starts with a!' },
+    { text: 'Find the picture that starts with t!' },
+    { text: 'Find the picture that starts with p!' },
+    { text: 'Find the picture that starts with i!' },
+    { text: 'Find the picture that starts with n!' },
+    { text: 'Find the picture that starts with e!' },
+    { text: 'Find the picture that starts with l!' },
+    // World 1: OddSoundOut
+    { text: "Two of these start with kuh. Which one doesn't? Find the odd one out!" },
+    { text: "Two of these start with sss. Which one doesn't? Find the odd one out!" },
+    { text: "Two of these start with puh. Which one doesn't? Find the odd one out!" },
+    { text: "Two of these start with buh. Which one doesn't? Find the odd one out!" },
+    { text: "Two of these start with mmm. Which one doesn't? Find the odd one out!" },
+    { text: "Two of these start with rrr. Which one doesn't? Find the odd one out!" },
+    { text: "Two of these start with huh. Which one doesn't? Find the odd one out!" },
+    { text: "Two of these start with fff. Which one doesn't? Find the odd one out!" },
+    // World 1: SoundHunt
+    { text: 'Find everything that starts with sss! Tap them all!' },
+    { text: 'Find everything that starts with buh! Tap them all!' },
+    { text: 'Find everything that starts with mmm! Tap them all!' },
+    { text: 'Find everything that starts with tuh! Tap them all!' },
+    { text: 'Find everything that starts with puh! Tap them all!' },
+    // World 1: SyllableClap
+    { text: 'How many beats does this word have? Clap for each beat!' },
+    // World 1: RhymeBeach
+    { text: 'What rhymes with cat?' },
+    { text: 'What rhymes with bug?' },
+    { text: 'What rhymes with log?' },
+    { text: 'What rhymes with hen?' },
+    { text: 'What rhymes with pin?' },
+    // World 2: LetterIntro
+    { text: 'What letter makes the sss sound? Tap it!' },
+    { text: 'What letter makes the aah sound? Tap it!' },
+    { text: 'What letter makes the tuh sound? Tap it!' },
+    { text: 'What letter makes the puh sound? Tap it!' },
+    { text: 'What letter makes the ih sound? Tap it!' },
+    { text: 'What letter makes the nnn sound? Tap it!' },
+    { text: 'What letter makes the eh sound? Tap it!' },
+    { text: 'What letter makes the lll sound? Tap it!' },
+    // World 2: LetterTrace
+    { text: 'What letter does sun start with?' },
+    { text: 'What letter does snake start with?' },
+    { text: 'What letter does apple start with?' },
+    { text: 'What letter does ant start with?' },
+    { text: 'What letter does tiger start with?' },
+    { text: 'What letter does tent start with?' },
+    { text: 'What letter does penguin start with?' },
+    { text: 'What letter does pig start with?' },
+    { text: 'What letter does igloo start with?' },
+    { text: 'What letter does insect start with?' },
+    { text: 'What letter does nut start with?' },
+    { text: 'What letter does nest start with?' },
+    { text: 'What letter does egg start with?' },
+    { text: 'What letter does elephant start with?' },
+    { text: 'What letter does lemon start with?' },
+    { text: 'What letter does lion start with?' },
+    // World 2: LetterMatch
+    { text: 'Match each letter to its picture! Tap a letter, then tap the picture that starts with it!' },
+    // World 2: SoundSort
+    { text: 'Sort the pictures! Does it start with s or t?' },
+    { text: 'Sort the pictures! Does it start with p or n?' },
+    { text: 'Sort the pictures! Does it start with a or e?' },
+    { text: 'Sort the pictures! Does it start with l or i?' },
+    // World 2: SoundSorting
+    { text: 'Tap everything that starts with sss!' },
+    { text: 'Tap everything that starts with mmm!' },
+    { text: 'Tap everything that starts with tuh!' },
+    // World 3: SurfSlide (simplified)
+    { text: 'Blend the sounds together! What word do the letters make?' },
+    // World 3: SoundTelescope
+    { text: 'Listen to the sounds: sss...aaa...t. What word is that?', ttsText: 'Listen to the sounds: sss, aah, t. What word is that?' },
+    { text: 'Listen to the sounds: p...iii...nnn. What word is that?', ttsText: 'Listen to the sounds: p, ih, nnn. What word is that?' },
+    { text: 'Listen to the sounds: nnn...eee...t. What word is that?', ttsText: 'Listen to the sounds: nnn, eh, t. What word is that?' },
+    { text: 'Listen to the sounds: p...eee...t. What word is that?', ttsText: 'Listen to the sounds: p, eh, t. What word is that?' },
+    { text: 'Listen to the sounds: sss...iii...p. What word is that?', ttsText: 'Listen to the sounds: sss, ih, p. What word is that?' },
+    { text: 'Listen to the sounds: lll...eee...t. What word is that?', ttsText: 'Listen to the sounds: lll, eh, t. What word is that?' },
+    // World 3: SailboatRace
+    { text: 'The word is sat. Which picture matches?' },
+    { text: 'The word is pan. Which picture matches?' },
+    { text: 'The word is tip. Which picture matches?' },
+    { text: 'The word is pen. Which picture matches?' },
+    { text: 'The word is pet. Which picture matches?' },
+    { text: 'The word is ten. Which picture matches?' },
+    // World 3: PlazaPuzzle
+    { text: 'Read the word: sat. Which picture matches?' },
+    { text: 'Read the word: pet. Which picture matches?' },
+    { text: 'Read the word: ten. Which picture matches?' },
+    { text: 'Read the word: nap. Which picture matches?' },
+    { text: 'Read the word: lip. Which picture matches?' },
+    { text: 'Read the word: pen. Which picture matches?' },
+    // World 3: MarketBuilder
+    { text: 'Build the word sat! Tap the letters in order!' },
+    { text: 'Build the word pin! Tap the letters in order!' },
+    { text: 'Build the word tap! Tap the letters in order!' },
+    { text: 'Build the word net! Tap the letters in order!' },
+    { text: 'Build the word pet! Tap the letters in order!' },
+    { text: 'Build the word let! Tap the letters in order!' },
+    { text: 'Build the word tin! Tap the letters in order!' },
+    { text: 'Build the word sip! Tap the letters in order!' },
+    // World 4: WordTowers
+    { text: 'Find words in the -at family! Which word belongs?' },
+    { text: 'Find words in the -an family! Which word belongs?' },
+    { text: 'Find words in the -in family! Which word belongs?' },
+    { text: 'Find words in the -og family! Which word belongs?' },
+    { text: 'Find words in the -ug family! Which word belongs?' },
+    // World 4: PotionLab
+    { text: 'Put the letters c, a, t into the cauldron to make cat!' },
+    { text: 'Put the letters p, i, n into the cauldron to make pin!' },
+    { text: 'Put the letters h, o, t into the cauldron to make hot!' },
+    { text: 'Put the letters b, a, t into the cauldron to make bat!' },
+    { text: 'Put the letters d, o, g into the cauldron to make dog!' },
+    { text: 'Put the letters c, u, p into the cauldron to make cup!' },
+    // World 4: KnightsDoors
+    { text: 'Find the door that says cat!' },
+    { text: 'Find the door that says dog!' },
+    { text: 'Find the door that says cup!' },
+    { text: 'Find the door that says hen!' },
+    { text: 'Find the door that says bed!' },
+    { text: 'Find the door that says van!' },
+    // World 4: DragonFeed
+    { text: 'Read the word cat! Which picture is a cat?' },
+    { text: 'Read the word dog! Which picture is a dog?' },
+    { text: 'Read the word bug! Which picture is a bug?' },
+    { text: 'Read the word hen! Which picture is a hen?' },
+    { text: 'Read the word cup! Which picture is a cup?' },
+    { text: 'Read the word pot! Which picture is a pot?' },
+    { text: 'Read the word bed! Which picture is a bed?' },
+    { text: 'Read the word van! Which picture is a van?' },
+    { text: 'Read the word fin! Which picture is a fin?' },
+    { text: 'Read the word jet! Which picture is a jet?' },
+    // World 4: GardenGrow
+    { text: 'Read the seed: pan. Which picture is a pan?' },
+    { text: 'Read the seed: bug. Which picture is a bug?' },
+    { text: 'Read the seed: hot. Which picture is a hot?' },
+    { text: 'Read the seed: jet. Which picture is a jet?' },
+    { text: 'Read the seed: rat. Which picture is a rat?' },
+    { text: 'Read the seed: fin. Which picture is a fin?' },
+    { text: 'Read the seed: hug. Which picture is a hug?' },
+    { text: 'Read the seed: red. Which picture is a red?' },
+    // World 5: DigraphDiscovery
+    { text: 'The word is ship. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is shop. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is shin. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is shed. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is chip. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is chop. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is chin. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is chat. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is thin. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is this. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: 'The word is that. Which two letters make the special sound? Is it sh, ch, or th?' },
+    // World 5: HeartWordMap
+    { text: 'The heart word is the. Tap each letter to learn it!' },
+    { text: 'The heart word is was. Tap each letter to learn it!' },
+    { text: 'The heart word is said. Tap each letter to learn it!' },
+    { text: 'The heart word is is. Tap each letter to learn it!' },
+    { text: 'The heart word is to. Tap each letter to learn it!' },
+    { text: 'The heart word is he. Tap each letter to learn it!' },
+    { text: 'The heart word is she. Tap each letter to learn it!' },
+    { text: 'The heart word is we. Tap each letter to learn it!' },
+    { text: 'The heart word is you. Tap each letter to learn it!' },
+    { text: 'The heart word is are. Tap each letter to learn it!' },
+    { text: 'The heart word is have. Tap each letter to learn it!' },
+    { text: 'The heart word is do. Tap each letter to learn it!' },
+    { text: 'The heart word is no. Tap each letter to learn it!' },
+    { text: 'The heart word is go. Tap each letter to learn it!' },
+    { text: 'The heart word is my. Tap each letter to learn it!' },
+    // World 5: TreasureMemory
+    { text: 'Match the word pairs! Tap a card to flip it!' },
+    // World 5: RuinDecoder
+    { text: 'Read the ancient word: ship.' },
+    { text: 'Read the ancient word: chat.' },
+    { text: 'Read the ancient word: thin.' },
+    { text: 'Read the ancient word: chop.' },
+    { text: 'Read the ancient word: shed.' },
+    { text: 'Read the ancient word: this.' },
+    // World 5: SoukSentences
+    { text: 'Read the sign: the cat.' },
+    { text: 'Read the sign: a big hat.' },
+    { text: 'Read the sign: she is sad.' },
+    { text: 'Read the sign: he can run.' },
+    { text: 'Read the sign: the red cup.' },
+    { text: 'Read the sign: I have a dog.' },
+    { text: 'Read the sign: we can go.' },
+    { text: 'Read the sign: my big van.' },
+    // World 6: StoryStroll (sentence + question)
+    { text: 'Sam sat on a mat. What did Sam sit on?' },
+    { text: 'The cat is big. Is the cat big or small?' },
+    { text: 'A bug is on the log. Where is the bug?' },
+    { text: 'He got a red hat. What color is the hat?' },
+    { text: 'The fish is in the net. Where is the fish?' },
+    { text: 'She can see the ship. What can she see?' },
+    { text: 'I have a pet dog. What pet do I have?' },
+    { text: 'The cup is hot. Is the cup hot or cold?' },
+    // World 6: ComicCreator sentences
+    { text: 'The cat sat on a mat.' },
+    { text: 'A dog ran to the cat.' },
+    { text: 'The cat and dog had a nap.' },
+    { text: 'A bug sat on a log.' },
+    { text: 'A big fish jumped up!' },
+    { text: 'The bug fell in the pond.' },
+    { text: 'He got a red hat.' },
+    { text: 'The hat was too big!' },
+    { text: 'He gave it to his dog.' },
+    // World 6: PostcardWriter
+    { text: 'I can see a blank.' },
+    { text: 'I have a big blank.' },
+    { text: 'The blank is red.' },
+    { text: 'She sat on a blank.' },
+    { text: 'He got a pet blank.' },
+    { text: 'We can run to the blank.' },
+    { text: 'I put it in the blank.' },
+    { text: 'The blank is on the mat.' },
+    // World 6: BeachDetective (passage + question)
+    { text: 'The shell is red. It is big. It is on the sand. What color is the shell?' },
+    { text: 'A crab has a hat. The hat is blue. The crab is happy. What color is the hat?' },
+    { text: 'The fish is in the net. The net is big. A man has the net. Who has the net?' },
+    { text: 'She has a pet dog. The dog can run fast. The dog is on the sand. Where is the dog?' },
+    { text: 'I can see a big ship. The ship is on the sea. It has a red flag. What does the ship have?' },
+    // World 6: ManateeRescue
+    { text: 'The manatee needs help! The big net is on the fin. What should we do?' },
+    { text: 'The manatee needs help! The log is in the path. What should we do?' },
+    { text: 'The manatee needs help! The cup fell in the pond. What should we do?' },
+    { text: 'The manatee needs help! A can is on the sand. What should we do?' },
+    { text: 'The manatee needs help! The fish is in a net. How do we help?' },
+    // Boss Level W1
+    { text: 'Which one rhymes with cat?' },
+    { text: 'Which starts with "s"?', ttsText: 'Which starts with s?' },
+    { text: 'Which one rhymes with log?' },
+    { text: 'Which starts with "m"?', ttsText: 'Which starts with m?' },
+    { text: 'Clap the beats: "banana" has...', ttsText: 'Clap the beats: banana has...' },
+    { text: "Which doesn't start with \"b\"?", ttsText: "Which doesn't start with b?" },
+    { text: 'Which starts with "p"?', ttsText: 'Which starts with p?' },
+    { text: 'Which one rhymes with pin?' },
+    // Boss Level W2
+    { text: 'What sound does "s" make?', ttsText: 'What sound does s make?' },
+    { text: 'What sound does "t" make?', ttsText: 'What sound does t make?' },
+    { text: 'What sound does "a" make?', ttsText: 'What sound does a make?' },
+    { text: 'What sound does "p" make?', ttsText: 'What sound does p make?' },
+    { text: 'What sound does "n" make?', ttsText: 'What sound does n make?' },
+    { text: 'What sound does "e" make?', ttsText: 'What sound does e make?' },
+    { text: 'What sound does "l" make?', ttsText: 'What sound does l make?' },
+    { text: 'What sound does "i" make?', ttsText: 'What sound does i make?' },
+    // Boss Level W3
+    { text: 'What word is this?' },
+    // Boss Level W4
+    { text: 'Read the word:' },
+    // Boss Level W5
+    { text: 'The ship is big.' },
+    { text: 'She said no.' },
+    { text: 'He was sad.' },
+    { text: 'I have a thin cat.' },
+    { text: 'We can go to the shop.' },
+    { text: 'The dog is in the shed.' },
+    // Boss Level W6 (some overlap with above)
+    { text: 'Sam sat on a mat.' },
+    { text: 'A bug is on the log.' },
+    { text: 'The fish is in the net.' },
+    { text: 'I have a pet dog.' },
+  ];
+
+  // Multi-word option phrases (spoken as options in games)
+  const phraseNarrations = [
+    'a mat', 'a cat', 'a hat', 'a dog', 'a fish', 'a bug', 'a cup', 'a net', 'a man',
+    'on the log', 'in the cup', 'on the hat', 'in the net', 'on the bed',
+    'in the van', 'on the sand',
+    'the ship', 'the cat', 'the dog',
+    'a blue hat', 'a red flag', 'a big net',
+    'Remove the net', 'Add more net', 'Swim away', 'Sit on it', 'Move the log', 'Jump on it',
+    'Leave it', 'Push it deeper', 'Pick it up', 'Put it in the bin', 'Kick it', 'Hide it',
+    'Cook it', 'Free the fish', 'Watch it',
+  ];
+
+  // Wrong/reveal template narrations
+  const templateNarrations = [
+    { text: 'Not quite. The answer is...', slug: 'not-quite-the-answer-is' },
+  ];
+
+  // LetterIntro reveal narrations
+  const revealNarrations = [
+    'The letter s makes the sss sound, like snake',
+    'The letter a makes the aah sound, like ant',
+    'The letter t makes the tuh sound, like tiger',
+    'The letter p makes the puh sound, like penguin',
+    'The letter i makes the ih sound, like iguana',
+    'The letter n makes the nnn sound, like nut',
+    'The letter e makes the eh sound, like egg',
+    'The letter l makes the lll sound, like lemon',
+  ];
+
+  // Helper to create slug from text (must match speech.ts textToSlug)
+  function textToSlug(text: string): string {
+    return text.toLowerCase().trim()
+      .replace(/[^a-z0-9 ]/g, '')
+      .replace(/\s+/g, '-');
+  }
+
+  // Add instruction narrations
+  const seenSlugs = new Set<string>();
+  for (const inst of instructionNarrations) {
+    const slug = textToSlug(inst.text);
+    if (seenSlugs.has(slug)) continue; // Skip duplicates
+    seenSlugs.add(slug);
+    clips.push({
+      id: `inst-${slug}`,
+      text: inst.ttsText || inst.text,
+      outputPath: `narration/inst-${slug}.mp3`,
+      category: 'narration',
+    });
+  }
+
+  // Add phrase narrations
+  for (const phrase of phraseNarrations) {
+    const slug = textToSlug(phrase);
+    if (seenSlugs.has(slug)) continue;
+    seenSlugs.add(slug);
+    clips.push({
+      id: `inst-${slug}`,
+      text: phrase,
+      outputPath: `narration/inst-${slug}.mp3`,
+      category: 'narration',
+    });
+  }
+
+  // Add template narrations
+  for (const tpl of templateNarrations) {
+    clips.push({
+      id: `inst-${tpl.slug}`,
+      text: tpl.text,
+      outputPath: `narration/inst-${tpl.slug}.mp3`,
+      category: 'narration',
+    });
+  }
+
+  // Add reveal narrations
+  for (const reveal of revealNarrations) {
+    const slug = textToSlug(reveal);
+    if (seenSlugs.has(slug)) continue;
+    seenSlugs.add(slug);
+    clips.push({
+      id: `inst-${slug}`,
+      text: reveal,
+      outputPath: `narration/inst-${slug}.mp3`,
       category: 'narration',
     });
   }

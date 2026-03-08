@@ -61,7 +61,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
 
   const instruction = feedback || !blended
     ? null
-    : `Blend the sounds together! What word do the letters make? Is it ${optionNames.join(', or ')}?`;
+    : 'Blend the sounds together! What word do the letters make?';
 
   const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
     instruction,
