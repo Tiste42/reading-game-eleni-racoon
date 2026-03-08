@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { speak, speakPhoneme, speakFeedback, speakWrongExplanation, speakReveal, stopSpeaking } from '@/lib/speech';
+import { useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface HuntRound {
   targetSound: string;
@@ -20,10 +20,10 @@ const ROUNDS: HuntRound[] = [
     { word: 'dog', icon: '🐶', startsWithTarget: false },
     { word: 'sock', icon: '🧦', startsWithTarget: true },
     { word: 'cat', icon: '🐱', startsWithTarget: false },
-    { word: 'hat', icon: '🧢', startsWithTarget: false },
+    { word: 'hat', icon: '🎩', startsWithTarget: false },
   ]},
   { targetSound: 'b', items: [
-    { word: 'ball', icon: '⚽', startsWithTarget: true },
+    { word: 'ball', icon: '🏀', startsWithTarget: true },
     { word: 'bird', icon: '🐦', startsWithTarget: true },
     { word: 'fish', icon: '🐟', startsWithTarget: false },
     { word: 'bus', icon: '🚌', startsWithTarget: true },
@@ -52,7 +52,7 @@ const ROUNDS: HuntRound[] = [
     { word: 'dog', icon: '🐶', startsWithTarget: false },
     { word: 'pot', icon: '🍲', startsWithTarget: true },
     { word: 'net', icon: '🥅', startsWithTarget: false },
-    { word: 'hat', icon: '🧢', startsWithTarget: false },
+    { word: 'hat', icon: '🎩', startsWithTarget: false },
   ]},
 ];
 
@@ -79,11 +79,44 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   const current = rounds[roundIdx];
   const targetCount = current.items.filter((i) => i.startsWithTarget).length;
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `Find everything that starts with ${PHONEME_PRONUNCIATIONS[current.targetSound] || current.targetSound}! Tap them all!`,
-    current.items.map(i => i.word),
-    [roundIdx],
-  );
+  // Custom speech: generic prompt → phoneme sound → option words
+  const [activeOption, setActiveOption] = useState(-1);
+  const runIdRef = useRef(0);
+
+  useEffect(() => {
+    const thisRun = ++runIdRef.current;
+    setActiveOption(-1);
+
+    const run = async () => {
+      if (thisRun !== runIdRef.current) return;
+      await speak('Tap everything that starts with this sound!');
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 200));
+      if (thisRun !== runIdRef.current) return;
+      await speakPhoneme(current.targetSound);
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 400));
+
+      const items = current.items;
+      for (let i = 0; i < items.length; i++) {
+        if (thisRun !== runIdRef.current) return;
+        setActiveOption(i);
+        await speak(items[i].word);
+        if (thisRun !== runIdRef.current) return;
+        await new Promise(r => setTimeout(r, 350));
+      }
+      if (thisRun !== runIdRef.current) return;
+      setActiveOption(-1);
+    };
+
+    const timer = setTimeout(run, 500);
+    return () => {
+      clearTimeout(timer);
+      runIdRef.current++;
+      stopSpeaking();
+    };
+  }, [roundIdx]);
+  const doneSpeaking = true;
 
   const { shouldReveal, recordWrong } = useWrongAttempts(roundIdx);
 

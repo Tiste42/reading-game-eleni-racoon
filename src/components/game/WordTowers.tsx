@@ -15,7 +15,7 @@ interface WordFamily {
 
 const FAMILIES: WordFamily[] = [
   { pattern: '-at', words: [
-    { word: 'cat', icon: '🐱' }, { word: 'hat', icon: '🧢' },
+    { word: 'cat', icon: '🐱' }, { word: 'hat', icon: '🎩' },
     { word: 'bat', icon: '🦇' }, { word: 'mat', icon: '🧹' },
     { word: 'rat', icon: '🐀' }, { word: 'sat', icon: '🪑' },
   ]},

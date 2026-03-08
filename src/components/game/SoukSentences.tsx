@@ -17,7 +17,7 @@ interface PhraseRound {
 
 const PHRASES: PhraseRound[] = [
   { phrase: 'the cat', icon: '🐱', correct: 'a cat', options: ['a cat', 'a dog', 'a hat'] },
-  { phrase: 'a big hat', icon: '🧢', correct: 'a hat', options: ['a hat', 'a cup', 'a net'] },
+  { phrase: 'a big hat', icon: '🎩', correct: 'a hat', options: ['a hat', 'a cup', 'a net'] },
   { phrase: 'she is sad', icon: '😢', correct: 'sad', options: ['sad', 'happy', 'big'] },
   { phrase: 'he can run', icon: '🏃', correct: 'run', options: ['run', 'sit', 'nap'] },
   { phrase: 'the red cup', icon: '☕', correct: 'red', options: ['red', 'big', 'hot'] },

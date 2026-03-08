@@ -34,6 +34,7 @@ const PHONEME_TEXT: Record<string, string> = {
   sh: 'shhhh', ch: 'chuh', th: 'thhhh',
 };
 
+
 function buildManifest(): AudioClip[] {
   const clips: AudioClip[] = [];
 
@@ -80,9 +81,7 @@ function buildManifest(): AudioClip[] {
   for (const w of words) {
     clips.push({
       id: `word-${w}`,
-      // Add period after short words so ElevenLabs produces a clean stop
-      // (prevents phantom trailing sounds like "dogs" instead of "dog")
-      text: w.length <= 5 ? `${w}.` : w,
+      text: w,
       outputPath: `words/${w}.mp3`,
       category: 'word',
     });
@@ -115,7 +114,7 @@ function buildManifest(): AudioClip[] {
     if (!words.includes(w)) {
       clips.push({
         id: `word-${w}`,
-        text: w.length <= 5 ? `${w}.` : w,
+        text: w,
         outputPath: `words/${w}.mp3`,
         category: 'word',
       });
@@ -317,6 +316,8 @@ function buildManifest(): AudioClip[] {
     { text: 'Tap everything that starts with sss!' },
     { text: 'Tap everything that starts with mmm!' },
     { text: 'Tap everything that starts with tuh!' },
+    // World 1: SoundSorting — generic prompt (phoneme played separately)
+    { text: 'Tap everything that starts with this sound!' },
     // World 3: SurfSlide (simplified)
     { text: 'Blend the sounds together! What word do the letters make?' },
     // World 3: SoundTelescope
@@ -602,6 +603,13 @@ async function generateClip(clip: AudioClip): Promise<boolean> {
         style: 0.3,
       },
     };
+
+    // For isolated word clips, add sentence context so ElevenLabs
+    // pronounces short words correctly (without including context in audio)
+    if (clip.category === 'word') {
+      body.previous_text = 'The word is';
+      body.next_text = '. That was the word.';
+    }
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,

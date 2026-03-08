@@ -130,6 +130,7 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'tap-everything-that-starts-with-sss',
   'tap-everything-that-starts-with-mmm',
   'tap-everything-that-starts-with-tuh',
+  'tap-everything-that-starts-with-this-sound',
 
   // --- World 3: Blending Coast ---
   // SurfSlide (simplified)

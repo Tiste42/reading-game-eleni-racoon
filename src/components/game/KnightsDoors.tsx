@@ -17,7 +17,7 @@ interface DoorRound {
 const DOOR_ROUNDS: DoorRound[] = [
   { target: 'cat', doors: [
     { word: 'cat', icon: '🐱' },
-    { word: 'hat', icon: '🧢', funny: 'A hat, not a cat!' },
+    { word: 'hat', icon: '🎩', funny: 'A hat, not a cat!' },
     { word: 'bat', icon: '🦇', funny: 'A bat flew out!' },
   ], correctIndex: 0 },
   { target: 'dog', doors: [

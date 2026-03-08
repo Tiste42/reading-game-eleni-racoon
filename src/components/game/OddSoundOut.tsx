@@ -23,7 +23,7 @@ interface RoundData {
 
 const ROUND_DATA: RoundData[] = [
   { common: [{ word: 'cat', icon: '🐱' }, { word: 'cap', icon: '🧢' }], odd: { word: 'dog', icon: '🐶' }, commonSound: 'c' },
-  { common: [{ word: 'sun', icon: '☀️' }, { word: 'soap', icon: '🧼' }], odd: { word: 'hat', icon: '🧢' }, commonSound: 's' },
+  { common: [{ word: 'sun', icon: '☀️' }, { word: 'soap', icon: '🧼' }], odd: { word: 'hat', icon: '🎩' }, commonSound: 's' },
   { common: [{ word: 'pen', icon: '🖊️' }, { word: 'pot', icon: '🍲' }], odd: { word: 'net', icon: '🥅' }, commonSound: 'p' },
   { common: [{ word: 'bat', icon: '🦇' }, { word: 'bin', icon: '🗑️' }], odd: { word: 'cup', icon: '🥤' }, commonSound: 'b' },
   { common: [{ word: 'man', icon: '👨' }, { word: 'mug', icon: '☕' }], odd: { word: 'fan', icon: '🌬️' }, commonSound: 'm' },

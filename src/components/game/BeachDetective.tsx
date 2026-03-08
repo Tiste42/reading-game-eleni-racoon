@@ -35,7 +35,7 @@ const CLUE_ROUNDS: ClueRound[] = [
   { passage: 'I can see a big ship. The ship is on the sea. It has a red flag.',
     question: 'What does the ship have?',
     correct: 'a red flag',
-    options: [{ label: 'a blue hat', icon: '🧢' }, { label: 'a red flag', icon: '🚩' }, { label: 'a big net', icon: '🥅' }] },
+    options: [{ label: 'a blue hat', icon: '🎩' }, { label: 'a red flag', icon: '🚩' }, { label: 'a big net', icon: '🥅' }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

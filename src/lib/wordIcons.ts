@@ -34,7 +34,7 @@ const WORD_ICONS: Record<string, string> = {
 
   // --- -at family (World 4) ---
   cat: '🐱',   // cat face
-  hat: '🧢',   // cap/hat
+  hat: '🎩',   // top hat (distinct from cap 🧢)
   mat: '🏖️',  // mat/blanket
   bat: '🦇',   // bat (animal)
   rat: '🐀',   // rat
@@ -123,7 +123,7 @@ const WORD_ICONS: Record<string, string> = {
   moon: '🌕',   // full moon (NOT 🌙 crescent — less recognizable)
   banana: '🍌',
   soap: '🧼',
-  ball: '⚽',
+  ball: '🏀',
   bird: '🐦',
   fish: '🐟',
   bus: '🚌',

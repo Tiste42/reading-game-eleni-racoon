@@ -40,7 +40,7 @@ const SENTENCES: StorySentence[] = [
   },
   {
     text: 'He got a red hat.',
-    picture: '🧢',
+    picture: '🎩',
     question: 'What color is the hat?',
     correct: 'red',
     options: ['red', 'blue', 'green'],

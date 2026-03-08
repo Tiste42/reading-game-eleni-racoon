@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { speak, speakPhoneme, speakFeedback, speakWrongExplanation, speakReveal, stopSpeaking } from '@/lib/speech';
+import { useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface SortRound {
   targetSound: string;
@@ -21,7 +21,7 @@ const SORT_ROUNDS: SortRound[] = [
     items: [
       { word: 'sun', icon: '☀️', startsWithTarget: true },
       { word: 'sock', icon: '🧦', startsWithTarget: true },
-      { word: 'ball', icon: '⚽', startsWithTarget: false },
+      { word: 'ball', icon: '🏀', startsWithTarget: false },
       { word: 'star', icon: '⭐', startsWithTarget: true },
       { word: 'dog', icon: '🐶', startsWithTarget: false },
       { word: 'snake', icon: '🐍', startsWithTarget: true },
@@ -79,11 +79,44 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
   const targetCount = currentRound.items.filter((i) => i.startsWithTarget).length;
   const roundComplete = sorted.length >= targetCount;
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `Tap everything that starts with ${PHONEME_PRONUNCIATIONS[currentRound.targetLetter] || currentRound.targetLetter}!`,
-    currentRound.items.map(i => i.word),
-    [round],
-  );
+  // Custom speech: generic prompt → phoneme sound → option words
+  const [activeOption, setActiveOption] = useState(-1);
+  const runIdRef = useRef(0);
+
+  useEffect(() => {
+    const thisRun = ++runIdRef.current;
+    setActiveOption(-1);
+
+    const run = async () => {
+      if (thisRun !== runIdRef.current) return;
+      await speak('Tap everything that starts with this sound!');
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 200));
+      if (thisRun !== runIdRef.current) return;
+      await speakPhoneme(currentRound.targetLetter);
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 400));
+
+      const items = currentRound.items;
+      for (let i = 0; i < items.length; i++) {
+        if (thisRun !== runIdRef.current) return;
+        setActiveOption(i);
+        await speak(items[i].word);
+        if (thisRun !== runIdRef.current) return;
+        await new Promise(r => setTimeout(r, 350));
+      }
+      if (thisRun !== runIdRef.current) return;
+      setActiveOption(-1);
+    };
+
+    const timer = setTimeout(run, 500);
+    return () => {
+      clearTimeout(timer);
+      runIdRef.current++;
+      stopSpeaking();
+    };
+  }, [round]);
+  const doneSpeaking = true;
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
 
