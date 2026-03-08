@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { WORLDS } from '@/lib/constants';
 import { WORLD_BACKGROUNDS } from '@/lib/worldBackgrounds';
 import { useHydrated } from '@/lib/useHydrated';
