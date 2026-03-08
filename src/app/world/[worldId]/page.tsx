@@ -67,7 +67,7 @@ export default function WorldHubPage() {
         <div className="flex justify-between items-center mb-4">
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={() => router.back()}
+            onClick={() => router.push('/')}
             className="w-14 h-14 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center text-2xl shadow-md"
             aria-label="Back to map"
           >

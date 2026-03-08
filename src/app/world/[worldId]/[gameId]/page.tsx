@@ -90,7 +90,7 @@ export default function GamePage() {
   const game = world?.games.find((g) => g.id === gameId) || world?.bossGame;
 
   const handleComplete = () => {
-    router.back();
+    router.push(`/world/${worldId}`);
   };
 
   if (!hydrated) {
@@ -120,6 +120,18 @@ export default function GamePage() {
           </div>
         )}
         <div className="relative z-10 min-h-screen">
+          {/* Floating home button */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => router.push('/')}
+            className="fixed top-5 right-5 z-50 w-12 h-12 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center text-xl shadow-md"
+            aria-label="Home"
+          >
+            🏠
+          </motion.button>
           <GameWrapper gameId={gameId}>
             <GameComponent worldId={worldId} onComplete={handleComplete} />
           </GameWrapper>
