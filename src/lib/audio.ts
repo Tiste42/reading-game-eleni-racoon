@@ -139,6 +139,25 @@ let bgMusic: Howl | null = null;
 let currentTrack: string | null = null;
 let currentMusicVolume = 0.3;
 
+let pendingTrack: string | null = null;
+
+function tryPlayBgMusic(): void {
+  if (!bgMusic) return;
+  // Don't gate on 'loaded' — Howler queues play() and fires when ready
+  bgMusic.play();
+}
+
+function onFirstInteraction(): void {
+  if (Howler.ctx && Howler.ctx.state === 'suspended') {
+    Howler.ctx.resume().then(() => tryPlayBgMusic());
+  } else {
+    tryPlayBgMusic();
+  }
+  document.removeEventListener('touchstart', onFirstInteraction);
+  document.removeEventListener('click', onFirstInteraction);
+  pendingTrack = null;
+}
+
 export function startBackgroundMusic(track = 'menu'): void {
   // If same track is already playing, do nothing
   if (bgMusic && currentTrack === track) return;
@@ -163,7 +182,16 @@ export function startBackgroundMusic(track = 'menu'): void {
       currentTrack = null;
     },
   });
-  bgMusic.play();
+
+  // If audio context is suspended (browser autoplay policy), defer playback
+  // to the first user interaction instead of failing silently
+  if (Howler.ctx && Howler.ctx.state === 'suspended') {
+    pendingTrack = track;
+    document.addEventListener('touchstart', onFirstInteraction, { once: true });
+    document.addEventListener('click', onFirstInteraction, { once: true });
+  } else {
+    bgMusic.play();
+  }
 }
 
 export function stopBackgroundMusic(): void {

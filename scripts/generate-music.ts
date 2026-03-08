@@ -51,7 +51,7 @@ const WORLD_MUSIC = [
   {
     id: 'menu',
     file: 'menu.mp3',
-    prompt: 'Soft cheerful children game menu music, gentle xylophone and light piano, calm and welcoming, loopable background for educational game home screen, instrumental only',
+    prompt: 'Fun reggae children game menu music, bouncy reggae rhythm, bright ukulele strumming, cheerful steel drums, playful and groovy island vibes, upbeat adventure travel theme for kids, loopable background for educational game home screen, instrumental only',
   },
 ];
 

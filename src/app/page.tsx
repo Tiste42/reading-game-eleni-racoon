@@ -5,21 +5,29 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CoinCounter from '@/components/ui/CoinCounter';
+import MusicToggle from '@/components/ui/MusicToggle';
 import { useGameStore } from '@/lib/store';
 import { unlockAudio } from '@/lib/audio';
 import { WORLDS } from '@/lib/constants';
 
 export default function HomePage() {
-  const [showTitle, setShowTitle] = useState(true);
+  const [showTitle, setShowTitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return !sessionStorage.getItem('titleSeen');
+    }
+    return true;
+  });
   const router = useRouter();
-  const { passportStamps, isWorldUnlocked } = useGameStore();
+  const { passportStamps, isWorldUnlocked, setCurrentWorld } = useGameStore();
 
   useEffect(() => {
     unlockAudio();
-  }, []);
+    setCurrentWorld(0);
+  }, [setCurrentWorld]);
 
   const handleStart = () => {
     unlockAudio();
+    sessionStorage.setItem('titleSeen', '1');
     setShowTitle(false);
   };
 
@@ -48,18 +56,21 @@ function TitleScreen({ onStart }: { onStart: () => void }) {
         <div className="absolute inset-0 bg-gradient-to-b from-pink-200/60 via-purple-100/40 to-blue-200/60" />
       </div>
 
-      {/* Settings gear */}
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => router.push('/parent')}
-        className="absolute top-6 right-6 w-14 h-14 rounded-full bg-white/70 backdrop-blur-sm flex items-center justify-center text-2xl shadow-lg z-20"
-        aria-label="Settings"
-      >
-        {'\u2699\uFE0F'}
-      </motion.button>
+      {/* Top-right controls */}
+      <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+        <MusicToggle className="w-12 h-12 text-xl bg-white/70 backdrop-blur-sm" />
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => router.push('/parent')}
+          className="w-14 h-14 rounded-full bg-white/70 backdrop-blur-sm flex items-center justify-center text-2xl shadow-lg"
+          aria-label="Settings"
+        >
+          {'\u2699\uFE0F'}
+        </motion.button>
+      </div>
 
       <div className="relative z-10 flex flex-col items-center">
         <motion.div
@@ -144,6 +155,7 @@ function WorldMap() {
         </div>
         <div className="flex items-center gap-2">
           <CoinCounter />
+          <MusicToggle className="w-10 h-10 text-lg" />
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => router.push('/parent')}
@@ -227,6 +239,31 @@ function WorldMap() {
             </motion.button>
           );
         })}
+      </div>
+
+      {/* Library button */}
+      <div className="max-w-md mx-auto mt-6 relative z-10">
+        <motion.button
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.7, type: 'spring' }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => router.push('/library')}
+          className="w-full rounded-3xl p-5 shadow-lg flex items-center gap-4 text-left bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:shadow-xl active:scale-[0.98] transition-all duration-200 ring-2 ring-white/40"
+        >
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl bg-white/30 shrink-0">
+            📚
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-xl font-bold font-[Fredoka] text-white block">
+              Lini&apos;s Library
+            </span>
+            <span className="text-sm font-[Nunito] text-white/80 block">
+              Storytime!
+            </span>
+          </div>
+          <div className="text-3xl text-white/80 shrink-0">▶</div>
+        </motion.button>
       </div>
 
       {/* Parent link - small, unobtrusive */}

@@ -19,7 +19,8 @@ export default function BackgroundMusic() {
     } else {
       stopBackgroundMusic();
     }
-    return () => { stopBackgroundMusic(); };
+    // No cleanup — startBackgroundMusic handles crossfading internally.
+    // A cleanup here would race with the new track and null out its reference.
   }, [musicEnabled, currentWorld]);
 
   useEffect(() => {

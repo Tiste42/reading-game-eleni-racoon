@@ -69,7 +69,7 @@ const initialWorldProgress: Record<number, WorldProgress> = {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      currentWorld: 1,
+      currentWorld: 0,
       worldProgress: { ...initialWorldProgress },
       coins: 0,
       companions: [],
@@ -167,7 +167,7 @@ export const useGameStore = create<GameState>()(
 
       resetProgress: () =>
         set({
-          currentWorld: 1,
+          currentWorld: 0,
           worldProgress: { ...initialWorldProgress },
           coins: 0,
           companions: [],

@@ -1,7 +1,7 @@
-# Lenny's Sound Safari — Reading Game
+# Leni's Sound Safari — Reading Game
 
 ## Project Overview
-A phonics-based reading game for a 4-year-old girl named Eleni. The main character is Lenny the Raccoon — a cute, adventurous cartoon raccoon who travels the world teaching letter sounds and reading. Built as a Next.js PWA that works on mobile browsers and desktop.
+A phonics-based reading game for a 4-year-old girl named Eleni. The main character is Leni the Raccoon — a cute, adventurous cartoon raccoon who travels the world teaching letter sounds and reading. Built as a Next.js PWA that works on mobile browsers and desktop.
 
 ## The Child (Eleni)
 - 4 years old, knows all 26 letter names and most letter sounds
@@ -20,14 +20,14 @@ A phonics-based reading game for a 4-year-old girl named Eleni. The main charact
 - next-pwa (service worker, offline support)
 
 ## API Keys
-- ElevenLabs API key is in .env.local as ELEVENLABS_API_KEY — used for Lenny's voice generation at BUILD TIME only, never at runtime
+- ElevenLabs API key is in .env.local as ELEVENLABS_API_KEY — used for Leni's voice generation at BUILD TIME only, never at runtime
 - Gemini API key is in .env.local as GEMINI_API_KEY
 - NEVER hardcode API keys in source files
 - .env.local MUST be in .gitignore
 
 ## Audio Architecture
 - All audio is pre-generated static .mp3 files in /public/audio/
-- ElevenLabs generates: Lenny narration, full word pronunciations, sentences
+- ElevenLabs generates: Leni narration, full word pronunciations, sentences
 - For isolated phonemes: try ElevenLabs with SSML phoneme tags first, fall back to University of Iowa Sounds of Speech clips
 - Howler.js handles all playback — use audio sprites where possible
 - The app NEVER calls external APIs at runtime — everything is pre-baked

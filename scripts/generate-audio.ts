@@ -538,6 +538,30 @@ function buildManifest(): AudioClip[] {
     });
   }
 
+  // --- Book narration (page-by-page read-aloud) ---
+  // Dynamically import book config — works at build time with tsx
+  let BOOKS: Array<{ id: string; pages: Array<{ narrationText: string }> }> = [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const booksModule = require('../src/lib/books');
+    BOOKS = booksModule.BOOKS || [];
+  } catch {
+    console.log('  (No books config found, skipping book narration)');
+  }
+
+  for (const book of BOOKS) {
+    for (let i = 0; i < book.pages.length; i++) {
+      const page = book.pages[i];
+      if (!page.narrationText) continue;
+      clips.push({
+        id: `book-${book.id}-page-${i + 1}`,
+        text: page.narrationText,
+        outputPath: `books/${book.id}/page-${i + 1}.mp3`,
+        category: 'narration',
+      });
+    }
+  }
+
   return clips;
 }
 

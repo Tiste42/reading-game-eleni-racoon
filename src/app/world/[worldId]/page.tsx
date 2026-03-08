@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CoinCounter from '@/components/ui/CoinCounter';
+import MusicToggle from '@/components/ui/MusicToggle';
 import { useGameStore } from '@/lib/store';
 import { useHydrated } from '@/lib/useHydrated';
 import { WORLDS } from '@/lib/constants';
@@ -16,7 +18,11 @@ export default function WorldHubPage() {
   const hydrated = useHydrated();
   const worldId = Number(params.worldId);
   const world = WORLDS.find((w) => w.id === worldId);
-  const { worldProgress, isGameUnlocked, isWorldUnlocked, freePlay } = useGameStore();
+  const { worldProgress, isGameUnlocked, isWorldUnlocked, freePlay, setCurrentWorld } = useGameStore();
+
+  useEffect(() => {
+    setCurrentWorld(worldId);
+  }, [worldId, setCurrentWorld]);
 
   if (!world) {
     return (
@@ -75,6 +81,7 @@ export default function WorldHubPage() {
           </motion.button>
           <div className="flex items-center gap-2">
             <CoinCounter />
+            <MusicToggle className="w-10 h-10 text-lg bg-white/30 backdrop-blur-sm" />
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => router.push('/parent')}

@@ -518,6 +518,14 @@ export function stopSpeaking(): void {
   }
 }
 
+/**
+ * Play book page narration from pre-generated audio.
+ * Path: /audio/books/{bookId}/page-{pageNum}.mp3
+ */
+export async function speakBookPage(bookId: string, pageNum: number): Promise<void> {
+  return playStatic(`books/${bookId}/page-${pageNum}.mp3`);
+}
+
 // --- Pronunciation display text (used by game components for UI, not for audio) ---
 
 export const PHONEME_PRONUNCIATIONS: Record<string, string> = {

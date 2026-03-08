@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { WORLDS } from '@/lib/constants';
 import { WORLD_BACKGROUNDS } from '@/lib/worldBackgrounds';
 import { useHydrated } from '@/lib/useHydrated';
+import { useGameStore } from '@/lib/store';
+import MusicToggle from '@/components/ui/MusicToggle';
 import RhymeBeach from '@/components/game/RhymeBeach';
 import SoundSorting from '@/components/game/SoundSorting';
 import LetterIntro from '@/components/game/LetterIntro';
@@ -84,11 +87,16 @@ export default function GamePage() {
   const params = useParams();
   const router = useRouter();
   const hydrated = useHydrated();
+  const setCurrentWorld = useGameStore((s) => s.setCurrentWorld);
   const worldId = Number(params.worldId);
   const gameId = params.gameId as string;
 
   const world = WORLDS.find((w) => w.id === worldId);
   const game = world?.games.find((g) => g.id === gameId) || world?.bossGame;
+
+  useEffect(() => {
+    setCurrentWorld(worldId);
+  }, [worldId, setCurrentWorld]);
 
   const handleComplete = () => {
     router.push(`/world/${worldId}`);
@@ -121,18 +129,21 @@ export default function GamePage() {
           </div>
         )}
         <div className="relative z-10 min-h-screen">
-          {/* Floating home button */}
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => router.push('/')}
-            className="fixed top-5 right-5 z-50 w-12 h-12 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center text-xl shadow-md"
-            aria-label="Home"
-          >
-            🏠
-          </motion.button>
+          {/* Floating controls */}
+          <div className="fixed top-5 right-5 z-50 flex items-center gap-2">
+            <MusicToggle className="w-10 h-10 text-lg bg-white/40 backdrop-blur-sm" />
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => router.push('/')}
+              className="w-12 h-12 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center text-xl shadow-md"
+              aria-label="Home"
+            >
+              🏠
+            </motion.button>
+          </div>
           <GameWrapper gameId={gameId}>
             <GameComponent worldId={worldId} onComplete={handleComplete} />
           </GameWrapper>
