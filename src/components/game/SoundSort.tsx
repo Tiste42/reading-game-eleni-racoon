@@ -6,8 +6,8 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakReveal } from '@/lib/speech';
-import { speak } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface SortItem {
   word: string;
@@ -23,28 +23,28 @@ interface SortRound {
 
 const ROUNDS: SortRound[] = [
   { bucketA: 's', bucketB: 't', items: [
-    { word: 'sun', icon: '☀️', startsWith: 's' },
-    { word: 'top', icon: '🪀', startsWith: 't' },
-    { word: 'sock', icon: '🧦', startsWith: 's' },
-    { word: 'tent', icon: '⛺', startsWith: 't' },
+    { word: 'sun', icon: getIcon('sun'), startsWith: 's' },
+    { word: 'top', icon: getIcon('top'), startsWith: 't' },
+    { word: 'sock', icon: getIcon('sock'), startsWith: 's' },
+    { word: 'tent', icon: getIcon('tent'), startsWith: 't' },
   ]},
   { bucketA: 'p', bucketB: 'n', items: [
-    { word: 'pig', icon: '🐷', startsWith: 'p' },
-    { word: 'net', icon: '🥅', startsWith: 'n' },
-    { word: 'pen', icon: '🖊️', startsWith: 'p' },
-    { word: 'nut', icon: '🥜', startsWith: 'n' },
+    { word: 'pig', icon: getIcon('pig'), startsWith: 'p' },
+    { word: 'net', icon: getIcon('net'), startsWith: 'n' },
+    { word: 'pen', icon: getIcon('pen'), startsWith: 'p' },
+    { word: 'nut', icon: getIcon('nut'), startsWith: 'n' },
   ]},
   { bucketA: 'a', bucketB: 'e', items: [
-    { word: 'apple', icon: '🍎', startsWith: 'a' },
-    { word: 'egg', icon: '🥚', startsWith: 'e' },
-    { word: 'ant', icon: '🐜', startsWith: 'a' },
-    { word: 'elf', icon: '🧝', startsWith: 'e' },
+    { word: 'apple', icon: getIcon('apple'), startsWith: 'a' },
+    { word: 'egg', icon: getIcon('egg'), startsWith: 'e' },
+    { word: 'ant', icon: getIcon('ant'), startsWith: 'a' },
+    { word: 'elf', icon: getIcon('elf'), startsWith: 'e' },
   ]},
   { bucketA: 'l', bucketB: 'i', items: [
-    { word: 'lemon', icon: '🍋', startsWith: 'l' },
-    { word: 'igloo', icon: '🏠', startsWith: 'i' },
-    { word: 'lamp', icon: '💡', startsWith: 'l' },
-    { word: 'ink', icon: '🪷', startsWith: 'i' },
+    { word: 'lemon', icon: getIcon('lemon'), startsWith: 'l' },
+    { word: 'igloo', icon: getIcon('igloo'), startsWith: 'i' },
+    { word: 'lamp', icon: getIcon('lamp'), startsWith: 'l' },
+    { word: 'ink', icon: getIcon('ink'), startsWith: 'i' },
   ]},
 ];
 
@@ -133,7 +133,8 @@ export default function SoundSort({ worldId, onComplete }: Props) {
       recordWrong();
       const msg = `No, ${selectedItem.word} starts with ${selectedItem.startsWith}, put it in the ${selectedItem.startsWith} bucket!`;
       setWrongBucketMsg(msg);
-      speak(msg);
+      // Play pre-generated wrong feedback instead of dynamic browser TTS
+      speakFeedback('wrong');
       setTimeout(() => { setFeedback(null); setSelectedItem(null); setWrongBucketMsg(null); }, 2000);
     }
   }, [selectedItem, feedback, shouldReveal, sorted, current, roundIdx, rounds, worldId, completeGame, addCoins, recordWrong]);

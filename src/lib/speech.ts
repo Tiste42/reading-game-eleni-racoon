@@ -286,6 +286,23 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'leave-it', 'push-it-deeper', 'pick-it-up', 'put-it-in-the-bin', 'kick-it', 'hide-it',
   'cook-it', 'free-the-fish', 'watch-it',
 
+  // --- StoryStroll questions ---
+  'what-did-sam-sit-on',
+  'is-the-cat-big-or-small',
+  'where-is-the-bug',
+  'what-color-is-the-hat',
+  'where-is-the-fish',
+  'what-can-she-see',
+  'what-pet-do-i-have',
+  'is-the-cup-hot-or-cold',
+
+  // --- BeachDetective questions ---
+  'what-color-is-the-shell',
+  'what-color-is-the-hat',
+  'who-has-the-net',
+  'where-is-the-dog',
+  'what-does-the-ship-have',
+
   // --- Wrong/reveal composable templates ---
   'not-quite-the-answer-is',
 

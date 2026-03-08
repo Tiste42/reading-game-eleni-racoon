@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakPhoneme, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface MatchPair {
   letter: string;
@@ -15,14 +16,14 @@ interface MatchPair {
 }
 
 const PAIRS: MatchPair[] = [
-  { letter: 's', icon: '🐍', word: 'snake' },
-  { letter: 'a', icon: '🍎', word: 'apple' },
-  { letter: 't', icon: '🐯', word: 'tiger' },
-  { letter: 'p', icon: '🐧', word: 'penguin' },
-  { letter: 'i', icon: '🦎', word: 'iguana' },
-  { letter: 'n', icon: '🥜', word: 'nut' },
-  { letter: 'e', icon: '🥚', word: 'egg' },
-  { letter: 'l', icon: '🍋', word: 'lemon' },
+  { letter: 's', icon: getIcon('snake'), word: 'snake' },
+  { letter: 'a', icon: getIcon('apple'), word: 'apple' },
+  { letter: 't', icon: getIcon('tiger'), word: 'tiger' },
+  { letter: 'p', icon: getIcon('penguin'), word: 'penguin' },
+  { letter: 'i', icon: getIcon('iguana'), word: 'iguana' },
+  { letter: 'n', icon: getIcon('nut'), word: 'nut' },
+  { letter: 'e', icon: getIcon('egg'), word: 'egg' },
+  { letter: 'l', icon: getIcon('lemon'), word: 'lemon' },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

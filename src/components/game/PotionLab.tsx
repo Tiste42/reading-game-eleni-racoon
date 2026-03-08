@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface PotionWord {
   letters: string[];
@@ -17,28 +18,28 @@ interface PotionWord {
 
 const POTION_WORDS: PotionWord[] = [
   {
-    letters: ['c', 'a', 't'], word: 'cat', icon: '🐱',
-    swap: { index: 0, from: 'c', to: 'h', newWord: 'hat', newIcon: '🧢' },
+    letters: ['c', 'a', 't'], word: 'cat', icon: getIcon('cat'),
+    swap: { index: 0, from: 'c', to: 'h', newWord: 'hat', newIcon: getIcon('hat') },
   },
   {
-    letters: ['p', 'i', 'n'], word: 'pin', icon: '📌',
-    swap: { index: 0, from: 'p', to: 'b', newWord: 'bin', newIcon: '🗑️' },
+    letters: ['p', 'i', 'n'], word: 'pin', icon: getIcon('pin'),
+    swap: { index: 0, from: 'p', to: 'b', newWord: 'bin', newIcon: getIcon('bin') },
   },
   {
-    letters: ['h', 'o', 't'], word: 'hot', icon: '🔥',
-    swap: { index: 0, from: 'h', to: 'p', newWord: 'pot', newIcon: '🍲' },
+    letters: ['h', 'o', 't'], word: 'hot', icon: getIcon('hot'),
+    swap: { index: 0, from: 'h', to: 'p', newWord: 'pot', newIcon: getIcon('pot') },
   },
   {
-    letters: ['b', 'a', 't'], word: 'bat', icon: '🦇',
-    swap: { index: 0, from: 'b', to: 'm', newWord: 'mat', newIcon: '🧹' },
+    letters: ['b', 'a', 't'], word: 'bat', icon: getIcon('bat'),
+    swap: { index: 0, from: 'b', to: 'm', newWord: 'mat', newIcon: getIcon('mat') },
   },
   {
-    letters: ['d', 'o', 'g'], word: 'dog', icon: '🐶',
-    swap: { index: 0, from: 'd', to: 'l', newWord: 'log', newIcon: '🪵' },
+    letters: ['d', 'o', 'g'], word: 'dog', icon: getIcon('dog'),
+    swap: { index: 0, from: 'd', to: 'l', newWord: 'log', newIcon: getIcon('log') },
   },
   {
-    letters: ['c', 'u', 'p'], word: 'cup', icon: '☕',
-    swap: { index: 0, from: 'c', to: 'p', newWord: 'pup', newIcon: '🐶' },
+    letters: ['c', 'u', 'p'], word: 'cup', icon: getIcon('cup'),
+    swap: { index: 0, from: 'c', to: 'p', newWord: 'pup', newIcon: getIcon('pup') },
   },
 ];
 

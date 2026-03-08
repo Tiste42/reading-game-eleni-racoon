@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface TelescopeWord {
   word: string;
@@ -16,12 +17,12 @@ interface TelescopeWord {
 }
 
 const TELESCOPE_WORDS: TelescopeWord[] = [
-  { word: 'sat', blendText: 'sss...aaa...t', icon: '🪑', distractors: [{ word: 'pin', icon: '📌' }, { word: 'net', icon: '🥅' }] },
-  { word: 'pin', blendText: 'p...iii...nnn', icon: '📌', distractors: [{ word: 'tap', icon: '🚰' }, { word: 'pet', icon: '🐶' }] },
-  { word: 'net', blendText: 'nnn...eee...t', icon: '🥅', distractors: [{ word: 'sip', icon: '🥤' }, { word: 'pan', icon: '🍳' }] },
-  { word: 'pet', blendText: 'p...eee...t', icon: '🐶', distractors: [{ word: 'tin', icon: '🥫' }, { word: 'nap', icon: '💤' }] },
-  { word: 'sip', blendText: 'sss...iii...p', icon: '🥤', distractors: [{ word: 'ten', icon: '🔟' }, { word: 'let', icon: '✅' }] },
-  { word: 'let', blendText: 'lll...eee...t', icon: '✅', distractors: [{ word: 'sat', icon: '🪑' }, { word: 'nip', icon: '❄️' }] },
+  { word: 'sat', blendText: 'sss...aaa...t', icon: getIcon('sat'), distractors: [{ word: 'pin', icon: getIcon('pin') }, { word: 'net', icon: getIcon('net') }] },
+  { word: 'pin', blendText: 'p...iii...nnn', icon: getIcon('pin'), distractors: [{ word: 'tap', icon: getIcon('tap') }, { word: 'pet', icon: getIcon('pet') }] },
+  { word: 'net', blendText: 'nnn...eee...t', icon: getIcon('net'), distractors: [{ word: 'sip', icon: getIcon('sip') }, { word: 'pan', icon: getIcon('pan') }] },
+  { word: 'pet', blendText: 'p...eee...t', icon: getIcon('pet'), distractors: [{ word: 'tin', icon: getIcon('tin') }, { word: 'nap', icon: getIcon('nap') }] },
+  { word: 'sip', blendText: 'sss...iii...p', icon: getIcon('sip'), distractors: [{ word: 'ten', icon: getIcon('ten') }, { word: 'let', icon: getIcon('let') }] },
+  { word: 'let', blendText: 'lll...eee...t', icon: getIcon('let'), distractors: [{ word: 'sat', icon: getIcon('sat') }, { word: 'nip', icon: getIcon('nip') }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

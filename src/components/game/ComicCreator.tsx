@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface ComicPanel {
   sentence: string;
@@ -20,19 +21,19 @@ interface ComicStory {
 
 const STORIES: ComicStory[] = [
   { panels: [
-    { sentence: 'The cat sat on a mat.', icon: '🐱', distractors: ['🐶', '🐛'] },
-    { sentence: 'A dog ran to the cat.', icon: '🐶', distractors: ['🚐', '☕'] },
-    { sentence: 'The cat and dog had a nap.', icon: '💤', distractors: ['🔥', '🚢'] },
+    { sentence: 'The cat sat on a mat.', icon: getIcon('cat'), distractors: [getIcon('dog'), getIcon('bug')] },
+    { sentence: 'A dog ran to the cat.', icon: getIcon('dog'), distractors: [getIcon('van'), getIcon('cup')] },
+    { sentence: 'The cat and dog had a nap.', icon: getIcon('nap'), distractors: [getIcon('hot'), getIcon('ship')] },
   ]},
   { panels: [
-    { sentence: 'A bug sat on a log.', icon: '🐛', distractors: ['🐱', '✈️'] },
-    { sentence: 'A big fish jumped up!', icon: '🐟', distractors: ['🧢', '🪵'] },
-    { sentence: 'The bug fell in the pond.', icon: '💦', distractors: ['🛏️', '🍲'] },
+    { sentence: 'A bug sat on a log.', icon: getIcon('bug'), distractors: [getIcon('cat'), getIcon('jet')] },
+    { sentence: 'A big fish jumped up!', icon: getIcon('fish'), distractors: [getIcon('hat'), getIcon('log')] },
+    { sentence: 'The bug fell in the pond.', icon: '💦', distractors: [getIcon('bed'), getIcon('pot')] },
   ]},
   { panels: [
-    { sentence: 'He got a red hat.', icon: '🧢', distractors: ['🥅', '🐔'] },
-    { sentence: 'The hat was too big!', icon: '😄', distractors: ['🐛', '✂️'] },
-    { sentence: 'He gave it to his dog.', icon: '🐶', distractors: ['🦈', '🔴'] },
+    { sentence: 'He got a red hat.', icon: getIcon('hat'), distractors: [getIcon('net'), getIcon('hen')] },
+    { sentence: 'The hat was too big!', icon: '😄', distractors: [getIcon('bug'), getIcon('cut')] },
+    { sentence: 'He gave it to his dog.', icon: getIcon('dog'), distractors: [getIcon('fin'), getIcon('red')] },
   ]},
 ];
 

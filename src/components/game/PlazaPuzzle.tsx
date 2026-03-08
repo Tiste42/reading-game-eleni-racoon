@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface PuzzlePiece {
   word: string;
@@ -16,12 +17,12 @@ interface PuzzlePiece {
 
 // Show a picture, child must READ the word options and pick the right one
 const PIECES: PuzzlePiece[] = [
-  { word: 'sat', icon: '🪑', distractors: ['pin', 'net'] },
-  { word: 'pet', icon: '🐶', distractors: ['tap', 'sip'] },
-  { word: 'ten', icon: '🔟', distractors: ['pan', 'tip'] },
-  { word: 'nap', icon: '💤', distractors: ['let', 'set'] },
-  { word: 'lip', icon: '👄', distractors: ['pen', 'tin'] },
-  { word: 'pen', icon: '🖊️', distractors: ['nip', 'pat'] },
+  { word: 'sat', icon: getIcon('sat'), distractors: ['pin', 'net'] },
+  { word: 'pet', icon: getIcon('pet'), distractors: ['tap', 'sip'] },
+  { word: 'ten', icon: getIcon('ten'), distractors: ['pan', 'tip'] },
+  { word: 'nap', icon: getIcon('nap'), distractors: ['let', 'set'] },
+  { word: 'lip', icon: getIcon('lip'), distractors: ['pen', 'tin'] },
+  { word: 'pen', icon: getIcon('pen'), distractors: ['nip', 'pat'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

@@ -397,6 +397,20 @@ function buildManifest(): AudioClip[] {
     { text: 'Read the sign! What does it say?' },
     // World 6: StoryStroll — generic (child reads sentence, answers spoken question)
     { text: 'Read the sentence!' },
+    // World 6: StoryStroll — per-question narrations (spoken after child taps "I read it!")
+    { text: 'What did Sam sit on?' },
+    { text: 'Is the cat big or small?' },
+    { text: 'Where is the bug?' },
+    { text: 'What color is the hat?' },
+    { text: 'Where is the fish?' },
+    { text: 'What can she see?' },
+    { text: 'What pet do I have?' },
+    { text: 'Is the cup hot or cold?' },
+    // World 6: BeachDetective — per-question narrations (spoken after child reads clue)
+    { text: 'What color is the shell?' },
+    { text: 'Who has the net?' },
+    { text: 'Where is the dog?' },
+    { text: 'What does the ship have?' },
     // World 6: ComicCreator — generic (child reads sentence, picks matching picture)
     { text: 'Read the sentence! Which picture matches?' },
     // World 6: PostcardWriter

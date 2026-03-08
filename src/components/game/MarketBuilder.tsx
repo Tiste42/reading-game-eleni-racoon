@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWord, speakWrongExplanation } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface BuildWord {
   letters: string[];
@@ -15,14 +16,14 @@ interface BuildWord {
 }
 
 const BUILD_WORDS: BuildWord[] = [
-  { letters: ['s', 'a', 't'], word: 'sat', icon: '🪑' },
-  { letters: ['p', 'i', 'n'], word: 'pin', icon: '📌' },
-  { letters: ['t', 'a', 'p'], word: 'tap', icon: '🚰' },
-  { letters: ['n', 'e', 't'], word: 'net', icon: '🥅' },
-  { letters: ['p', 'e', 't'], word: 'pet', icon: '🐶' },
-  { letters: ['l', 'e', 't'], word: 'let', icon: '✅' },
-  { letters: ['t', 'i', 'n'], word: 'tin', icon: '🥫' },
-  { letters: ['s', 'i', 'p'], word: 'sip', icon: '🥤' },
+  { letters: ['s', 'a', 't'], word: 'sat', icon: getIcon('sat') },
+  { letters: ['p', 'i', 'n'], word: 'pin', icon: getIcon('pin') },
+  { letters: ['t', 'a', 'p'], word: 'tap', icon: getIcon('tap') },
+  { letters: ['n', 'e', 't'], word: 'net', icon: getIcon('net') },
+  { letters: ['p', 'e', 't'], word: 'pet', icon: getIcon('pet') },
+  { letters: ['l', 'e', 't'], word: 'let', icon: getIcon('let') },
+  { letters: ['t', 'i', 'n'], word: 'tin', icon: getIcon('tin') },
+  { letters: ['s', 'i', 'p'], word: 'sip', icon: getIcon('sip') },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

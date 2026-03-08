@@ -82,7 +82,7 @@ export const useGameStore = create<GameState>()(
       soundEnabled: true,
       musicEnabled: true,
       volume: 0.8,
-      musicVolume: 0.3,
+      musicVolume: 0.12,
       freePlay: false,
 
       setCurrentWorld: (world) => set({ currentWorld: world }),

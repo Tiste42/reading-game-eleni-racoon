@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface RaceWord {
   word: string;
@@ -15,12 +16,12 @@ interface RaceWord {
 }
 
 const RACE_WORDS: RaceWord[] = [
-  { word: 'sat', icon: '🪑', distractors: [{ word: 'pin', icon: '📌' }, { word: 'net', icon: '🥅' }] },
-  { word: 'pan', icon: '🍳', distractors: [{ word: 'sit', icon: '🪑' }, { word: 'let', icon: '✅' }] },
-  { word: 'tip', icon: '📌', distractors: [{ word: 'nap', icon: '💤' }, { word: 'set', icon: '✅' }] },
-  { word: 'pen', icon: '🖊️', distractors: [{ word: 'tap', icon: '🚰' }, { word: 'tin', icon: '🥫' }] },
-  { word: 'pet', icon: '🐶', distractors: [{ word: 'nip', icon: '❄️' }, { word: 'sip', icon: '🥤' }] },
-  { word: 'ten', icon: '🔟', distractors: [{ word: 'pat', icon: '👋' }, { word: 'lip', icon: '👄' }] },
+  { word: 'sat', icon: getIcon('sat'), distractors: [{ word: 'pin', icon: getIcon('pin') }, { word: 'net', icon: getIcon('net') }] },
+  { word: 'pan', icon: getIcon('pan'), distractors: [{ word: 'sit', icon: getIcon('sit') }, { word: 'let', icon: getIcon('let') }] },
+  { word: 'tip', icon: getIcon('tip'), distractors: [{ word: 'nap', icon: getIcon('nap') }, { word: 'set', icon: getIcon('set') }] },
+  { word: 'pen', icon: getIcon('pen'), distractors: [{ word: 'tap', icon: getIcon('tap') }, { word: 'tin', icon: getIcon('tin') }] },
+  { word: 'pet', icon: getIcon('pet'), distractors: [{ word: 'nip', icon: getIcon('nip') }, { word: 'sip', icon: getIcon('sip') }] },
+  { word: 'ten', icon: getIcon('ten'), distractors: [{ word: 'pat', icon: getIcon('pat') }, { word: 'lip', icon: getIcon('lip') }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

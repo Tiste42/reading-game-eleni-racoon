@@ -8,6 +8,7 @@ import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import WORD_ICONS from '@/lib/wordIcons';
 
 interface BossChallenge {
   type: 'picture-match' | 'word-read' | 'sentence';
@@ -78,21 +79,7 @@ const BOSS_DATA: Record<number, { name: string; challenges: BossChallenge[] }> =
   ]},
 };
 
-const WORD_ICONS: Record<string, string> = {
-  sat: '\uD83E\uDE91', pin: '\uD83D\uDCCC', net: '\uD83E\uDD45', tap: '\uD83D\uDEB0',
-  pet: '\uD83D\uDC36', let: '\u2705', sip: '\uD83E\uDD64', ten: '\uD83D\uDD1F',
-  cat: '\uD83D\uDC31', hat: '\uD83E\uDDE2', bat: '\uD83E\uDD87', dog: '\uD83D\uDC36',
-  log: '\uD83E\uDEB5', fog: '\uD83C\uDF2B\uFE0F', bug: '\uD83D\uDC1B', mug: '\u2615',
-  rug: '\uD83E\uDEA8', cup: '\u2615', pup: '\uD83D\uDC36', cut: '\u2702\uFE0F',
-  hen: '\uD83D\uDC14', pen: '\uD83D\uDD8A\uFE0F', den: '\uD83E\uDEB8', bed: '\uD83D\uDECF\uFE0F',
-  red: '\uD83D\uDD34', fed: '\uD83C\uDF7D\uFE0F', van: '\uD83D\uDE90', fan: '\uD83C\uDF2C\uFE0F',
-  man: '\uD83D\uDC68', fin: '\uD83E\uDD88', bin: '\uD83D\uDDD1\uFE0F', win: '\uD83C\uDFC6',
-  jet: '\u2708\uFE0F', wet: '\uD83D\uDCA7', pot: '\uD83C\uDF72', hot: '\uD83D\uDD25', dot: '\u26AB',
-  tin: '\uD83E\uDD6B', nap: '\uD83D\uDCA4', pan: '\uD83C\uDF73', sit: '\uD83E\uDE91',
-  tip: '\uD83D\uDCCC', set: '\u2705', sun: '\u2600\uFE0F', moon: '\uD83C\uDF19',
-  snake: '\uD83D\uDC0D', tiger: '\uD83D\uDC2F', apple: '\uD83C\uDF4E', penguin: '\uD83D\uDC27',
-  iguana: '\uD83E\uDD8E', nut: '\uD83E\uDD5C', egg: '\uD83E\uDD5A', lemon: '\uD83C\uDF4B',
-};
+// WORD_ICONS imported from @/lib/wordIcons
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);

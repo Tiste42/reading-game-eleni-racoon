@@ -19,7 +19,7 @@ interface StorySentence {
 const SENTENCES: StorySentence[] = [
   {
     text: 'Sam sat on a mat.',
-    picture: '🧑‍🤝‍🧑',
+    picture: '🧑',
     question: 'What did Sam sit on?',
     correct: 'a mat',
     options: ['a mat', 'a cat', 'a hat'],

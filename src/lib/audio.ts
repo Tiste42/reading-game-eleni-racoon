@@ -137,7 +137,7 @@ export function unloadAll(): void {
 
 let bgMusic: Howl | null = null;
 let currentTrack: string | null = null;
-let currentMusicVolume = 0.3;
+let currentMusicVolume = 0.12;
 
 let pendingTrack: string | null = null;
 

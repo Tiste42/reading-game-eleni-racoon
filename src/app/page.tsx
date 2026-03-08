@@ -145,13 +145,21 @@ function WorldMap() {
         <div className="absolute inset-0 bg-gradient-to-b from-blue-100/60 via-green-50/50 to-amber-50/60" />
       </div>
 
-      {/* Top bar with coins */}
+      {/* Top bar */}
       <div className="flex justify-between items-center mb-6 px-2 relative z-10">
-        <div className="flex items-center gap-3">
-          <EleniCharacter pose="standing" size={60} animate={false} />
-          <span className="text-xl font-bold font-[Fredoka] text-purple-600">
-            Sound Safari
-          </span>
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              sessionStorage.removeItem('titleSeen');
+              window.location.reload();
+            }}
+            className="w-12 h-12 rounded-full bg-white/60 flex items-center justify-center shadow-md"
+            aria-label="Home"
+          >
+            🏠
+          </motion.button>
+          <EleniCharacter pose="standing" size={44} animate={false} />
         </div>
         <div className="flex items-center gap-2">
           <CoinCounter />

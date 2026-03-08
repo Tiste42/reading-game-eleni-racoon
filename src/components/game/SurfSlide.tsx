@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface BlendWord {
   letters: string[];
@@ -16,14 +17,14 @@ interface BlendWord {
 }
 
 const BLEND_WORDS: BlendWord[] = [
-  { letters: ['s', 'a', 't'], word: 'sat', icon: '🪑', distractors: [{ word: 'pin', icon: '📌' }, { word: 'net', icon: '🥅' }] },
-  { letters: ['p', 'i', 'n'], word: 'pin', icon: '📌', distractors: [{ word: 'sat', icon: '🪑' }, { word: 'tap', icon: '🚰' }] },
-  { letters: ['t', 'a', 'p'], word: 'tap', icon: '🚰', distractors: [{ word: 'sit', icon: '🪑' }, { word: 'nap', icon: '💤' }] },
-  { letters: ['s', 'i', 't'], word: 'sit', icon: '🪑', distractors: [{ word: 'pan', icon: '🍳' }, { word: 'tip', icon: '📌' }] },
-  { letters: ['n', 'a', 'p'], word: 'nap', icon: '💤', distractors: [{ word: 'tip', icon: '📌' }, { word: 'sat', icon: '🪑' }] },
-  { letters: ['n', 'e', 't'], word: 'net', icon: '🥅', distractors: [{ word: 'pan', icon: '🍳' }, { word: 'lip', icon: '👄' }] },
-  { letters: ['p', 'e', 't'], word: 'pet', icon: '🐶', distractors: [{ word: 'let', icon: '✅' }, { word: 'tin', icon: '🥫' }] },
-  { letters: ['l', 'e', 't'], word: 'let', icon: '✅', distractors: [{ word: 'pen', icon: '🖊️' }, { word: 'nip', icon: '❄️' }] },
+  { letters: ['s', 'a', 't'], word: 'sat', icon: getIcon('sat'), distractors: [{ word: 'pin', icon: getIcon('pin') }, { word: 'net', icon: getIcon('net') }] },
+  { letters: ['p', 'i', 'n'], word: 'pin', icon: getIcon('pin'), distractors: [{ word: 'sat', icon: getIcon('sat') }, { word: 'tap', icon: getIcon('tap') }] },
+  { letters: ['t', 'a', 'p'], word: 'tap', icon: getIcon('tap'), distractors: [{ word: 'sit', icon: getIcon('sit') }, { word: 'nap', icon: getIcon('nap') }] },
+  { letters: ['s', 'i', 't'], word: 'sit', icon: getIcon('sit'), distractors: [{ word: 'pan', icon: getIcon('pan') }, { word: 'tip', icon: getIcon('tip') }] },
+  { letters: ['n', 'a', 'p'], word: 'nap', icon: getIcon('nap'), distractors: [{ word: 'tip', icon: getIcon('tip') }, { word: 'sat', icon: getIcon('sat') }] },
+  { letters: ['n', 'e', 't'], word: 'net', icon: getIcon('net'), distractors: [{ word: 'pan', icon: getIcon('pan') }, { word: 'lip', icon: getIcon('lip') }] },
+  { letters: ['p', 'e', 't'], word: 'pet', icon: getIcon('pet'), distractors: [{ word: 'let', icon: getIcon('let') }, { word: 'tin', icon: getIcon('tin') }] },
+  { letters: ['l', 'e', 't'], word: 'let', icon: getIcon('let'), distractors: [{ word: 'pen', icon: getIcon('pen') }, { word: 'nip', icon: getIcon('nip') }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

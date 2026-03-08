@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface RhymeGroup {
   target: { word: string; icon: string };
@@ -16,29 +17,29 @@ interface RhymeGroup {
 
 const RHYME_ROUNDS: RhymeGroup[] = [
   {
-    target: { word: 'cat', icon: '🐱' },
-    match: { word: 'hat', icon: '🎩' },
-    distractors: [{ word: 'dog', icon: '🐶' }, { word: 'sun', icon: '☀️' }],
+    target: { word: 'cat', icon: getIcon('cat') },
+    match: { word: 'hat', icon: getIcon('hat') },
+    distractors: [{ word: 'dog', icon: getIcon('dog') }, { word: 'sun', icon: getIcon('sun') }],
   },
   {
-    target: { word: 'bug', icon: '🐛' },
-    match: { word: 'mug', icon: '☕' },
-    distractors: [{ word: 'fish', icon: '🐟' }, { word: 'pen', icon: '🖊️' }],
+    target: { word: 'bug', icon: getIcon('bug') },
+    match: { word: 'mug', icon: getIcon('mug') },
+    distractors: [{ word: 'fish', icon: getIcon('fish') }, { word: 'pen', icon: getIcon('pen') }],
   },
   {
-    target: { word: 'log', icon: '🪵' },
-    match: { word: 'dog', icon: '🐶' },
-    distractors: [{ word: 'cat', icon: '🐱' }, { word: 'bed', icon: '🛏️' }],
+    target: { word: 'log', icon: getIcon('log') },
+    match: { word: 'dog', icon: getIcon('dog') },
+    distractors: [{ word: 'cat', icon: getIcon('cat') }, { word: 'bed', icon: getIcon('bed') }],
   },
   {
-    target: { word: 'hen', icon: '🐔' },
-    match: { word: 'ten', icon: '🔟' },
-    distractors: [{ word: 'cup', icon: '🥤' }, { word: 'map', icon: '🗺️' }],
+    target: { word: 'hen', icon: getIcon('hen') },
+    match: { word: 'ten', icon: getIcon('ten') },
+    distractors: [{ word: 'cup', icon: getIcon('cup') }, { word: 'map', icon: getIcon('map') }],
   },
   {
-    target: { word: 'pin', icon: '📌' },
-    match: { word: 'bin', icon: '🗑️' },
-    distractors: [{ word: 'car', icon: '🚗' }, { word: 'egg', icon: '🥚' }],
+    target: { word: 'pin', icon: getIcon('pin') },
+    match: { word: 'bin', icon: getIcon('bin') },
+    distractors: [{ word: 'car', icon: getIcon('car') }, { word: 'egg', icon: getIcon('egg') }],
   },
 ];
 

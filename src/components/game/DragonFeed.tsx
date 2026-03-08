@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface CVCWord {
   word: string;
@@ -15,16 +16,16 @@ interface CVCWord {
 }
 
 const CVC_WORDS: CVCWord[] = [
-  { word: 'cat', icon: '🐱', distractors: [{ word: 'hat', icon: '🧢' }, { word: 'bat', icon: '🦇' }] },
-  { word: 'dog', icon: '🐶', distractors: [{ word: 'log', icon: '🪵' }, { word: 'fog', icon: '🌫️' }] },
-  { word: 'bug', icon: '🐛', distractors: [{ word: 'rug', icon: '🪨' }, { word: 'mug', icon: '☕' }] },
-  { word: 'hen', icon: '🐔', distractors: [{ word: 'pen', icon: '🖊️' }, { word: 'ten', icon: '🔟' }] },
-  { word: 'cup', icon: '☕', distractors: [{ word: 'pup', icon: '🐶' }, { word: 'cut', icon: '✂️' }] },
-  { word: 'pot', icon: '🍲', distractors: [{ word: 'hot', icon: '🔥' }, { word: 'dot', icon: '⚫' }] },
-  { word: 'bed', icon: '🛏️', distractors: [{ word: 'red', icon: '🔴' }, { word: 'fed', icon: '🍽️' }] },
-  { word: 'van', icon: '🚐', distractors: [{ word: 'man', icon: '👨' }, { word: 'fan', icon: '🌬️' }] },
-  { word: 'fin', icon: '🦈', distractors: [{ word: 'bin', icon: '🗑️' }, { word: 'win', icon: '🏆' }] },
-  { word: 'jet', icon: '✈️', distractors: [{ word: 'net', icon: '🥅' }, { word: 'wet', icon: '💧' }] },
+  { word: 'cat', icon: getIcon('cat'), distractors: [{ word: 'hat', icon: getIcon('hat') }, { word: 'bat', icon: getIcon('bat') }] },
+  { word: 'dog', icon: getIcon('dog'), distractors: [{ word: 'log', icon: getIcon('log') }, { word: 'fog', icon: getIcon('fog') }] },
+  { word: 'bug', icon: getIcon('bug'), distractors: [{ word: 'rug', icon: getIcon('rug') }, { word: 'mug', icon: getIcon('mug') }] },
+  { word: 'hen', icon: getIcon('hen'), distractors: [{ word: 'pen', icon: getIcon('pen') }, { word: 'ten', icon: getIcon('ten') }] },
+  { word: 'cup', icon: getIcon('cup'), distractors: [{ word: 'pup', icon: getIcon('pup') }, { word: 'cut', icon: getIcon('cut') }] },
+  { word: 'pot', icon: getIcon('pot'), distractors: [{ word: 'hot', icon: getIcon('hot') }, { word: 'dot', icon: getIcon('dot') }] },
+  { word: 'bed', icon: getIcon('bed'), distractors: [{ word: 'red', icon: getIcon('red') }, { word: 'fed', icon: getIcon('fed') }] },
+  { word: 'van', icon: getIcon('van'), distractors: [{ word: 'man', icon: getIcon('man') }, { word: 'fan', icon: getIcon('fan') }] },
+  { word: 'fin', icon: getIcon('fin'), distractors: [{ word: 'bin', icon: getIcon('bin') }, { word: 'win', icon: getIcon('win') }] },
+  { word: 'jet', icon: getIcon('jet'), distractors: [{ word: 'net', icon: getIcon('net') }, { word: 'wet', icon: getIcon('wet') }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

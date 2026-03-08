@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakPhoneme, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface SafariRound {
   letter: string;
@@ -15,14 +16,14 @@ interface SafariRound {
 }
 
 const ROUNDS: SafariRound[] = [
-  { letter: 's', correct: { word: 'snake', icon: '🐍' }, distractors: [{ word: 'cat', icon: '🐱' }, { word: 'dog', icon: '🐶' }] },
-  { letter: 'a', correct: { word: 'apple', icon: '🍎' }, distractors: [{ word: 'pen', icon: '🖊️' }, { word: 'hat', icon: '🧢' }] },
-  { letter: 't', correct: { word: 'tiger', icon: '🐯' }, distractors: [{ word: 'fish', icon: '🐟' }, { word: 'moon', icon: '🌙' }] },
-  { letter: 'p', correct: { word: 'penguin', icon: '🐧' }, distractors: [{ word: 'sun', icon: '☀️' }, { word: 'bed', icon: '🛏️' }] },
-  { letter: 'i', correct: { word: 'igloo', icon: '🏠' }, distractors: [{ word: 'bus', icon: '🚌' }, { word: 'rat', icon: '🐀' }] },
-  { letter: 'n', correct: { word: 'nut', icon: '🥜' }, distractors: [{ word: 'cup', icon: '☕' }, { word: 'pig', icon: '🐷' }] },
-  { letter: 'e', correct: { word: 'egg', icon: '🥚' }, distractors: [{ word: 'van', icon: '🚐' }, { word: 'log', icon: '🪵' }] },
-  { letter: 'l', correct: { word: 'lemon', icon: '🍋' }, distractors: [{ word: 'bat', icon: '🦇' }, { word: 'hen', icon: '🐔' }] },
+  { letter: 's', correct: { word: 'snake', icon: getIcon('snake') }, distractors: [{ word: 'cat', icon: getIcon('cat') }, { word: 'dog', icon: getIcon('dog') }] },
+  { letter: 'a', correct: { word: 'apple', icon: getIcon('apple') }, distractors: [{ word: 'pen', icon: getIcon('pen') }, { word: 'hat', icon: getIcon('hat') }] },
+  { letter: 't', correct: { word: 'tiger', icon: getIcon('tiger') }, distractors: [{ word: 'fish', icon: getIcon('fish') }, { word: 'moon', icon: getIcon('moon') }] },
+  { letter: 'p', correct: { word: 'penguin', icon: getIcon('penguin') }, distractors: [{ word: 'sun', icon: getIcon('sun') }, { word: 'bed', icon: getIcon('bed') }] },
+  { letter: 'i', correct: { word: 'igloo', icon: getIcon('igloo') }, distractors: [{ word: 'bus', icon: getIcon('bus') }, { word: 'rat', icon: getIcon('rat') }] },
+  { letter: 'n', correct: { word: 'nut', icon: getIcon('nut') }, distractors: [{ word: 'cup', icon: getIcon('cup') }, { word: 'pig', icon: getIcon('pig') }] },
+  { letter: 'e', correct: { word: 'egg', icon: getIcon('egg') }, distractors: [{ word: 'van', icon: getIcon('van') }, { word: 'log', icon: getIcon('log') }] },
+  { letter: 'l', correct: { word: 'lemon', icon: getIcon('lemon') }, distractors: [{ word: 'bat', icon: getIcon('bat') }, { word: 'hen', icon: getIcon('hen') }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {

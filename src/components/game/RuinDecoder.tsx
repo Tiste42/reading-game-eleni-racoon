@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { getIcon } from '@/lib/wordIcons';
 
 interface DecoderWord {
   word: string;
@@ -15,12 +16,12 @@ interface DecoderWord {
 }
 
 const DECODER_WORDS: DecoderWord[] = [
-  { word: 'ship', icon: '🚢', distractors: [{ word: 'chip', icon: '🍟' }, { word: 'thin', icon: '🫰' }] },
-  { word: 'chat', icon: '💬', distractors: [{ word: 'shop', icon: '🏪' }, { word: 'that', icon: '👈' }] },
-  { word: 'thin', icon: '🫰', distractors: [{ word: 'chin', icon: '🙂' }, { word: 'shin', icon: '🦵' }] },
-  { word: 'chop', icon: '🪓', distractors: [{ word: 'shop', icon: '🏪' }, { word: 'ship', icon: '🚢' }] },
-  { word: 'shed', icon: '🏠', distractors: [{ word: 'them', icon: '👥' }, { word: 'chip', icon: '🍟' }] },
-  { word: 'this', icon: '👉', distractors: [{ word: 'shin', icon: '🦵' }, { word: 'chat', icon: '💬' }] },
+  { word: 'ship', icon: getIcon('ship'), distractors: [{ word: 'chip', icon: getIcon('chip') }, { word: 'thin', icon: getIcon('thin') }] },
+  { word: 'chat', icon: getIcon('chat'), distractors: [{ word: 'shop', icon: getIcon('shop') }, { word: 'that', icon: getIcon('that') }] },
+  { word: 'thin', icon: getIcon('thin'), distractors: [{ word: 'chin', icon: getIcon('chin') }, { word: 'shin', icon: getIcon('shin') }] },
+  { word: 'chop', icon: getIcon('chop'), distractors: [{ word: 'shop', icon: getIcon('shop') }, { word: 'ship', icon: getIcon('ship') }] },
+  { word: 'shed', icon: getIcon('shed'), distractors: [{ word: 'them', icon: getIcon('them') }, { word: 'chip', icon: getIcon('chip') }] },
+  { word: 'this', icon: getIcon('this'), distractors: [{ word: 'shin', icon: getIcon('shin') }, { word: 'chat', icon: getIcon('chat') }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
