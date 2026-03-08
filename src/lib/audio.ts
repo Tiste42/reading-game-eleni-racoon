@@ -136,17 +136,31 @@ export function unloadAll(): void {
 }
 
 let bgMusic: Howl | null = null;
+let currentTrack: string | null = null;
+let currentMusicVolume = 0.3;
 
-export function startBackgroundMusic(): void {
-  if (bgMusic) return;
+export function startBackgroundMusic(track = 'menu'): void {
+  // If same track is already playing, do nothing
+  if (bgMusic && currentTrack === track) return;
+
+  // Stop current track with crossfade
+  if (bgMusic) {
+    const old = bgMusic;
+    old.fade(old.volume(), 0, 500);
+    setTimeout(() => { old.unload(); }, 500);
+    bgMusic = null;
+  }
+
+  currentTrack = track;
   bgMusic = new Howl({
-    src: ['/audio/music/background.mp3'],
+    src: [`/audio/music/${track}.mp3`],
     html5: true,
     loop: true,
-    volume: 0.15,
+    volume: currentMusicVolume,
     onloaderror: () => {
-      console.warn('Background music not found at /audio/music/background.mp3');
+      console.warn(`Background music not found: /audio/music/${track}.mp3`);
       bgMusic = null;
+      currentTrack = null;
     },
   });
   bgMusic.play();
@@ -158,10 +172,12 @@ export function stopBackgroundMusic(): void {
     setTimeout(() => {
       bgMusic?.unload();
       bgMusic = null;
+      currentTrack = null;
     }, 500);
   }
 }
 
 export function setMusicVolume(volume: number): void {
-  if (bgMusic) bgMusic.volume(volume * 0.2);
+  currentMusicVolume = volume;
+  if (bgMusic) bgMusic.volume(volume);
 }

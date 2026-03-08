@@ -6,20 +6,25 @@ import { startBackgroundMusic, stopBackgroundMusic, setMusicVolume } from '@/lib
 
 export default function BackgroundMusic() {
   const musicEnabled = useGameStore((s) => s.musicEnabled);
-  const volume = useGameStore((s) => s.volume);
+  const musicVolume = useGameStore((s) => s.musicVolume);
+  const currentWorld = useGameStore((s) => s.currentWorld);
 
   useEffect(() => {
     if (musicEnabled) {
-      startBackgroundMusic();
+      // Play world-specific music, fall back to menu music
+      const track = currentWorld >= 1 && currentWorld <= 6
+        ? `world-${currentWorld}`
+        : 'menu';
+      startBackgroundMusic(track);
     } else {
       stopBackgroundMusic();
     }
     return () => { stopBackgroundMusic(); };
-  }, [musicEnabled]);
+  }, [musicEnabled, currentWorld]);
 
   useEffect(() => {
-    setMusicVolume(volume);
-  }, [volume]);
+    setMusicVolume(musicVolume);
+  }, [musicVolume]);
 
   return null;
 }

@@ -32,6 +32,7 @@ interface GameState {
   soundEnabled: boolean;
   musicEnabled: boolean;
   volume: number;
+  musicVolume: number;
   freePlay: boolean;
 
   setCurrentWorld: (world: number) => void;
@@ -49,6 +50,7 @@ interface GameState {
   toggleSound: () => void;
   toggleMusic: () => void;
   setVolume: (volume: number) => void;
+  setMusicVolume: (volume: number) => void;
   toggleFreePlay: () => void;
   isWorldUnlocked: (world: number) => boolean;
   isGameUnlocked: (world: number, gameIndex: number) => boolean;
@@ -80,6 +82,7 @@ export const useGameStore = create<GameState>()(
       soundEnabled: true,
       musicEnabled: true,
       volume: 0.8,
+      musicVolume: 0.3,
       freePlay: false,
 
       setCurrentWorld: (world) => set({ currentWorld: world }),
@@ -144,6 +147,7 @@ export const useGameStore = create<GameState>()(
       toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
       toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
       setVolume: (volume) => set({ volume }),
+      setMusicVolume: (musicVolume) => set({ musicVolume }),
       toggleFreePlay: () => set((state) => ({ freePlay: !state.freePlay })),
 
       isWorldUnlocked: (world) => {

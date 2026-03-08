@@ -11,25 +11,27 @@ if (fs.existsSync(envPath)) {
 }
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '0S5oIfi8zOZixuSj8K6n';
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'JQLMoxrGsJub4hRarykA';
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'audio');
 const RATE_LIMIT_MS = 500;
 
 interface AudioClip {
   id: string;
   text: string;
-  ssml?: string;
   outputPath: string;
   category: 'phoneme' | 'word' | 'blend' | 'narration' | 'sfx';
 }
 
-const IPA_MAP: Record<string, string> = {
-  s: 's', a: '\u00E6', t: 't', p: 'p', i: '\u026A',
-  n: 'n', e: '\u025B', l: 'l', c: 'k', k: 'k',
-  h: 'h', r: '\u0279', m: 'm', d: 'd', g: '\u0261',
-  o: '\u0252', u: '\u028C', f: 'f', b: 'b', j: 'd\u0292',
-  v: 'v', w: 'w', x: 'ks', y: 'j', z: 'z',
-  sh: '\u0283', ch: 't\u0283', th: '\u00F0',
+// Natural pronunciation text for phonemes — spoken by the same voice model
+// as everything else. No SSML/IPA needed.
+// Continuous sounds get stretched, stop sounds get a minimal vowel.
+const PHONEME_TEXT: Record<string, string> = {
+  s: 'ssss', a: 'ah', t: 'tuh', p: 'puh', i: 'ih',
+  n: 'nnnn', e: 'eh', l: 'llll', c: 'kuh', k: 'kuh',
+  h: 'huh', r: 'rrrr', m: 'mmmm', d: 'duh', g: 'guh',
+  o: 'oh', u: 'uh', f: 'ffff', b: 'buh', j: 'juh',
+  v: 'vvvv', w: 'wuh', x: 'ks', y: 'yuh', z: 'zzzz',
+  sh: 'shhhh', ch: 'chuh', th: 'thhhh',
 };
 
 function buildManifest(): AudioClip[] {
@@ -43,11 +45,9 @@ function buildManifest(): AudioClip[] {
   ];
 
   for (const ph of phonemeLetters) {
-    const ipa = IPA_MAP[ph];
     clips.push({
       id: `phoneme-${ph}`,
-      text: ph,
-      ssml: `<speak><phoneme alphabet="ipa" ph="${ipa}">${ph}</phoneme></speak>`,
+      text: PHONEME_TEXT[ph] || ph,
       outputPath: `phonemes/${ph}.mp3`,
       category: 'phoneme',
     });
@@ -245,21 +245,15 @@ async function generateClip(clip: AudioClip): Promise<boolean> {
   fs.mkdirSync(dir, { recursive: true });
 
   try {
-    const model = clip.ssml ? 'eleven_flash_v2' : 'eleven_multilingual_v2';
     const body: Record<string, unknown> = {
-      model_id: model,
+      text: clip.text,
+      model_id: 'eleven_multilingual_v2',
       voice_settings: {
         stability: 0.75,
         similarity_boost: 0.75,
         style: 0.3,
       },
     };
-
-    if (clip.ssml) {
-      body.text = clip.ssml;
-    } else {
-      body.text = clip.text;
-    }
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,

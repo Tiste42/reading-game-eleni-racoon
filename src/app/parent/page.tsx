@@ -18,10 +18,12 @@ export default function ParentDashboard() {
     soundEnabled,
     musicEnabled,
     volume,
+    musicVolume,
     toggleFreePlay,
     toggleSound,
     toggleMusic,
     setVolume,
+    setMusicVolume,
     resetProgress,
   } = useGameStore();
 
@@ -158,16 +160,36 @@ export default function ParentDashboard() {
             onToggle={toggleMusic}
           />
 
-          {/* Volume */}
+          {/* Voice Volume */}
           <div className="py-3 border-b border-gray-100">
-            <p className="font-semibold text-gray-700 mb-2">Volume</p>
+            <div className="flex justify-between mb-2">
+              <p className="font-semibold text-gray-700">Voice Volume</p>
+              <span className="text-sm text-gray-400">{Math.round(volume * 100)}%</span>
+            </div>
             <input
               type="range"
               min="0"
               max="1"
-              step="0.1"
+              step="0.05"
               value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          {/* Music Volume */}
+          <div className="py-3 border-b border-gray-100">
+            <div className="flex justify-between mb-2">
+              <p className="font-semibold text-gray-700">Music Volume</p>
+              <span className="text-sm text-gray-400">{Math.round(musicVolume * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={musicVolume}
+              onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
               className="w-full"
             />
           </div>
