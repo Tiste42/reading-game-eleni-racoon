@@ -1,45 +1,89 @@
 'use client';
 
-const audioCache = new Map<string, string>();
-let currentAudio: HTMLAudioElement | null = null;
-let audioUnlocked = false;
+import { Howl } from 'howler';
+
+// --- Static audio playback via Howler ---
+
 let speakGeneration = 0;
+let currentSpeechHowl: Howl | null = null;
 
-export function unlockSpeechAudio() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-  ctx.resume().then(() => ctx.close()).catch(() => {});
-}
+// All words that have pre-generated static files
+const KNOWN_WORDS = new Set([
+  'sat', 'sit', 'pat', 'tap', 'tip', 'pit', 'pin', 'pan', 'nap', 'nip',
+  'tan', 'tin', 'sip', 'ten', 'net', 'let', 'pen', 'pet', 'set',
+  'cat', 'hat', 'mat', 'bat', 'rat', 'fat', 'can', 'man', 'van', 'ran',
+  'fan', 'fin', 'bin', 'win', 'dog', 'log', 'fog', 'hog', 'bug', 'rug',
+  'mug', 'hug', 'cup', 'hot', 'pot', 'dot', 'bed', 'red', 'hen', 'den',
+  'men', 'wet', 'jet', 'pup', 'cut', 'hut',
+  'ship', 'shop', 'shin', 'shed', 'chip', 'chop', 'chin', 'chat',
+  'thin', 'this', 'that', 'then', 'them', 'with',
+  'the', 'a', 'is', 'was', 'to', 'he', 'she', 'we', 'my', 'you',
+  'are', 'have', 'do', 'no', 'go', 'said', 'of', 'i',
+]);
 
-if (typeof window !== 'undefined') {
-  const unlock = () => { unlockSpeechAudio(); };
-  window.addEventListener('click', unlock, { once: true });
-  window.addEventListener('touchstart', unlock, { once: true });
-}
+// All phoneme letters with static files
+const KNOWN_PHONEMES = new Set([
+  's', 'a', 't', 'p', 'i', 'n', 'e', 'l', 'c', 'k',
+  'h', 'r', 'm', 'd', 'g', 'o', 'u', 'f', 'b', 'j',
+  'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th',
+]);
 
-async function fetchSpeech(text: string): Promise<string> {
-  const cacheKey = text.toLowerCase().trim();
-  if (audioCache.has(cacheKey)) return audioCache.get(cacheKey)!;
+// Feedback clip IDs mapped by type
+const FEEDBACK_CLIPS: Record<string, string[]> = {
+  correct: ['great-job', 'correct', 'well-done', 'amazing', 'first-try'],
+  wrong: ['try-again', 'keep-trying', 'think-again'],
+  complete: ['you-did-it', 'level-complete', 'amazing'],
+};
 
-  try {
-    const res = await fetch('/api/speak', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+/**
+ * Play a static .mp3 file from /public/audio/ via Howler.
+ * Cancels any previously playing speech sound.
+ */
+function playStatic(path: string): Promise<void> {
+  const thisGen = ++speakGeneration;
+
+  // Stop any current speech
+  if (currentSpeechHowl) {
+    currentSpeechHowl.stop();
+    currentSpeechHowl = null;
+  }
+  if (typeof window !== 'undefined') {
+    window.speechSynthesis?.cancel();
+  }
+
+  if (thisGen !== speakGeneration) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const sound = new Howl({
+      src: [`/audio/${path}`],
+      html5: true,
+      volume: 0.9,
+      onend: () => {
+        if (currentSpeechHowl === sound) currentSpeechHowl = null;
+        resolve();
+      },
+      onloaderror: () => {
+        if (currentSpeechHowl === sound) currentSpeechHowl = null;
+        resolve();
+      },
+      onplayerror: () => {
+        if (currentSpeechHowl === sound) currentSpeechHowl = null;
+        resolve();
+      },
     });
 
-    if (!res.ok) throw new Error(`Speech API ${res.status}`);
+    if (thisGen !== speakGeneration) {
+      sound.unload();
+      resolve();
+      return;
+    }
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    audioCache.set(cacheKey, url);
-    return url;
-  } catch (err) {
-    console.warn('ElevenLabs failed, using browser speech:', err);
-    return '';
-  }
+    currentSpeechHowl = sound;
+    sound.play();
+  });
 }
+
+// --- Browser speech fallback for dynamic text ---
 
 function browserSpeak(text: string, rate = 0.85): Promise<void> {
   return new Promise((resolve) => {
@@ -67,146 +111,81 @@ function browserSpeak(text: string, rate = 0.85): Promise<void> {
   });
 }
 
+// --- Public API ---
+
+/**
+ * Smart speak: routes to static file if available, otherwise browser speech.
+ * Called by useGameSpeechWithOptions for both instructions and option words.
+ */
 export async function speak(text: string): Promise<void> {
   if (!text) return;
 
+  const lower = text.toLowerCase().trim();
+
+  // Single phoneme letter?
+  if (KNOWN_PHONEMES.has(lower)) {
+    return playStatic(`phonemes/${lower}.mp3`);
+  }
+
+  // Known word with static file?
+  if (KNOWN_WORDS.has(lower)) {
+    return playStatic(`words/${lower}.mp3`);
+  }
+
+  // Longer text — use browser speech as fallback
   const thisGen = ++speakGeneration;
-
-  // Cancel any previous speech immediately
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    currentAudio = null;
+  if (currentSpeechHowl) {
+    currentSpeechHowl.stop();
+    currentSpeechHowl = null;
   }
-  window.speechSynthesis?.cancel();
-
-  const url = await fetchSpeech(text);
-
-  if (thisGen !== speakGeneration) return;
-
-  if (url) {
-    return new Promise((resolve) => {
-      if (thisGen !== speakGeneration) { resolve(); return; }
-      const audio = new Audio(url);
-      currentAudio = audio;
-
-      const done = () => {
-        currentAudio = null;
-        resolve();
-      };
-
-      audio.onended = done;
-      audio.onerror = () => {
-        currentAudio = null;
-        browserSpeak(text).then(resolve);
-      };
-      // If another speak() call pauses this audio, resolve immediately
-      audio.addEventListener('pause', () => {
-        if (thisGen !== speakGeneration) done();
-      });
-
-      audio.play().catch((err) => {
-        console.warn('Audio play blocked:', err.message);
-        currentAudio = null;
-        browserSpeak(text).then(resolve);
-      });
-    });
-  }
-
   if (thisGen !== speakGeneration) return;
   return browserSpeak(text);
 }
 
-export async function speakWord(word: string): Promise<void> {
-  return speak(word);
-}
-
-export const PHONEME_PRONUNCIATIONS: Record<string, string> = {
-  a: 'aah', b: 'buh', c: 'kuh', d: 'duh',
-  e: 'eh', f: 'fff', g: 'guh', h: 'huh',
-  i: 'ih', j: 'juh', k: 'kuh', l: 'lll',
-  m: 'mmm', n: 'nnn', o: 'oh', p: 'puh',
-  r: 'rrr', s: 'sss', t: 'tuh', u: 'uh',
-  v: 'vvv', w: 'wuh', x: 'ks', y: 'yuh', z: 'zzz',
-  sh: 'shh', ch: 'chuh', th: 'thh',
-};
-
+/**
+ * Play a phoneme sound from static file.
+ * Uses pre-generated IPA pronunciation, not letter names.
+ */
 export async function speakPhoneme(letter: string): Promise<void> {
-  const pronunciation = PHONEME_PRONUNCIATIONS[letter.toLowerCase()] || letter;
-  return speak(pronunciation);
+  const key = letter.toLowerCase();
+  if (KNOWN_PHONEMES.has(key)) {
+    return playStatic(`phonemes/${key}.mp3`);
+  }
+  // Fallback for unknown phonemes
+  const pronunciation = PHONEME_PRONUNCIATIONS[key] || letter;
+  return browserSpeak(pronunciation);
 }
 
+/**
+ * Play a word pronunciation from static file.
+ */
+export async function speakWord(word: string): Promise<void> {
+  const key = word.toLowerCase().trim();
+  if (KNOWN_WORDS.has(key)) {
+    return playStatic(`words/${key}.mp3`);
+  }
+  return browserSpeak(word);
+}
+
+/**
+ * Play a game instruction from pre-generated narration.
+ */
 export async function speakInstruction(gameId: string): Promise<void> {
-  const instructions: Record<string, string> = {
-    'rhyme-match': "Let's play Rhyme Fiesta! Tap the picture that sounds the same at the end. Like cat and hat!",
-    'syllable-clap': "Let's clap! Every word has beats. Tap the clap button for each beat you hear!",
-    'first-sound': "Listen to the beginning of each word. Find the one that starts with the same sound!",
-    'odd-one-out': "Three of these start with the same sound, but one is different. Find the odd one out!",
-    'sound-hunt': "Let's go on a sound hunt! Find everything that starts with this sound!",
-    'letter-intro': "Sound spotter time! I'll make a sound and you find the letter that makes it!",
-    'sound-safari': "Time for a sound safari! Find the picture that starts with this letter sound!",
-    'letter-match': "Let's match! Tap a letter, then tap its picture!",
-    'sound-sort': "Let's sort! Tap a picture, then put it in the right bucket!",
-    'letter-trace': "Look at the picture! What letter does it start with? Tap the right one!",
-    'surf-slide': "Let's surf! Tap each letter to hear its sound, then find the matching picture!",
-    'market-builder': "Welcome to the market! Build the word by tapping the letters in order!",
-    'sailboat-race': "Sailboat race! Read the word and sail to the right island!",
-    'sound-telescope': "I see something through my telescope! Can you figure out the word?",
-    'plaza-puzzle': "Let's build a puzzle! Read the word and pick the matching picture!",
-    'potion-lab': "Welcome to the potion lab! Tap letters into the cauldron to make a word!",
-    'word-towers': "Let's build a word tower! Find words that end the same way!",
-    'knights-doors': "Three doors in the castle! Read the words and find the right one!",
-    'dragon-feed': "The baby dragon is hungry! Read the word and pick the matching picture!",
-    'garden-grow': "Let's grow a garden! Read the seed packet and pick the right picture!",
-    'heart-word-map': "These are heart words! They are special. Tap the letters to learn them!",
-    'digraph-discovery': "Two letters get together and make one new sound! Find which one starts each word!",
-    'ruin-decoder': "Ancient words on the wall! Read each word and pick the matching picture!",
-    'treasure-memory': "Memory game! Flip cards and find the matching word pairs!",
-    'souk-sentences': "Can you read these short phrases? You are reading real sentences now!",
-    'story-stroll': "Let's read the signs! Read each sentence and see the matching picture!",
-    'comic-creator': "Let's make a comic! Read each sentence and watch the picture appear!",
-    'manatee-rescue': "The manatees need help! Read the sentence and choose what to do!",
-    'beach-detective': "You are a detective! Read the clue and answer the question!",
-    'postcard-writer': "Let's write postcards! Pick the missing word that fits!",
-    'boss-1': "This is the big fiesta challenge! Show me everything you learned! You can do it!",
-    'boss-2': "Time for the garden party! Let's see if you know all your letter sounds!",
-    'boss-3': "The regatta is starting! Blend all the words to win the race!",
-    'boss-4': "The dragon is in the library! Read all the words to help him!",
-    'boss-5': "The sphinx has riddles! Read the sentences and answer carefully!",
-    'boss-6': "This is the sunset story! Read the whole story! You are a real reader now!",
-  };
-
-  const text = instructions[gameId];
-  if (text) await speak(text);
+  return playStatic(`narration/${gameId}-intro.mp3`);
 }
 
+/**
+ * Play random feedback clip from pre-generated narration.
+ */
 export async function speakFeedback(type: 'correct' | 'wrong' | 'complete'): Promise<void> {
-  const correctPhrases = [
-    'Yes! Great job!',
-    'That is right!',
-    'You got it!',
-    'Wonderful!',
-    'Super!',
-  ];
-  const wrongPhrases = [
-    'Try again!',
-    'Not quite! Try another one!',
-    'Almost! Give it one more try!',
-    'Hmm, try a different one!',
-  ];
-  const completePhrases = [
-    'You did it! Amazing!',
-    'Wow! You are a superstar!',
-    'All done! I am so proud of you!',
-  ];
-
-  const phrases = type === 'correct' ? correctPhrases
-    : type === 'wrong' ? wrongPhrases
-    : completePhrases;
-  const text = phrases[Math.floor(Math.random() * phrases.length)];
-  await speak(text);
+  const clips = FEEDBACK_CLIPS[type];
+  const clip = clips[Math.floor(Math.random() * clips.length)];
+  return playStatic(`narration/${clip}.mp3`);
 }
 
+/**
+ * Explain why the answer was wrong — dynamic text, uses browser speech.
+ */
 export async function speakWrongExplanation(
   chosenWord: string,
   correctWord: string,
@@ -223,19 +202,51 @@ export async function speakWrongExplanation(
   } else {
     text = `Hmm, that was ${chosenWord}. We need ${correctWord}! Try again!`;
   }
-  return speak(text);
+
+  const thisGen = ++speakGeneration;
+  if (currentSpeechHowl) {
+    currentSpeechHowl.stop();
+    currentSpeechHowl = null;
+  }
+  if (thisGen !== speakGeneration) return;
+  return browserSpeak(text);
 }
 
+/**
+ * Reveal the correct answer — dynamic text, uses browser speech.
+ */
 export async function speakReveal(correctWord: string): Promise<void> {
-  return speak(`Let me help! The answer is ${correctWord}!`);
+  const thisGen = ++speakGeneration;
+  if (currentSpeechHowl) {
+    currentSpeechHowl.stop();
+    currentSpeechHowl = null;
+  }
+  if (thisGen !== speakGeneration) return;
+  return browserSpeak(`Let me help! The answer is ${correctWord}!`);
 }
 
+/**
+ * Stop all currently playing speech (both Howler and browser).
+ */
 export function stopSpeaking(): void {
   speakGeneration++;
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    currentAudio = null;
+  if (currentSpeechHowl) {
+    currentSpeechHowl.stop();
+    currentSpeechHowl = null;
   }
-  window.speechSynthesis?.cancel();
+  if (typeof window !== 'undefined') {
+    window.speechSynthesis?.cancel();
+  }
 }
+
+// --- Pronunciation display text (used by game components for UI, not for audio) ---
+
+export const PHONEME_PRONUNCIATIONS: Record<string, string> = {
+  a: 'aah', b: 'buh', c: 'kuh', d: 'duh',
+  e: 'eh', f: 'fff', g: 'guh', h: 'huh',
+  i: 'ih', j: 'juh', k: 'kuh', l: 'lll',
+  m: 'mmm', n: 'nnn', o: 'oh', p: 'puh',
+  r: 'rrr', s: 'sss', t: 'tuh', u: 'uh',
+  v: 'vvv', w: 'wuh', x: 'ks', y: 'yuh', z: 'zzz',
+  sh: 'shh', ch: 'chuh', th: 'thh',
+};

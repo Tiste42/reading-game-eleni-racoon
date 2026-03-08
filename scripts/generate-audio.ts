@@ -11,7 +11,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '9FTUWXd0yHJL1ZiZ71RK';
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '0S5oIfi8zOZixuSj8K6n';
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'audio');
 const RATE_LIMIT_MS = 500;
 
