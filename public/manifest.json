@@ -1,7 +1,7 @@
 {
   "name": "Eleni's Sound Safari",
   "short_name": "Sound Safari",
-  "description": "A phonics reading adventure with Eleni the Raccoon",
+  "description": "A phonics reading adventure with Leni the Raccoon",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FDF2F8",
