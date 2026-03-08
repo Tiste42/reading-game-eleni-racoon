@@ -357,26 +357,10 @@ function buildManifest(): AudioClip[] {
     { text: 'Find the door that says hen!' },
     { text: 'Find the door that says bed!' },
     { text: 'Find the door that says van!' },
-    // World 4: DragonFeed
-    { text: 'Read the word cat! Which picture is a cat?' },
-    { text: 'Read the word dog! Which picture is a dog?' },
-    { text: 'Read the word bug! Which picture is a bug?' },
-    { text: 'Read the word hen! Which picture is a hen?' },
-    { text: 'Read the word cup! Which picture is a cup?' },
-    { text: 'Read the word pot! Which picture is a pot?' },
-    { text: 'Read the word bed! Which picture is a bed?' },
-    { text: 'Read the word van! Which picture is a van?' },
-    { text: 'Read the word fin! Which picture is a fin?' },
-    { text: 'Read the word jet! Which picture is a jet?' },
-    // World 4: GardenGrow
-    { text: 'Read the seed: pan. Which picture is a pan?' },
-    { text: 'Read the seed: bug. Which picture is a bug?' },
-    { text: 'Read the seed: hot. Which picture is a hot?' },
-    { text: 'Read the seed: jet. Which picture is a jet?' },
-    { text: 'Read the seed: rat. Which picture is a rat?' },
-    { text: 'Read the seed: fin. Which picture is a fin?' },
-    { text: 'Read the seed: hug. Which picture is a hug?' },
-    { text: 'Read the seed: red. Which picture is a red?' },
+    // World 4: DragonFeed — generic (child reads word, picks picture)
+    { text: 'Read the word! Feed the dragon the right picture!' },
+    // World 4: GardenGrow — generic (child reads seed packet, picks picture)
+    { text: 'Read the seed! Which picture matches?' },
     // World 5: DigraphDiscovery
     { text: 'The word is ship. Which two letters make the special sound? Is it sh, ch, or th?' },
     { text: 'The word is shop. Which two letters make the special sound? Is it sh, ch, or th?' },
@@ -407,41 +391,14 @@ function buildManifest(): AudioClip[] {
     { text: 'The heart word is my. Tap each letter to learn it!' },
     // World 5: TreasureMemory
     { text: 'Match the word pairs! Tap a card to flip it!' },
-    // World 5: RuinDecoder
-    { text: 'Read the ancient word: ship.' },
-    { text: 'Read the ancient word: chat.' },
-    { text: 'Read the ancient word: thin.' },
-    { text: 'Read the ancient word: chop.' },
-    { text: 'Read the ancient word: shed.' },
-    { text: 'Read the ancient word: this.' },
-    // World 5: SoukSentences
-    { text: 'Read the sign: the cat.' },
-    { text: 'Read the sign: a big hat.' },
-    { text: 'Read the sign: she is sad.' },
-    { text: 'Read the sign: he can run.' },
-    { text: 'Read the sign: the red cup.' },
-    { text: 'Read the sign: I have a dog.' },
-    { text: 'Read the sign: we can go.' },
-    { text: 'Read the sign: my big van.' },
-    // World 6: StoryStroll (sentence + question)
-    { text: 'Sam sat on a mat. What did Sam sit on?' },
-    { text: 'The cat is big. Is the cat big or small?' },
-    { text: 'A bug is on the log. Where is the bug?' },
-    { text: 'He got a red hat. What color is the hat?' },
-    { text: 'The fish is in the net. Where is the fish?' },
-    { text: 'She can see the ship. What can she see?' },
-    { text: 'I have a pet dog. What pet do I have?' },
-    { text: 'The cup is hot. Is the cup hot or cold?' },
-    // World 6: ComicCreator sentences
-    { text: 'The cat sat on a mat.' },
-    { text: 'A dog ran to the cat.' },
-    { text: 'The cat and dog had a nap.' },
-    { text: 'A bug sat on a log.' },
-    { text: 'A big fish jumped up!' },
-    { text: 'The bug fell in the pond.' },
-    { text: 'He got a red hat.' },
-    { text: 'The hat was too big!' },
-    { text: 'He gave it to his dog.' },
+    // World 5: RuinDecoder — generic (child reads word, picks picture)
+    { text: 'Read the ancient word! Which picture matches?' },
+    // World 5: SoukSentences — generic (child reads phrase, answers question)
+    { text: 'Read the sign! What does it say?' },
+    // World 6: StoryStroll — generic (child reads sentence, answers spoken question)
+    { text: 'Read the sentence!' },
+    // World 6: ComicCreator — generic (child reads sentence, picks matching picture)
+    { text: 'Read the sentence! Which picture matches?' },
     // World 6: PostcardWriter
     { text: 'I can see a blank.' },
     { text: 'I have a big blank.' },
@@ -451,12 +408,8 @@ function buildManifest(): AudioClip[] {
     { text: 'We can run to the blank.' },
     { text: 'I put it in the blank.' },
     { text: 'The blank is on the mat.' },
-    // World 6: BeachDetective (passage + question)
-    { text: 'The shell is red. It is big. It is on the sand. What color is the shell?' },
-    { text: 'A crab has a hat. The hat is blue. The crab is happy. What color is the hat?' },
-    { text: 'The fish is in the net. The net is big. A man has the net. Who has the net?' },
-    { text: 'She has a pet dog. The dog can run fast. The dog is on the sand. Where is the dog?' },
-    { text: 'I can see a big ship. The ship is on the sea. It has a red flag. What does the ship have?' },
+    // World 6: BeachDetective — generic (child reads passage, answers spoken question)
+    { text: 'Read the clue!' },
     // World 6: ManateeRescue
     { text: 'The manatee needs help! The big net is on the fin. What should we do?' },
     { text: 'The manatee needs help! The log is in the path. What should we do?' },

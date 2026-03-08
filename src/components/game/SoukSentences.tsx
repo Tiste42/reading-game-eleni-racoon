@@ -6,7 +6,7 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface PhraseRound {
   phrase: string;
@@ -16,14 +16,14 @@ interface PhraseRound {
 }
 
 const PHRASES: PhraseRound[] = [
-  { phrase: 'the cat', icon: '\uD83D\uDC31', correct: 'a cat', options: ['a cat', 'a dog', 'a hat'] },
-  { phrase: 'a big hat', icon: '\uD83E\uDDE2', correct: 'a hat', options: ['a hat', 'a cup', 'a net'] },
-  { phrase: 'she is sad', icon: '\uD83D\uDE22', correct: 'sad', options: ['sad', 'happy', 'big'] },
-  { phrase: 'he can run', icon: '\uD83C\uDFC3', correct: 'run', options: ['run', 'sit', 'nap'] },
-  { phrase: 'the red cup', icon: '\u2615', correct: 'red', options: ['red', 'big', 'hot'] },
-  { phrase: 'I have a dog', icon: '\uD83D\uDC36', correct: 'a dog', options: ['a dog', 'a cat', 'a bug'] },
-  { phrase: 'we can go', icon: '\uD83D\uDEB6', correct: 'go', options: ['go', 'no', 'do'] },
-  { phrase: 'my big van', icon: '\uD83D\uDE90', correct: 'van', options: ['van', 'man', 'fan'] },
+  { phrase: 'the cat', icon: '🐱', correct: 'a cat', options: ['a cat', 'a dog', 'a hat'] },
+  { phrase: 'a big hat', icon: '🧢', correct: 'a hat', options: ['a hat', 'a cup', 'a net'] },
+  { phrase: 'she is sad', icon: '😢', correct: 'sad', options: ['sad', 'happy', 'big'] },
+  { phrase: 'he can run', icon: '🏃', correct: 'run', options: ['run', 'sit', 'nap'] },
+  { phrase: 'the red cup', icon: '☕', correct: 'red', options: ['red', 'big', 'hot'] },
+  { phrase: 'I have a dog', icon: '🐶', correct: 'a dog', options: ['a dog', 'a cat', 'a bug'] },
+  { phrase: 'we can go', icon: '🚶', correct: 'go', options: ['go', 'no', 'do'] },
+  { phrase: 'my big van', icon: '🚐', correct: 'van', options: ['van', 'man', 'fan'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -45,10 +45,10 @@ export default function SoukSentences({ worldId, onComplete }: Props) {
   const current = phrases[round];
   const stableOptions = useMemo(() => current.options, [current]);
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `Read the sign: ${current.phrase}.`,
-    stableOptions,
-    [round]
+  // Don't read the phrase — child must decode it. Just give direction.
+  useGameSpeech(
+    feedback ? null : 'Read the sign! What does it say?',
+    [round],
   );
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
@@ -70,7 +70,7 @@ export default function SoukSentences({ worldId, onComplete }: Props) {
   }, [shouldReveal, current, round, phrases, worldId, completeGame, addCoins]);
 
   const handleAnswer = useCallback((answer: string) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
+    if (feedback || shouldReveal) return;
     if (answer === current.correct) {
       const isLastRound = round >= phrases.length - 1;
       setFeedback('correct');
@@ -91,7 +91,7 @@ export default function SoukSentences({ worldId, onComplete }: Props) {
       speakWrongExplanation(answer, current.correct);
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, doneSpeaking, shouldReveal, current, round, phrases, worldId, completeGame, addCoins, recordWrong]);
+  }, [feedback, shouldReveal, current, round, phrases, worldId, completeGame, addCoins, recordWrong]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-400/90 to-amber-300/90 px-4 py-6 flex flex-col">
@@ -117,18 +117,18 @@ export default function SoukSentences({ worldId, onComplete }: Props) {
           </motion.div>
         </AnimatePresence>
 
+        <p className="text-white/80 font-[Nunito] text-sm">Read the sign! What does it say?</p>
+
         <div className="flex flex-col gap-3 max-w-xs w-full">
-          {stableOptions.map((opt, i) => (
+          {stableOptions.map((opt) => (
             <motion.button key={opt} whileTap={{ scale: 0.95 }} onClick={() => handleAnswer(opt)}
-              disabled={feedback !== null || !doneSpeaking || shouldReveal}
+              disabled={feedback !== null || shouldReveal}
               className={`w-full py-4 px-6 rounded-2xl text-lg font-bold font-[Fredoka] shadow-md transition-all ${
                 shouldReveal && opt === current.correct
                   ? 'bg-green-300 text-green-800 ring-4 ring-green-400 scale-105'
                   : feedback === 'correct' && opt === current.correct
                     ? 'bg-green-300 text-green-800'
-                    : activeOption === i
-                      ? 'bg-white/90 text-gray-700 ring-4 ring-blue-400 scale-105'
-                      : 'bg-white/90 text-gray-700'
+                    : 'bg-white/90 text-gray-700'
               }`}>{opt}</motion.button>
           ))}
         </div>

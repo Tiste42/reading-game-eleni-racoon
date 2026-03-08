@@ -6,7 +6,7 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface DecoderWord {
   word: string;
@@ -15,12 +15,12 @@ interface DecoderWord {
 }
 
 const DECODER_WORDS: DecoderWord[] = [
-  { word: 'ship', icon: '\uD83D\uDEA2', distractors: [{ word: 'chip', icon: '\uD83C\uDF5F' }, { word: 'thin', icon: '\uD83E\uDEF0' }] },
-  { word: 'chat', icon: '\uD83D\uDCAC', distractors: [{ word: 'shop', icon: '\uD83C\uDFEA' }, { word: 'that', icon: '\uD83D\uDC48' }] },
-  { word: 'thin', icon: '\uD83E\uDEF0', distractors: [{ word: 'chin', icon: '\uD83D\uDE42' }, { word: 'shin', icon: '\uD83E\uDDB5' }] },
-  { word: 'chop', icon: '\uD83E\uDE93', distractors: [{ word: 'shop', icon: '\uD83C\uDFEA' }, { word: 'ship', icon: '\uD83D\uDEA2' }] },
-  { word: 'shed', icon: '\uD83C\uDFE0', distractors: [{ word: 'them', icon: '\uD83D\uDC65' }, { word: 'chip', icon: '\uD83C\uDF5F' }] },
-  { word: 'this', icon: '\uD83D\uDC49', distractors: [{ word: 'shin', icon: '\uD83E\uDDB5' }, { word: 'chat', icon: '\uD83D\uDCAC' }] },
+  { word: 'ship', icon: '🚢', distractors: [{ word: 'chip', icon: '🍟' }, { word: 'thin', icon: '🫰' }] },
+  { word: 'chat', icon: '💬', distractors: [{ word: 'shop', icon: '🏪' }, { word: 'that', icon: '👈' }] },
+  { word: 'thin', icon: '🫰', distractors: [{ word: 'chin', icon: '🙂' }, { word: 'shin', icon: '🦵' }] },
+  { word: 'chop', icon: '🪓', distractors: [{ word: 'shop', icon: '🏪' }, { word: 'ship', icon: '🚢' }] },
+  { word: 'shed', icon: '🏠', distractors: [{ word: 'them', icon: '👥' }, { word: 'chip', icon: '🍟' }] },
+  { word: 'this', icon: '👉', distractors: [{ word: 'shin', icon: '🦵' }, { word: 'chat', icon: '💬' }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -46,10 +46,10 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
     [current]
   );
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `Read the ancient word: ${current.word}.`,
-    choices.map(c => c.word),
-    [round]
+  // Don't say the word — child must decode it
+  useGameSpeech(
+    feedback ? null : 'Read the ancient word! Which picture matches?',
+    [round],
   );
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
@@ -73,7 +73,7 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
   }, [shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord]);
 
   const handleChoice = useCallback((chosen: string) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
+    if (feedback || shouldReveal) return;
     if (chosen === current.word) {
       const isLastRound = round >= words.length - 1;
       setFeedback('correct');
@@ -96,7 +96,7 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
       speakWrongExplanation(chosen, current.word);
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, doneSpeaking, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  }, [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-400/90 to-amber-300/90 px-4 py-6 flex flex-col">
@@ -108,7 +108,6 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
         </div>
       </div>
 
-      {/* Mural wall */}
       <div className="grid grid-cols-5 gap-1 max-w-xs mx-auto mb-4">
         {words.map((_, i) => (
           <div key={i} className={`aspect-square rounded-lg ${revealed.includes(i) ? 'bg-amber-200' : 'bg-gray-700/40'} flex items-center justify-center text-2xl`}>
@@ -128,17 +127,15 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
         </AnimatePresence>
 
         <div className="flex gap-4">
-          {choices.map((choice, i) => (
+          {choices.map((choice) => (
             <motion.button key={choice.word} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-              disabled={feedback !== null || !doneSpeaking || shouldReveal}
+              disabled={feedback !== null || shouldReveal}
               className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
                 shouldReveal && choice.word === current.word
                   ? 'bg-green-200 ring-4 ring-green-400 scale-105'
                   : feedback === 'correct' && choice.word === current.word
-                    ? 'bg-green-200 ring-4 ring-green-400'
-                    : activeOption === i
-                      ? 'bg-white/90 ring-4 ring-blue-400 scale-105'
-                      : 'bg-white/90'
+                  ? 'bg-green-200 ring-4 ring-green-400'
+                  : 'bg-white/90'
               }`}>
               <span className="text-4xl">{choice.icon}</span>
             </motion.button>

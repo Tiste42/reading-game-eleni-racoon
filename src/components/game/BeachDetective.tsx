@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { speakFeedback, speak, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface ClueRound {
   passage: string;
@@ -19,23 +19,23 @@ const CLUE_ROUNDS: ClueRound[] = [
   { passage: 'The shell is red. It is big. It is on the sand.',
     question: 'What color is the shell?',
     correct: 'red',
-    options: [{ label: 'red', icon: '\uD83D\uDD34' }, { label: 'blue', icon: '\uD83D\uDD35' }, { label: 'green', icon: '\uD83D\uDFE2' }] },
+    options: [{ label: 'red', icon: '🔴' }, { label: 'blue', icon: '🔵' }, { label: 'green', icon: '🟢' }] },
   { passage: 'A crab has a hat. The hat is blue. The crab is happy.',
     question: 'What color is the hat?',
     correct: 'blue',
-    options: [{ label: 'red', icon: '\uD83D\uDD34' }, { label: 'blue', icon: '\uD83D\uDD35' }, { label: 'yellow', icon: '\uD83D\uDFE1' }] },
+    options: [{ label: 'red', icon: '🔴' }, { label: 'blue', icon: '🔵' }, { label: 'yellow', icon: '🟡' }] },
   { passage: 'The fish is in the net. The net is big. A man has the net.',
     question: 'Who has the net?',
     correct: 'a man',
-    options: [{ label: 'a dog', icon: '\uD83D\uDC36' }, { label: 'a man', icon: '\uD83D\uDC68' }, { label: 'a cat', icon: '\uD83D\uDC31' }] },
+    options: [{ label: 'a dog', icon: '🐶' }, { label: 'a man', icon: '👨' }, { label: 'a cat', icon: '🐱' }] },
   { passage: 'She has a pet dog. The dog can run fast. The dog is on the sand.',
     question: 'Where is the dog?',
     correct: 'on the sand',
-    options: [{ label: 'in the van', icon: '\uD83D\uDE90' }, { label: 'on the bed', icon: '\uD83D\uDECF\uFE0F' }, { label: 'on the sand', icon: '\uD83C\uDFD6\uFE0F' }] },
+    options: [{ label: 'in the van', icon: '🚐' }, { label: 'on the bed', icon: '🛏️' }, { label: 'on the sand', icon: '🏖️' }] },
   { passage: 'I can see a big ship. The ship is on the sea. It has a red flag.',
     question: 'What does the ship have?',
     correct: 'a red flag',
-    options: [{ label: 'a blue hat', icon: '\uD83E\uDDE2' }, { label: 'a red flag', icon: '\uD83D\uDEA9' }, { label: 'a big net', icon: '\uD83E\uDD45' }] },
+    options: [{ label: 'a blue hat', icon: '🧢' }, { label: 'a red flag', icon: '🚩' }, { label: 'a big net', icon: '🥅' }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -56,21 +56,14 @@ export default function BeachDetective({ worldId, onComplete }: Props) {
   const { completeGame, addCoins } = useGameStore();
 
   const current = rounds[round];
-  const optionLabels = useMemo(() => current.options.map(o => o.label), [current]);
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    `${current.passage} ${current.question}`,
-    optionLabels,
-    [round]
+  // Phase 1: Don't read the passage — just say direction
+  useGameSpeech(
+    feedback || showQuestion ? null : 'Read the clue!',
+    [round],
   );
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
-
-  useEffect(() => {
-    if (doneSpeaking && !showQuestion && !feedback) {
-      setShowQuestion(true);
-    }
-  }, [doneSpeaking, showQuestion, feedback]);
 
   useEffect(() => {
     if (!shouldReveal) return;
@@ -89,8 +82,14 @@ export default function BeachDetective({ worldId, onComplete }: Props) {
     return () => clearTimeout(timer);
   }, [shouldReveal, current, round, rounds, worldId, completeGame, addCoins]);
 
+  // Phase 2: Child taps "I read it!" → show question + speak it
+  const handleReadIt = useCallback(() => {
+    setShowQuestion(true);
+    speak(current.question);
+  }, [current.question]);
+
   const handleAnswer = useCallback((answer: string) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
+    if (feedback || shouldReveal) return;
     if (answer === current.correct) {
       const isLastRound = round >= rounds.length - 1;
       setFeedback('correct');
@@ -112,7 +111,7 @@ export default function BeachDetective({ worldId, onComplete }: Props) {
       speakWrongExplanation(answer, current.correct);
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, doneSpeaking, shouldReveal, current, round, rounds, worldId, completeGame, addCoins, recordWrong]);
+  }, [feedback, shouldReveal, current, round, rounds, worldId, completeGame, addCoins, recordWrong]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-400/90 to-green-300/90 px-4 py-6 flex flex-col">
@@ -128,7 +127,7 @@ export default function BeachDetective({ worldId, onComplete }: Props) {
 
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
         <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={70} />
-        <span className="text-4xl">{'\uD83D\uDD0E'}</span>
+        <span className="text-4xl">🔎</span>
 
         <AnimatePresence mode="wait">
           <motion.div key={round} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
@@ -138,21 +137,24 @@ export default function BeachDetective({ worldId, onComplete }: Props) {
           </motion.div>
         </AnimatePresence>
 
-        {showQuestion && (
+        {!showQuestion ? (
+          <motion.button whileTap={{ scale: 0.9 }} onClick={handleReadIt}
+            className="game-button bg-white/90 text-cyan-600 px-10 py-5 rounded-full shadow-xl text-lg">
+            <span className="font-[Fredoka]">I read it!</span>
+          </motion.button>
+        ) : (
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm">
             <p className="text-white font-[Nunito] text-center mb-3 text-lg">{current.question}</p>
             <div className="flex flex-col gap-3">
-              {current.options.map((opt, i) => (
+              {current.options.map((opt) => (
                 <motion.button key={opt.label} whileTap={{ scale: 0.95 }} onClick={() => handleAnswer(opt.label)}
-                  disabled={feedback !== null || !doneSpeaking || shouldReveal}
+                  disabled={feedback !== null || shouldReveal}
                   className={`w-full py-4 px-6 rounded-2xl text-lg font-bold font-[Fredoka] shadow-md flex items-center gap-3 transition-all ${
                     shouldReveal && opt.label === current.correct
                       ? 'bg-green-300 text-green-800 ring-4 ring-green-400 scale-105'
                       : feedback === 'correct' && opt.label === current.correct
                         ? 'bg-green-300 text-green-800'
-                        : activeOption === i
-                          ? 'bg-white/90 text-gray-700 ring-4 ring-blue-400 scale-105'
-                          : 'bg-white/90 text-gray-700'
+                        : 'bg-white/90 text-gray-700'
                   }`}>
                   <span className="text-2xl">{opt.icon}</span> {opt.label}
                 </motion.button>

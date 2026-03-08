@@ -6,7 +6,7 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface CVCWord {
   word: string;
@@ -51,15 +51,9 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
     [current]
   );
 
-  const optionNames = useMemo(() => choices.map(c => c.word), [choices]);
-
-  const instruction = feedback
-    ? null
-    : `Read the word ${current.word}! Which picture is a ${current.word}?`;
-
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    instruction,
-    optionNames,
+  // Don't say the word — child must READ it and match to picture
+  useGameSpeech(
+    feedback ? null : 'Read the word! Feed the dragon the right picture!',
     [round],
   );
 
@@ -86,7 +80,7 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
 
   const handleChoice = useCallback(
     (chosen: string) => {
-      if (feedback || !doneSpeaking || shouldReveal) return;
+      if (feedback || shouldReveal) return;
       if (chosen === current.word) {
         const isLastRound = round >= words.length - 1;
         setFeedback('correct');
@@ -117,27 +111,17 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
         }, 2000);
       }
     },
-    [feedback, doneSpeaking, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordWrong]
+    [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordWrong]
   );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-500/90 to-teal-400/90 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md"
-        >
-          {'<'}
-        </motion.button>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
+          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
         <div className="flex gap-1">
           {words.map((_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full ${
-                i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'
-              }`}
-            />
+            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
           ))}
         </div>
       </div>
@@ -158,56 +142,38 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
 
         <p className="text-white font-[Nunito] text-sm text-center">
           {dragonMood === 'hungry'
-            ? 'Feed the dragon! Which picture matches the word?'
+            ? 'Read the word and feed the dragon!'
             : dragonMood === 'happy'
             ? 'Yum!'
             : 'Not that one!'}
         </p>
 
         <AnimatePresence mode="wait">
-          <motion.div
-            key={round}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            className="bg-white/90 rounded-2xl px-10 py-5 shadow-xl"
-          >
-            <span className="text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">
-              {current.word}
-            </span>
+          <motion.div key={round} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+            className="bg-white/90 rounded-2xl px-10 py-5 shadow-xl">
+            <span className="text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.word}</span>
           </motion.div>
         </AnimatePresence>
 
         <div className="flex gap-4">
-          {choices.map((choice, idx) => (
-            <motion.button
-              key={choice.word}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => handleChoice(choice.word)}
-              disabled={!doneSpeaking || feedback !== null || shouldReveal}
-              className={`w-24 h-24 rounded-2xl shadow-lg flex flex-col items-center justify-center transition-all ${
+          {choices.map((choice) => (
+            <motion.button key={choice.word} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+              whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
+              disabled={feedback !== null || shouldReveal}
+              className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
                 shouldReveal && choice.word === current.word
                   ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
                   : feedback === 'correct' && choice.word === current.word
                   ? 'bg-green-200 ring-4 ring-green-400'
-                  : activeOption === idx
-                  ? 'bg-white/90 ring-4 ring-blue-400 scale-105'
                   : 'bg-white/90'
-              }`}
-            >
+              }`}>
               <span className="text-4xl">{choice.icon}</span>
             </motion.button>
           ))}
         </div>
       </div>
 
-      <CelebrationOverlay
-        show={showCelebration}
-        message="Dragon is full!"
-        onComplete={onComplete}
-      />
+      <CelebrationOverlay show={showCelebration} message="Dragon is full!" onComplete={onComplete} />
     </div>
   );
 }

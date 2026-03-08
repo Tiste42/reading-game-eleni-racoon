@@ -176,26 +176,10 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'find-the-door-that-says-hen',
   'find-the-door-that-says-bed',
   'find-the-door-that-says-van',
-  // DragonFeed instructions
-  'read-the-word-cat-which-picture-is-a-cat',
-  'read-the-word-dog-which-picture-is-a-dog',
-  'read-the-word-bug-which-picture-is-a-bug',
-  'read-the-word-hen-which-picture-is-a-hen',
-  'read-the-word-cup-which-picture-is-a-cup',
-  'read-the-word-pot-which-picture-is-a-pot',
-  'read-the-word-bed-which-picture-is-a-bed',
-  'read-the-word-van-which-picture-is-a-van',
-  'read-the-word-fin-which-picture-is-a-fin',
-  'read-the-word-jet-which-picture-is-a-jet',
-  // GardenGrow instructions
-  'read-the-seed-pan-which-picture-is-a-pan',
-  'read-the-seed-bug-which-picture-is-a-bug',
-  'read-the-seed-hot-which-picture-is-a-hot',
-  'read-the-seed-jet-which-picture-is-a-jet',
-  'read-the-seed-rat-which-picture-is-a-rat',
-  'read-the-seed-fin-which-picture-is-a-fin',
-  'read-the-seed-hug-which-picture-is-a-hug',
-  'read-the-seed-red-which-picture-is-a-red',
+  // DragonFeed — child reads word, picks picture
+  'read-the-word-feed-the-dragon-the-right-picture',
+  // GardenGrow — child reads seed packet, picks picture
+  'read-the-seed-which-picture-matches',
 
   // --- World 5: Market of Mysteries ---
   // DigraphDiscovery instructions
@@ -228,43 +212,16 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'the-heart-word-is-my-tap-each-letter-to-learn-it',
   // TreasureMemory
   'match-the-word-pairs-tap-a-card-to-flip-it',
-  // RuinDecoder instructions
-  'read-the-ancient-word-ship',
-  'read-the-ancient-word-chat',
-  'read-the-ancient-word-thin',
-  'read-the-ancient-word-chop',
-  'read-the-ancient-word-shed',
-  'read-the-ancient-word-this',
-  // SoukSentences instructions
-  'read-the-sign-the-cat',
-  'read-the-sign-a-big-hat',
-  'read-the-sign-she-is-sad',
-  'read-the-sign-he-can-run',
-  'read-the-sign-the-red-cup',
-  'read-the-sign-i-have-a-dog',
-  'read-the-sign-we-can-go',
-  'read-the-sign-my-big-van',
+  // RuinDecoder — child reads word, picks picture
+  'read-the-ancient-word-which-picture-matches',
+  // SoukSentences — child reads phrase, answers question
+  'read-the-sign-what-does-it-say',
 
   // --- World 6: Everglades Explorer ---
-  // StoryStroll instructions (sentence + question)
-  'sam-sat-on-a-mat-what-did-sam-sit-on',
-  'the-cat-is-big-is-the-cat-big-or-small',
-  'a-bug-is-on-the-log-where-is-the-bug',
-  'he-got-a-red-hat-what-color-is-the-hat',
-  'the-fish-is-in-the-net-where-is-the-fish',
-  'she-can-see-the-ship-what-can-she-see',
-  'i-have-a-pet-dog-what-pet-do-i-have',
-  'the-cup-is-hot-is-the-cup-hot-or-cold',
-  // ComicCreator sentences
-  'the-cat-sat-on-a-mat',
-  'a-dog-ran-to-the-cat',
-  'the-cat-and-dog-had-a-nap',
-  'a-bug-sat-on-a-log',
-  'a-big-fish-jumped-up',
-  'the-bug-fell-in-the-pond',
-  'he-got-a-red-hat',
-  'the-hat-was-too-big',
-  'he-gave-it-to-his-dog',
+  // StoryStroll — child reads sentence, then answers spoken question
+  'read-the-sentence',
+  // ComicCreator — child reads sentence, picks matching picture
+  'read-the-sentence-which-picture-matches',
   // PostcardWriter instructions
   'i-can-see-a-blank',
   'i-have-a-big-blank',
@@ -274,12 +231,8 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'we-can-run-to-the-blank',
   'i-put-it-in-the-blank',
   'the-blank-is-on-the-mat',
-  // BeachDetective instructions (passage + question)
-  'the-shell-is-red-it-is-big-it-is-on-the-sand-what-color-is-the-shell',
-  'a-crab-has-a-hat-the-hat-is-blue-the-crab-is-happy-what-color-is-the-hat',
-  'the-fish-is-in-the-net-the-net-is-big-a-man-has-the-net-who-has-the-net',
-  'she-has-a-pet-dog-the-dog-can-run-fast-the-dog-is-on-the-sand-where-is-the-dog',
-  'i-can-see-a-big-ship-the-ship-is-on-the-sea-it-has-a-red-flag-what-does-the-ship-have',
+  // BeachDetective — child reads passage, then answers spoken question
+  'read-the-clue',
   // ManateeRescue instructions
   'the-manatee-needs-help-the-big-net-is-on-the-fin-what-should-we-do',
   'the-manatee-needs-help-the-log-is-in-the-path-what-should-we-do',
