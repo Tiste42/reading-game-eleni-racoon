@@ -80,7 +80,9 @@ function buildManifest(): AudioClip[] {
   for (const w of words) {
     clips.push({
       id: `word-${w}`,
-      text: w,
+      // Add period after short words so ElevenLabs produces a clean stop
+      // (prevents phantom trailing sounds like "dogs" instead of "dog")
+      text: w.length <= 5 ? `${w}.` : w,
       outputPath: `words/${w}.mp3`,
       category: 'word',
     });
@@ -113,7 +115,7 @@ function buildManifest(): AudioClip[] {
     if (!words.includes(w)) {
       clips.push({
         id: `word-${w}`,
-        text: w,
+        text: w.length <= 5 ? `${w}.` : w,
         outputPath: `words/${w}.mp3`,
         category: 'word',
       });
