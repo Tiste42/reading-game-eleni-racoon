@@ -30,6 +30,7 @@ interface GameState {
   streakCount: number;
   sessionHistory: SessionEntry[];
   soundEnabled: boolean;
+  musicEnabled: boolean;
   volume: number;
   freePlay: boolean;
 
@@ -46,6 +47,7 @@ interface GameState {
   resetStreak: () => void;
   addSession: (session: SessionEntry) => void;
   toggleSound: () => void;
+  toggleMusic: () => void;
   setVolume: (volume: number) => void;
   toggleFreePlay: () => void;
   isWorldUnlocked: (world: number) => boolean;
@@ -76,6 +78,7 @@ export const useGameStore = create<GameState>()(
       streakCount: 0,
       sessionHistory: [],
       soundEnabled: true,
+      musicEnabled: true,
       volume: 0.8,
       freePlay: false,
 
@@ -139,6 +142,7 @@ export const useGameStore = create<GameState>()(
           sessionHistory: [...state.sessionHistory, session],
         })),
       toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
+      toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
       setVolume: (volume) => set({ volume }),
       toggleFreePlay: () => set((state) => ({ freePlay: !state.freePlay })),
 

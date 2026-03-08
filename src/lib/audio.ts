@@ -96,3 +96,34 @@ export function unloadAll(): void {
   audioCache.forEach((sound) => sound.unload());
   audioCache.clear();
 }
+
+let bgMusic: Howl | null = null;
+
+export function startBackgroundMusic(): void {
+  if (bgMusic) return;
+  bgMusic = new Howl({
+    src: ['/audio/music/background.mp3'],
+    html5: true,
+    loop: true,
+    volume: 0.15,
+    onloaderror: () => {
+      console.warn('Background music not found at /audio/music/background.mp3');
+      bgMusic = null;
+    },
+  });
+  bgMusic.play();
+}
+
+export function stopBackgroundMusic(): void {
+  if (bgMusic) {
+    bgMusic.fade(bgMusic.volume(), 0, 500);
+    setTimeout(() => {
+      bgMusic?.unload();
+      bgMusic = null;
+    }, 500);
+  }
+}
+
+export function setMusicVolume(volume: number): void {
+  if (bgMusic) bgMusic.volume(volume * 0.2);
+}

@@ -7,92 +7,6 @@ import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
 
 export default function ParentDashboard() {
-  const [gateOpen, setGateOpen] = useState(false);
-  const [gateAnswer, setGateAnswer] = useState('');
-  const [gateA] = useState(() => Math.floor(Math.random() * 8) + 2);
-  const [gateB] = useState(() => Math.floor(Math.random() * 8) + 2);
-
-  if (!gateOpen) {
-    return (
-      <ParentGate
-        a={gateA}
-        b={gateB}
-        answer={gateAnswer}
-        setAnswer={setGateAnswer}
-        onCorrect={() => setGateOpen(true)}
-      />
-    );
-  }
-
-  return <Dashboard />;
-}
-
-function ParentGate({
-  a,
-  b,
-  answer,
-  setAnswer,
-  onCorrect,
-}: {
-  a: number;
-  b: number;
-  answer: string;
-  setAnswer: (v: string) => void;
-  onCorrect: () => void;
-}) {
-  const router = useRouter();
-  const [error, setError] = useState(false);
-
-  const handleSubmit = () => {
-    if (parseInt(answer) === a + b) {
-      onCorrect();
-    } else {
-      setError(true);
-      setAnswer('');
-      setTimeout(() => setError(false), 1500);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 flex flex-col items-center justify-center px-6">
-      <div className="bg-white rounded-3xl p-8 shadow-xl max-w-sm w-full text-center">
-        <h2 className="text-xl font-bold font-[Fredoka] text-gray-700 mb-2">
-          Parent Area
-        </h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Solve to enter: What is {a} + {b}?
-        </p>
-        <input
-          type="number"
-          inputMode="numeric"
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          className={`w-24 h-16 text-center text-2xl font-bold border-2 rounded-xl mx-auto block mb-4 ${
-            error ? 'border-red-400 bg-red-50' : 'border-gray-300'
-          }`}
-          autoFocus
-        />
-        <div className="flex gap-3 justify-center">
-          <button
-            onClick={() => router.push('/')}
-            className="px-6 py-3 rounded-xl bg-gray-200 text-gray-600 font-[Nunito] font-bold"
-          >
-            Back
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="px-6 py-3 rounded-xl bg-purple-500 text-white font-[Nunito] font-bold"
-          >
-            Enter
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Dashboard() {
   const router = useRouter();
   const {
     worldProgress,
@@ -102,9 +16,11 @@ function Dashboard() {
     sessionHistory,
     freePlay,
     soundEnabled,
+    musicEnabled,
     volume,
     toggleFreePlay,
     toggleSound,
+    toggleMusic,
     setVolume,
     resetProgress,
   } = useGameStore();
@@ -221,43 +137,26 @@ function Dashboard() {
           <h3 className="font-bold text-gray-700 mb-3">Settings</h3>
 
           {/* Free Play Toggle */}
-          <div className="flex items-center justify-between py-3 border-b border-gray-100">
-            <div>
-              <p className="font-semibold text-gray-700">Free Play Mode</p>
-              <p className="text-xs text-gray-400">
-                Unlock all worlds and games
-              </p>
-            </div>
-            <button
-              onClick={toggleFreePlay}
-              className={`w-14 h-8 rounded-full transition-colors relative ${
-                freePlay ? 'bg-green-400' : 'bg-gray-300'
-              }`}
-            >
-              <motion.div
-                className="w-6 h-6 bg-white rounded-full absolute top-1 shadow-sm"
-                animate={{ left: freePlay ? 28 : 4 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              />
-            </button>
-          </div>
+          <ToggleRow
+            label="Free Play Mode"
+            sublabel="Unlock all worlds and games"
+            enabled={freePlay}
+            onToggle={toggleFreePlay}
+          />
 
           {/* Sound Toggle */}
-          <div className="flex items-center justify-between py-3 border-b border-gray-100">
-            <p className="font-semibold text-gray-700">Sound</p>
-            <button
-              onClick={toggleSound}
-              className={`w-14 h-8 rounded-full transition-colors relative ${
-                soundEnabled ? 'bg-green-400' : 'bg-gray-300'
-              }`}
-            >
-              <motion.div
-                className="w-6 h-6 bg-white rounded-full absolute top-1 shadow-sm"
-                animate={{ left: soundEnabled ? 28 : 4 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              />
-            </button>
-          </div>
+          <ToggleRow
+            label="Sound Effects"
+            enabled={soundEnabled}
+            onToggle={toggleSound}
+          />
+
+          {/* Music Toggle */}
+          <ToggleRow
+            label="Background Music"
+            enabled={musicEnabled}
+            onToggle={toggleMusic}
+          />
 
           {/* Volume */}
           <div className="py-3 border-b border-gray-100">
@@ -316,6 +215,41 @@ function Dashboard() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  sublabel,
+  enabled,
+  onToggle,
+}: {
+  label: string;
+  sublabel?: string;
+  enabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+      <div>
+        <p className="font-semibold text-gray-700">{label}</p>
+        {sublabel && (
+          <p className="text-xs text-gray-400">{sublabel}</p>
+        )}
+      </div>
+      <button
+        onClick={onToggle}
+        className={`w-14 h-8 rounded-full transition-colors relative ${
+          enabled ? 'bg-green-400' : 'bg-gray-300'
+        }`}
+      >
+        <motion.div
+          className="w-6 h-6 bg-white rounded-full absolute top-1 shadow-sm"
+          animate={{ left: enabled ? 28 : 4 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+        />
+      </button>
     </div>
   );
 }
