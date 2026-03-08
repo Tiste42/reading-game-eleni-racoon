@@ -6,21 +6,22 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface PuzzlePiece {
   word: string;
   icon: string;
-  distractors: { word: string; icon: string }[];
+  distractors: string[];
 }
 
+// Show a picture, child must READ the word options and pick the right one
 const PIECES: PuzzlePiece[] = [
-  { word: 'sat', icon: '🪑', distractors: [{ word: 'pin', icon: '📌' }, { word: 'net', icon: '🥅' }] },
-  { word: 'pet', icon: '🐶', distractors: [{ word: 'tap', icon: '🚰' }, { word: 'sip', icon: '🥤' }] },
-  { word: 'ten', icon: '🔟', distractors: [{ word: 'pan', icon: '🍳' }, { word: 'tip', icon: '📌' }] },
-  { word: 'nap', icon: '💤', distractors: [{ word: 'let', icon: '✅' }, { word: 'set', icon: '✅' }] },
-  { word: 'lip', icon: '👄', distractors: [{ word: 'pen', icon: '🖊️' }, { word: 'tin', icon: '🥫' }] },
-  { word: 'pen', icon: '🖊️', distractors: [{ word: 'nip', icon: '❄️' }, { word: 'pat', icon: '👋' }] },
+  { word: 'sat', icon: '🪑', distractors: ['pin', 'net'] },
+  { word: 'pet', icon: '🐶', distractors: ['tap', 'sip'] },
+  { word: 'ten', icon: '🔟', distractors: ['pan', 'tip'] },
+  { word: 'nap', icon: '💤', distractors: ['let', 'set'] },
+  { word: 'lip', icon: '👄', distractors: ['pen', 'tin'] },
+  { word: 'pen', icon: '🖊️', distractors: ['nip', 'pat'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -41,20 +42,15 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
 
   const current = PIECES[round];
 
-  const choices = useMemo(
-    () => shuffle([{ word: current.word, icon: current.icon }, ...current.distractors]),
+  // Shuffle word options (correct word + distractors as text)
+  const wordChoices = useMemo(
+    () => shuffle([current.word, ...current.distractors]),
     [current]
   );
 
-  const optionNames = useMemo(() => choices.map(c => c.word), [choices]);
-
-  const instruction = feedback
-    ? null
-    : `Read the word: ${current.word}. Which picture matches?`;
-
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    instruction,
-    optionNames,
+  // Don't read the words — child must read them to find the match
+  useGameSpeech(
+    feedback ? null : 'Which word matches the picture? Read the words!',
     [round],
   );
 
@@ -80,7 +76,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
   }, [shouldReveal, current.word, round, worldId, completeGame, addCoins]);
 
   const handleChoice = useCallback((chosen: string) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
+    if (feedback || shouldReveal) return;
     if (chosen === current.word) {
       const isLastRound = round >= PIECES.length - 1;
       setFeedback('correct');
@@ -103,7 +99,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
       speakWrongExplanation(chosen, current.word);
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, doneSpeaking, shouldReveal, current, round, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  }, [feedback, shouldReveal, current, round, worldId, completeGame, addCoins, masterWord, recordWrong]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-400/90 to-orange-300/90 px-4 py-6 flex flex-col">
@@ -115,12 +111,13 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
         </div>
       </div>
 
+      {/* Puzzle grid showing progress */}
       <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto mb-6">
-        {PIECES.map((_, i) => (
+        {PIECES.map((piece, i) => (
           <div key={i} className={`aspect-square rounded-xl ${
             solved.includes(i) ? 'bg-amber-200' : 'bg-white/20 border-2 border-dashed border-white/40'
           } flex items-center justify-center text-3xl`}>
-            {solved.includes(i) ? PIECES[i].icon : ''}
+            {solved.includes(i) ? piece.icon : ''}
           </div>
         ))}
       </div>
@@ -128,27 +125,28 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
         <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={70} />
 
+        {/* Show the PICTURE — child must find the matching word */}
         <AnimatePresence mode="wait">
           <motion.div key={round} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-            className="bg-white/90 rounded-2xl px-10 py-6 shadow-xl">
-            <span className="text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.word}</span>
+            className="bg-white/90 rounded-2xl px-10 py-6 shadow-xl flex flex-col items-center gap-2">
+            <span className="text-6xl">{current.icon}</span>
+            <p className="text-sm text-gray-400 font-[Nunito]">Which word is this?</p>
           </motion.div>
         </AnimatePresence>
 
-        <div className="flex gap-4">
-          {choices.map((choice, idx) => (
-            <motion.button key={choice.word} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-              disabled={!doneSpeaking || feedback !== null || shouldReveal}
-              className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                shouldReveal && choice.word === current.word
+        {/* Word options — child must READ these */}
+        <div className="flex gap-3">
+          {wordChoices.map((word) => (
+            <motion.button key={word} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(word)}
+              disabled={feedback !== null || shouldReveal}
+              className={`px-6 py-4 rounded-2xl shadow-lg transition-all ${
+                shouldReveal && word === current.word
                   ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                  : feedback === 'correct' && choice.word === current.word
+                  : feedback === 'correct' && word === current.word
                   ? 'bg-green-200 ring-4 ring-green-400'
-                  : activeOption === idx
-                  ? 'bg-white/90 ring-4 ring-blue-400 scale-105'
                   : 'bg-white/90'
               }`}>
-              <span className="text-4xl">{choice.icon}</span>
+              <span className="text-2xl font-bold font-[Fredoka] text-gray-800 lowercase">{word}</span>
             </motion.button>
           ))}
         </div>

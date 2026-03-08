@@ -6,7 +6,7 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface TelescopeWord {
   word: string;
@@ -48,15 +48,11 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
     [current]
   );
 
-  const optionNames = useMemo(() => choices.map(c => c.word), [choices]);
-
-  const instruction = feedback || !revealed
-    ? null
-    : `Listen to the sounds: ${current.blendText}. What word is that?`;
-
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    instruction,
-    optionNames,
+  // Speak the blended sounds instruction but don't read option words
+  useGameSpeech(
+    feedback || !revealed
+      ? null
+      : `Listen to the sounds: ${current.blendText}. What word is that?`,
     [round, revealed],
   );
 
@@ -84,7 +80,7 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
   const handleLook = useCallback(() => setRevealed(true), []);
 
   const handleChoice = useCallback((chosen: string) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
+    if (feedback || shouldReveal) return;
     if (chosen === current.word) {
       const isLastRound = round >= words.length - 1;
       setFeedback('correct');
@@ -107,7 +103,7 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
       speakWrongExplanation(chosen, current.word, 'blend');
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, doneSpeaking, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  }, [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-400/90 to-orange-300/90 px-4 py-6 flex flex-col">
@@ -142,19 +138,17 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
           </motion.button>
         ) : (
           <>
-            <p className="text-white/80 font-[Nunito] text-sm">What word is that?</p>
+            <p className="text-white/80 font-[Nunito] text-sm">Blend the sounds! What word is it?</p>
             <div className="flex gap-4">
-              {choices.map((choice, idx) => (
+              {choices.map((choice) => (
                 <motion.button key={choice.word} initial={{ scale: 0 }} animate={{ scale: 1 }}
                   whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-                  disabled={!doneSpeaking || feedback !== null || shouldReveal}
-                  className={`w-24 h-24 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition-all ${
+                  disabled={feedback !== null || shouldReveal}
+                  className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
                     shouldReveal && choice.word === current.word
                       ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
                       : feedback === 'correct' && choice.word === current.word
                       ? 'bg-green-200 ring-4 ring-green-400'
-                      : activeOption === idx
-                      ? 'bg-white/90 ring-4 ring-blue-400 scale-105'
                       : 'bg-white/90'
                   }`}>
                   <span className="text-4xl">{choice.icon}</span>

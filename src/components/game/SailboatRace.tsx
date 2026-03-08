@@ -6,7 +6,7 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface RaceWord {
   word: string;
@@ -47,15 +47,9 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
     [current]
   );
 
-  const optionNames = useMemo(() => choices.map(c => c.word), [choices]);
-
-  const instruction = feedback
-    ? null
-    : `The word is ${current.word}. Which picture matches?`;
-
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    instruction,
-    optionNames,
+  // Don't say the word — child must READ it and match to the picture
+  useGameSpeech(
+    feedback ? null : 'Read the word! Sail to the right island!',
     [round],
   );
 
@@ -80,7 +74,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
   }, [shouldReveal, current.word, round, words.length, worldId, completeGame, addCoins]);
 
   const handleChoice = useCallback((chosen: string) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
+    if (feedback || shouldReveal) return;
     if (chosen === current.word) {
       const isLastRound = round >= words.length - 1;
       setFeedback('correct');
@@ -105,7 +99,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
       resetStreak();
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, doneSpeaking, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordWrong]);
+  }, [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordWrong]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-400/90 to-orange-300/90 px-4 py-6 flex flex-col">
@@ -136,19 +130,17 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
           </motion.div>
         </AnimatePresence>
 
-        <p className="text-white/80 font-[Nunito] text-sm">Sail to the right island!</p>
+        <p className="text-white/80 font-[Nunito] text-sm">Read the word and sail to the right island!</p>
 
         <div className="flex gap-4">
-          {choices.map((choice, idx) => (
+          {choices.map((choice) => (
             <motion.button key={choice.word} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-              disabled={!doneSpeaking || feedback !== null || shouldReveal}
-              className={`w-24 h-24 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition-all ${
+              disabled={feedback !== null || shouldReveal}
+              className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
                 shouldReveal && choice.word === current.word
                   ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
                   : feedback === 'correct' && choice.word === current.word
                   ? 'bg-green-200 ring-4 ring-green-400'
-                  : activeOption === idx
-                  ? 'bg-white/90 ring-4 ring-blue-400 scale-105'
                   : 'bg-white/90'
               }`}>
               <span className="text-4xl">{choice.icon}</span>

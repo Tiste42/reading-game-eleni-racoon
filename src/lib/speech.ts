@@ -141,13 +141,8 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'listen-to-the-sounds-peeeet-what-word-is-that',
   'listen-to-the-sounds-sssiiip-what-word-is-that',
   'listen-to-the-sounds-llleeet-what-word-is-that',
-  // PlazaPuzzle instructions
-  'read-the-word-sat-which-picture-matches',
-  'read-the-word-pet-which-picture-matches',
-  'read-the-word-ten-which-picture-matches',
-  'read-the-word-nap-which-picture-matches',
-  'read-the-word-lip-which-picture-matches',
-  'read-the-word-pen-which-picture-matches',
+  // PlazaPuzzle — show picture, child reads word options
+  'which-word-matches-the-picture-read-the-words',
   // MarketBuilder instructions
   'build-the-word-sat-tap-the-letters-in-order',
   'build-the-word-pin-tap-the-letters-in-order',
@@ -157,13 +152,8 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'build-the-word-let-tap-the-letters-in-order',
   'build-the-word-tin-tap-the-letters-in-order',
   'build-the-word-sip-tap-the-letters-in-order',
-  // SailboatRace
-  'the-word-is-sat-which-picture-matches',
-  'the-word-is-pan-which-picture-matches',
-  'the-word-is-tip-which-picture-matches',
-  'the-word-is-pen-which-picture-matches',
-  'the-word-is-pet-which-picture-matches',
-  'the-word-is-ten-which-picture-matches',
+  // SailboatRace — show word, child reads it
+  'read-the-word-sail-to-the-right-island',
 
   // --- World 4: Castle of Words ---
   // WordTowers instructions

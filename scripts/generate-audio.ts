@@ -324,20 +324,10 @@ function buildManifest(): AudioClip[] {
     { text: 'Listen to the sounds: p...eee...t. What word is that?', ttsText: 'Listen to the sounds: p, eh, t. What word is that?' },
     { text: 'Listen to the sounds: sss...iii...p. What word is that?', ttsText: 'Listen to the sounds: sss, ih, p. What word is that?' },
     { text: 'Listen to the sounds: lll...eee...t. What word is that?', ttsText: 'Listen to the sounds: lll, eh, t. What word is that?' },
-    // World 3: SailboatRace
-    { text: 'The word is sat. Which picture matches?' },
-    { text: 'The word is pan. Which picture matches?' },
-    { text: 'The word is tip. Which picture matches?' },
-    { text: 'The word is pen. Which picture matches?' },
-    { text: 'The word is pet. Which picture matches?' },
-    { text: 'The word is ten. Which picture matches?' },
-    // World 3: PlazaPuzzle
-    { text: 'Read the word: sat. Which picture matches?' },
-    { text: 'Read the word: pet. Which picture matches?' },
-    { text: 'Read the word: ten. Which picture matches?' },
-    { text: 'Read the word: nap. Which picture matches?' },
-    { text: 'Read the word: lip. Which picture matches?' },
-    { text: 'Read the word: pen. Which picture matches?' },
+    // World 3: SailboatRace — child reads the word, no answer given
+    { text: 'Read the word! Sail to the right island!' },
+    // World 3: PlazaPuzzle — show picture, child reads word options
+    { text: 'Which word matches the picture? Read the words!' },
     // World 3: MarketBuilder
     { text: 'Build the word sat! Tap the letters in order!' },
     { text: 'Build the word pin! Tap the letters in order!' },

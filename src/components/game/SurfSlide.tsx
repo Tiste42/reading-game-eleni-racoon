@@ -6,7 +6,7 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 
 interface BlendWord {
   letters: string[];
@@ -57,15 +57,9 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
     }
   }, [blended, current]);
 
-  const optionNames = useMemo(() => choices.map(c => c.word), [choices]);
-
-  const instruction = feedback || !blended
-    ? null
-    : 'Blend the sounds together! What word do the letters make?';
-
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
-    instruction,
-    optionNames,
+  // Don't say the words — child must blend the letters and pick the right picture
+  useGameSpeech(
+    feedback || !blended ? null : 'Blend the sounds together! What word do the letters make?',
     [round, blended],
   );
 
@@ -109,7 +103,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
 
   const handleChoice = useCallback(
     (chosen: string) => {
-      if (feedback || !blended || !doneSpeaking || shouldReveal) return;
+      if (feedback || !blended || shouldReveal) return;
       if (chosen === current.word) {
         const isLastRound = round >= words.length - 1;
         setFeedback('correct');
@@ -136,7 +130,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
         setTimeout(() => setFeedback(null), 2000);
       }
     },
-    [feedback, blended, doneSpeaking, shouldReveal, current, round, words, worldId, completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordWrong]
+    [feedback, blended, shouldReveal, current, round, words, worldId, completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordWrong]
   );
 
   return (
@@ -221,28 +215,23 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
           </motion.button>
         ) : (
           <div className="flex gap-4">
-            {choices.map((choice, idx) => (
+            {choices.map((choice) => (
               <motion.button
                 key={choice.word}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleChoice(choice.word)}
-                disabled={!doneSpeaking || feedback !== null || shouldReveal}
-                className={`w-24 h-24 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition-all ${
+                disabled={feedback !== null || shouldReveal}
+                className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
                   shouldReveal && choice.word === current.word
                     ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
                     : feedback === 'correct' && choice.word === current.word
                     ? 'bg-green-200 ring-4 ring-green-400'
-                    : activeOption === idx
-                    ? 'bg-white/90 ring-4 ring-blue-400 scale-105'
                     : 'bg-white/90'
                 }`}
               >
                 <span className="text-4xl">{choice.icon}</span>
-                <span className="text-xs text-gray-500 font-[Nunito] lowercase">
-                  {choice.word}
-                </span>
               </motion.button>
             ))}
           </div>
