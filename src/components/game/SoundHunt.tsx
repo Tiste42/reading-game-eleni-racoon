@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speak, speakPhoneme, speakFeedback, speakWrongExplanation, speakReveal, stopSpeaking } from '@/lib/speech';
 import { useWrongAttempts } from '@/lib/useGameSpeech';
@@ -118,6 +119,33 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   }, [roundIdx]);
   const doneSpeaking = true;
 
+  const handleReplay = useCallback(() => {
+    const thisRun = ++runIdRef.current;
+    setActiveOption(-1);
+    stopSpeaking();
+    const run = async () => {
+      if (thisRun !== runIdRef.current) return;
+      await speak('Tap everything that starts with this sound!');
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 200));
+      if (thisRun !== runIdRef.current) return;
+      await speakPhoneme(current.targetSound);
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 400));
+      const items = current.items;
+      for (let i = 0; i < items.length; i++) {
+        if (thisRun !== runIdRef.current) return;
+        setActiveOption(i);
+        await speak(items[i].word);
+        if (thisRun !== runIdRef.current) return;
+        await new Promise(r => setTimeout(r, 350));
+      }
+      if (thisRun !== runIdRef.current) return;
+      setActiveOption(-1);
+    };
+    run();
+  }, [current]);
+
   const { shouldReveal, recordWrong } = useWrongAttempts(roundIdx);
 
   const correctItems = current.items.filter(i => i.startsWithTarget);
@@ -187,8 +215,14 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-500/75 to-orange-400/75 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
+
+          <ReplayButton onReplay={handleReplay} />
+
+        </div>
         <div className="bg-white/80 rounded-full px-4 py-2 shadow">
           <span className="font-[Fredoka] text-pink-600 text-lg">{found.size}/{targetCount}</span>
         </div>

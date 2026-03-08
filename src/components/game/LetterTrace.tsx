@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -61,7 +62,7 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
   const current = rounds[round];
   const choices = choicesByRound[round];
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     `What letter does ${current.word} start with?`,
     choices,
     [round],
@@ -120,6 +121,8 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-400/90 to-pink-300/90 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onComplete}
@@ -127,6 +130,10 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
         >
           {'<'}
         </motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <div className="flex gap-1">
           {rounds.map((_, i) => (
             <div

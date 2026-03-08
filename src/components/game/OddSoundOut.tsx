@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -58,7 +59,7 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
   const current = rounds[round];
   const oddWord = current.words[current.oddIndex];
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     `Two of these start with ${PHONEME_PRONUNCIATIONS[current.commonSound] || current.commonSound}. Which one doesn't? Find the odd one out!`,
     current.words.map(w => w.word),
     [round],
@@ -120,10 +121,16 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-500/75 to-orange-400/75 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">
           {'<'}
         </motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <div className="flex gap-1">
           {rounds.map((_, i) => (
             <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />

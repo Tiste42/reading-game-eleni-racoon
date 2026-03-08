@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speak, speakPhoneme, speakFeedback, speakWrongExplanation, speakReveal, stopSpeaking } from '@/lib/speech';
 import { useWrongAttempts } from '@/lib/useGameSpeech';
@@ -118,6 +119,33 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
   }, [round]);
   const doneSpeaking = true;
 
+  const handleReplay = useCallback(() => {
+    const thisRun = ++runIdRef.current;
+    setActiveOption(-1);
+    stopSpeaking();
+    const run = async () => {
+      if (thisRun !== runIdRef.current) return;
+      await speak('Tap everything that starts with this sound!');
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 200));
+      if (thisRun !== runIdRef.current) return;
+      await speakPhoneme(currentRound.targetLetter);
+      if (thisRun !== runIdRef.current) return;
+      await new Promise(r => setTimeout(r, 400));
+      const items = currentRound.items;
+      for (let i = 0; i < items.length; i++) {
+        if (thisRun !== runIdRef.current) return;
+        setActiveOption(i);
+        await speak(items[i].word);
+        if (thisRun !== runIdRef.current) return;
+        await new Promise(r => setTimeout(r, 350));
+      }
+      if (thisRun !== runIdRef.current) return;
+      setActiveOption(-1);
+    };
+    run();
+  }, [currentRound]);
+
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
 
   const correctItems = currentRound.items.filter(i => i.startsWithTarget);
@@ -174,6 +202,8 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-400/90 via-blue-200/90 to-cyan-100/90 px-4 py-6 flex flex-col">
       {/* Back button */}
+      <div className="flex items-center gap-2">
+
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={onComplete}
@@ -182,6 +212,10 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
       >
         ◀
       </motion.button>
+
+        <ReplayButton onReplay={handleReplay} />
+
+      </div>
 
       {/* Progress dots */}
       <div className="flex justify-center gap-2 mb-4">

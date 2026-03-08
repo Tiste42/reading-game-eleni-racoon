@@ -24,6 +24,14 @@ export function useGameSpeech(text: string | null, deps: unknown[] = []) {
   useEffect(() => {
     return () => { stopSpeaking(); };
   }, []);
+
+  const replay = useCallback(() => {
+    if (!text) return;
+    stopSpeaking();
+    speak(text);
+  }, [text]);
+
+  return { replay };
 }
 
 export function useGameSpeechWithOptions(
@@ -79,8 +87,32 @@ export function useGameSpeechWithOptions(
     };
   }, []);
 
+  const replay = useCallback(() => {
+    if (!instruction) return;
+    const thisRun = ++runIdRef.current;
+    cancelledRef.current = false;
+    setActiveOption(-1);
+    stopSpeaking();
+
+    const run = async () => {
+      if (cancelledRef.current || thisRun !== runIdRef.current) return;
+      await speak(instruction);
+      for (let i = 0; i < options.length; i++) {
+        if (cancelledRef.current || thisRun !== runIdRef.current) return;
+        setActiveOption(i);
+        await speak(options[i]);
+        if (cancelledRef.current || thisRun !== runIdRef.current) return;
+        await new Promise(r => setTimeout(r, 350));
+      }
+      if (cancelledRef.current || thisRun !== runIdRef.current) return;
+      setActiveOption(-1);
+    };
+
+    run();
+  }, [instruction, options]);
+
   // Never block interaction — speech is assistive, not gating
-  return { activeOption, doneSpeaking: true };
+  return { activeOption, doneSpeaking: true, replay };
 }
 
 export function useWrongAttempts(roundKey: unknown, maxAttempts = 3) {

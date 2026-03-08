@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -73,7 +74,7 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
     ? null
     : `Find the door that says ${current.target}!`;
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     instruction,
     doorWords,
     [round],
@@ -136,8 +137,14 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-500/90 to-teal-400/90 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <div className="flex gap-1">
           {rounds.map((_, i) => (
             <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />

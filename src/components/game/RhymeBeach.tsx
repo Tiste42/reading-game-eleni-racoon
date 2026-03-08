@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -72,7 +73,7 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
   const isLastRound = round >= rounds.length - 1;
   const roundChoices = currentRound.choices;
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     `What rhymes with ${currentRound.target.word}?`,
     roundChoices.map(c => c.word),
     [round],
@@ -130,6 +131,8 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-300/75 via-cyan-200/75 to-amber-100/75 px-4 py-6 flex flex-col">
       {/* Back button */}
+      <div className="flex items-center gap-2">
+
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={onComplete}
@@ -138,6 +141,10 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
       >
         ◀
       </motion.button>
+
+        <ReplayButton onReplay={replay} />
+
+      </div>
 
       {/* Progress dots */}
       <div className="flex justify-center gap-2 mb-4">

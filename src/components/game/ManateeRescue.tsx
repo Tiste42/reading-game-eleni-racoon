@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -50,7 +51,7 @@ export default function ManateeRescue({ worldId, onComplete }: Props) {
   const current = rounds[round];
   const optionLabels = useMemo(() => current.options.map(o => o.label), [current]);
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     `The manatee needs help! ${current.sentence} ${current.question}`,
     optionLabels,
     [round]
@@ -111,8 +112,14 @@ export default function ManateeRescue({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-400/90 to-green-300/90 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <div className="bg-white/80 rounded-full px-4 py-2 shadow flex gap-1">
           {Array.from({ length: rescued }).map((_, i) => (
             <span key={i} className="text-lg">{'\uD83D\uDC33'}</span>

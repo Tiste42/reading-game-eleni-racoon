@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -49,7 +50,7 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
 
   const current = words[round];
 
-  const { doneSpeaking } = useGameSpeechWithOptions(
+  const { doneSpeaking, replay } = useGameSpeechWithOptions(
     `How many beats does this word have? Clap for each beat!`,
     [current.word],
     [round],
@@ -122,6 +123,8 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-500/75 to-orange-400/75 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onComplete}
@@ -129,6 +132,10 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
         >
           {'<'}
         </motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <div className="flex gap-1">
           {words.map((_, i) => (
             <div

@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
@@ -102,7 +103,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
   const current = challenges[round];
   const stableOptions = useMemo(() => current.options, [current]);
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     current.prompt,
     stableOptions,
     [round]
@@ -165,8 +166,14 @@ export default function BossLevel({ worldId, onComplete }: Props) {
   return (
     <div className={`min-h-screen bg-gradient-to-b ${world?.bgGradient ? world.bgGradient + '/90' : 'from-pink-400/90 to-purple-400/90'} px-4 py-6 flex flex-col`}>
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <div className="bg-white/80 rounded-full px-4 py-2 shadow">
           <span className="font-[Fredoka] text-amber-600">{round + 1}/{challenges.length}</span>
         </div>

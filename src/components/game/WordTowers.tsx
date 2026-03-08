@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -84,7 +85,7 @@ export default function WordTowers({ worldId, onComplete }: Props) {
     ? null
     : `Find words in the ${family.pattern} family! Which word belongs?`;
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     instruction,
     optionNames,
     [familyIdx, currentWordIdx],
@@ -158,10 +159,16 @@ export default function WordTowers({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-500/90 to-teal-400/90 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">
           {'<'}
         </motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <span className="text-white font-[Fredoka] text-lg">
           Family: {family.pattern}
         </span>

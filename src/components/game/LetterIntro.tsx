@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakPhoneme, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -52,7 +53,7 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
   const choices = choicesByRound[round];
   const pronunciation = PHONEME_PRONUNCIATIONS[current.letter] || current.letter;
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     `What letter makes the ${pronunciation} sound? Tap it!`,
     choices.map(c => c.letter),
     [round],
@@ -114,6 +115,8 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-400/90 to-pink-300/90 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onComplete}
@@ -121,6 +124,10 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
         >
           {'<'}
         </motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <div className="flex gap-1">
           {rounds.map((_, i) => (
             <div

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
@@ -70,7 +71,7 @@ export default function SoundSort({ worldId, onComplete }: Props) {
   const current = rounds[roundIdx];
   const unsorted = current.items.filter((i) => !sorted.has(i.word));
 
-  const { activeOption, doneSpeaking } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
     `Sort the pictures! Does it start with ${current.bucketA} or ${current.bucketB}?`,
     current.items.map(i => i.word),
     [roundIdx],
@@ -142,8 +143,14 @@ export default function SoundSort({ worldId, onComplete }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-400/90 to-pink-300/90 px-4 py-6 flex flex-col">
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
+
+          <ReplayButton onReplay={replay} />
+
+        </div>
         <span className="text-white font-[Fredoka]">Round {roundIdx + 1}/{rounds.length}</span>
       </div>
 
