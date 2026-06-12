@@ -529,6 +529,8 @@ function buildManifest(): AudioClip[] {
     { text: 'What letter makes this sound?' },
     { text: 'Which picture starts with this sound?' },
     { text: 'What letter does it start with?' },
+    { text: 'Which one does not start with this sound?' },
+    { text: 'Listen first... then tap the one that is different!' },
 
     // --- Coverage gap fixes ---
     { text: 'The word is them. Which two letters make the special sound? Is it sh, ch, or th?' },

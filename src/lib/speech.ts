@@ -333,6 +333,8 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'what-letter-makes-this-sound',
   'which-picture-starts-with-this-sound',
   'what-letter-does-it-start-with',
+  'which-one-does-not-start-with-this-sound',
+  'listen-first-then-tap-the-one-that-is-different',
 
   // --- Coverage gap fixes ---
   'the-word-is-them-which-two-letters-make-the-special-sound-is-it-sh-ch-or-th',

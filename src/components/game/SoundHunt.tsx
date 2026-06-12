@@ -69,7 +69,8 @@ const SLOTS = [
   { left: 38, top: 66, rot: -7, scale: 1.0 },
 ];
 
-const HINT_DELAY_MS = 7000;
+// Long delay so the hint helps a stuck child without giving answers away
+const HINT_DELAY_MS = 16000;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -96,20 +97,21 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   const targetCount = targetItems.length;
   const roundDone = found.length >= targetCount;
 
-  const { activeOption, replay } = useComposedSpeech(
+  // Instruction + the sound only. (Speaking all six item words was fragile on
+  // phones — audio cut off mid-sequence — and naming the pictures herself IS
+  // the skill. She can tap "Find b 🔊" anytime to re-hear the sound.)
+  const { replay } = useComposedSpeech(
     [
       { say: 'Tap everything that starts with this sound!' },
       { pause: 200 },
       { phoneme: current.targetSound },
-      { pause: 400 },
-      { options: current.items.map((i) => i.word) },
     ],
     [roundIdx],
   );
 
   const { shouldReveal, recordWrong } = useWrongAttempts(roundIdx, 3);
 
-  // Idle hint: after a quiet stretch, make one remaining target sparkle
+  // Gentle idle hint: only after a LONG quiet stretch (don't give answers away)
   useEffect(() => {
     if (roundDone) return;
     setHintWord(null);
@@ -225,7 +227,6 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
             {current.items.map((item, index) => {
               const slot = SLOTS[index % SLOTS.length];
               const isFound = found.includes(item.word);
-              const isBeingSpoken = activeOption === index;
               const hintThis = hintWord === item.word;
 
               return (
@@ -233,26 +234,23 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
                   key={item.word + index}
                   onClick={() => handleTap(item)}
                   disabled={isFound}
-                  initial={{ scale: 0, rotate: slot.rot }}
+                  initial={{ scale: 0 }}
                   animate={
                     isFound
                       ? { scale: 0, opacity: 0, y: -40 }
                       : wrongShake === item.word
                         ? { x: [-8, 8, -8, 0], scale: slot.scale }
-                        : {
-                            scale: isBeingSpoken ? slot.scale * 1.15 : slot.scale,
-                            rotate: [slot.rot, slot.rot + 3, slot.rot],
-                          }
+                        : { scale: slot.scale, x: 0, opacity: 1, y: 0 }
                   }
                   transition={
                     isFound
                       ? { duration: 0.45 }
-                      : { rotate: { duration: 2.6 + index * 0.3, repeat: Infinity, ease: 'easeInOut' }, scale: { delay: index * 0.07, type: 'spring' } }
+                      : { scale: { delay: index * 0.07, type: 'spring', stiffness: 260, damping: 18 } }
                   }
                   className={`absolute w-[104px] h-[104px] rounded-full bg-white/95 shadow-xl flex items-center justify-center ${
-                    isBeingSpoken ? 'ring-4 ring-blue-400 z-10' : ''
-                  } ${hintThis ? 'animate-hint-pulse ring-4 ring-yellow-300 z-10' : ''}`}
-                  style={{ left: `${slot.left}%`, top: `${slot.top}%` }}
+                    hintThis ? 'animate-hint-pulse ring-4 ring-yellow-300 z-10' : ''
+                  }`}
+                  style={{ left: `${slot.left}%`, top: `${slot.top}%`, rotate: `${slot.rot}deg` }}
                 >
                   <WordCard word={item.word} size={70} />
                   {isFound && <span className="absolute text-3xl">✨</span>}

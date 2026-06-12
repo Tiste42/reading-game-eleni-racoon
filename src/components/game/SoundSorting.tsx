@@ -84,16 +84,17 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
   const targetCount = current.items.filter((i) => i.startsWithTarget).length;
   const roundComplete = sorted.length >= targetCount;
 
-  const { activeOption, replay } = useComposedSpeech(
+  // Instruction + the sound only — speaking all six words was fragile on
+  // phones, and naming the pictures herself is the skill.
+  const { replay } = useComposedSpeech(
     [
       { say: 'Tap everything that starts with this sound!' },
       { pause: 200 },
       { phoneme: current.targetLetter },
-      { pause: 400 },
-      { options: current.items.map((i) => i.word) },
     ],
     [round],
   );
+  const activeOption = -1;
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 

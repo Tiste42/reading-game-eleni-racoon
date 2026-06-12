@@ -62,15 +62,16 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
   const oddWord = current.words[current.oddIndex];
   const isLast = round >= rounds.length - 1;
 
+  // Crystal-clear directions: hear each word first, then the question + the sound
   const { activeOption, replay } = useComposedSpeech(
     [
-      { say: 'Two of these start with...' },
-      { pause: 150 },
-      { phoneme: current.commonSound },
-      { pause: 300 },
-      { say: "Which one doesn't? Tap the odd one out!" },
-      { pause: 200 },
+      { say: 'Listen first... then tap the one that is different!' },
+      { pause: 250 },
       { options: current.words },
+      { pause: 300 },
+      { say: 'Which one does not start with this sound?' },
+      { pause: 200 },
+      { phoneme: current.commonSound },
     ],
     [round],
   );
@@ -146,28 +147,29 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
     >
       <div className="flex-1 flex flex-col items-center justify-evenly py-2">
         <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'waving'} size={150} />
-        <div className="text-center">
-          <p className="text-pink-800 font-[Fredoka] font-semibold text-lg">Which one starts with a different sound?</p>
+        <div className="text-center px-2">
+          <p className="text-pink-800 font-[Fredoka] font-bold text-2xl leading-snug">
+            Which one does <span className="underline decoration-4 decoration-pink-400">NOT</span> start with...
+          </p>
           <button
             onClick={() => speakPhoneme(current.commonSound)}
-            className="mt-1 inline-flex items-center gap-2 bg-white/80 rounded-full px-4 py-1.5 shadow press-3d"
+            className="mt-1 inline-flex items-center gap-2 bg-white/90 rounded-full px-5 py-2 shadow press-3d"
           >
-            <span className="font-[Fredoka] text-purple-600">Two start with</span>
-            <span className="text-2xl font-bold font-[Fredoka] text-pink-600 lowercase">{current.commonSound}</span>
-            <span>🔊</span>
+            <span className="text-4xl font-bold font-[Fredoka] text-pink-600 lowercase">{current.commonSound}</span>
+            <span className="text-2xl">🔊</span>
           </button>
         </div>
 
-        {/* Stage */}
+        {/* Stage — sized to fit phones (3 cards always fit the width) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={round}
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.6, opacity: 0 }}
-            className="relative"
+            className="relative w-full"
           >
-            <div className="flex gap-4 items-end">
+            <div className="flex gap-3 items-end justify-center w-full px-1">
               {current.words.map((word, i) => {
                 const isOdd = i === current.oddIndex;
                 const isBeingSpoken = activeOption === i;
@@ -176,7 +178,7 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
                 const isWrongTap = wrongIdx === i;
 
                 return (
-                  <div key={`${round}-${word}-${i}`} className="flex flex-col items-center">
+                  <div key={`${round}-${word}-${i}`} className="flex flex-col items-center flex-1 max-w-[136px] min-w-0">
                     <motion.button
                       onClick={() => handleChoice(i)}
                       disabled={phase !== 'play'}
@@ -197,7 +199,7 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
                             : { duration: 0.35 }
                       }
                       whileTap={{ scale: 0.9 }}
-                      className={`w-32 h-36 rounded-3xl shadow-xl flex flex-col items-center justify-center gap-1 bg-white/95 press-3d ${
+                      className={`w-full aspect-[8/9] rounded-3xl shadow-xl flex flex-col items-center justify-center gap-1 bg-white/95 press-3d ${
                         wonThis || revealThis
                           ? 'ring-4 ring-green-400'
                           : isBeingSpoken
@@ -205,7 +207,7 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
                             : ''
                       } ${revealThis ? 'animate-hint-pulse' : ''}`}
                     >
-                      <WordCard word={word} size={80} />
+                      <WordCard word={word} size={76} />
                       {(wonThis || revealThis) && (
                         <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-xl">
                           🌟
@@ -213,7 +215,7 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
                       )}
                     </motion.button>
                     {/* podium */}
-                    <div className="w-24 h-3 mt-1 rounded bg-amber-700/50" />
+                    <div className="w-3/4 h-3 mt-1 rounded bg-amber-700/50" />
                   </div>
                 );
               })}
