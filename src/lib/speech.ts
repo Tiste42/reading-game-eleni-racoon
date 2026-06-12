@@ -374,28 +374,41 @@ function playStatic(path: string, fallbackText?: string): Promise<void> {
 
   duckMusic();
   return new Promise<void>((resolve) => {
+    // WebAudio (html5:false): iOS only allows a handful of live HTML5 audio
+    // elements — with html5:true, sounds went silent after the first round.
     const sound = new Howl({
       src: [`/audio/${path}?v=${AUDIO_VERSION}`],
-      html5: true,
+      format: ['mp3'], // querystring hides the extension from Howler
+      html5: false,
       volume: 0.9,
-      onend: () => {
-        if (currentSpeechHowl === sound) currentSpeechHowl = null;
-        resolve();
-      },
+      onend: () => finish(),
+      // Resolve on stop too — an interrupted clip must not leave callers
+      // awaiting forever (that froze speech sequences mid-game).
+      onstop: () => finish(),
       onloaderror: () => {
-        if (currentSpeechHowl === sound) currentSpeechHowl = null;
         console.warn(`[speech] missing audio file: /audio/${path}`);
         if (fallbackText && thisGen === speakGeneration) {
+          cleanup();
           browserSpeak(fallbackText).then(resolve);
         } else {
-          resolve();
+          finish();
         }
       },
-      onplayerror: () => {
-        if (currentSpeechHowl === sound) currentSpeechHowl = null;
-        resolve();
-      },
+      onplayerror: () => finish(),
     });
+
+    let done = false;
+    const cleanup = () => {
+      if (currentSpeechHowl === sound) currentSpeechHowl = null;
+      // Release the audio node — leaking them exhausts mobile audio slots
+      setTimeout(() => { try { sound.unload(); } catch { /* already unloaded */ } }, 0);
+    };
+    const finish = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve();
+    };
 
     if (thisGen !== speakGeneration) {
       sound.unload();
