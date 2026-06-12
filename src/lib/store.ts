@@ -34,6 +34,7 @@ interface GameState {
   passportStamps: number[];
   masteredPhonemes: string[];
   masteredWords: string[];
+  ownedItems: string[];
   soundStats: Record<string, SoundStat>;
   streakCount: number;
   sessionHistory: SessionEntry[];
@@ -54,6 +55,8 @@ interface GameState {
   masterWord: (word: string) => void;
   recordSoundAttempt: (sound: string, correct: boolean) => void;
   getShakySounds: () => string[];
+  /** Spend coins on a shop item. Returns false (no purchase) if she can't afford it. */
+  buyItem: (id: string, price: number) => boolean;
   incrementStreak: () => void;
   resetStreak: () => void;
   addSession: (session: SessionEntry) => void;
@@ -87,6 +90,7 @@ export const useGameStore = create<GameState>()(
       passportStamps: [],
       masteredPhonemes: [],
       masteredWords: [],
+      ownedItems: [],
       soundStats: {},
       streakCount: 0,
       sessionHistory: [],
@@ -163,6 +167,13 @@ export const useGameStore = create<GameState>()(
           };
         }),
 
+      buyItem: (id, price) => {
+        const { coins, ownedItems } = get();
+        if (ownedItems.includes(id) || coins < price) return false;
+        set({ coins: coins - price, ownedItems: [...ownedItems, id] });
+        return true;
+      },
+
       // Sounds with enough attempts but a low success rate — these get extra practice
       getShakySounds: () => {
         const stats = get().soundStats;
@@ -219,6 +230,7 @@ export const useGameStore = create<GameState>()(
           passportStamps: [],
           masteredPhonemes: [],
           masteredWords: [],
+          ownedItems: [],
           soundStats: {},
           streakCount: 0,
           sessionHistory: [],

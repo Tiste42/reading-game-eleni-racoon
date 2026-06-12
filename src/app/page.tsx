@@ -249,8 +249,30 @@ function WorldMap() {
         })}
       </div>
 
-      {/* Library button */}
-      <div className="max-w-md mx-auto mt-6 relative z-10">
+      {/* Shop + Library buttons */}
+      <div className="max-w-md mx-auto mt-6 relative z-10 space-y-4">
+        <motion.button
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6, type: 'spring' }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => router.push('/shop')}
+          className="w-full rounded-3xl p-5 shadow-lg flex items-center gap-4 text-left bg-gradient-to-r from-amber-400 to-pink-500 hover:shadow-xl active:scale-[0.98] transition-all duration-200 ring-2 ring-white/40"
+        >
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl bg-white/30 shrink-0">
+            🍭
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-xl font-bold font-[Fredoka] text-white block">
+              Leni&apos;s Shop
+            </span>
+            <span className="text-sm font-[Nunito] text-white/80 block">
+              Spend your coins!
+            </span>
+          </div>
+          <div className="text-3xl text-white/80 shrink-0">▶</div>
+        </motion.button>
+
         <motion.button
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}

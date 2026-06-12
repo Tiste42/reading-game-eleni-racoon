@@ -35,7 +35,8 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - [x] VersionWatcher auto-update: version.json (no-store) + NEXT_PUBLIC_APP_VERSION; reloads home-screen PWA on new deploys (iOS standalone caches aggressively).
 - [x] WordTowers slug fix ('-at' → textToSlug strips hyphen; KNOWN set had '--at' → TTS fallback). Audited ALL 257 slugs vs disk: 0 missing.
 - [x] SoundHunt/SoundSorting: item-naming sequence RESTORED (root cause was the iOS audio leak, now fixed); hint 22s; network-verified all 6 items speak in order.
-- [ ] NEXT SESSION IDEAS: coin shop/dress-up (coins currently earn-only!), PWA service worker, W2 shaky-sound prioritization, per-game word art for remaining abstract words
+- [x] LENI'S SHOP shipped: /shop page — 24 wacky items (treats 10-15, toys 20-35, dream items 40-80 coins), buy with coins (buyItem guards: no negative, no dupes), owned items live in "Leni's Toybox", big home-map button. Art via scripts/generate-shop-items.ts → public/images/generated/shop/ (emoji fallback until art loads). Drive-tested: buy ✓, refuse-unaffordable ✓, toybox ✓, 0 overflow @390px.
+- [ ] NEXT SESSION IDEAS: PWA service worker, W2 shaky-sound prioritization, per-game word art for remaining abstract words, shop restock (new item drops keep it fresh)
 - [x] WORLD 6 REWORK (Baptiste: "just pick some so they're better"):
       - ComicCreator FIXED: read sentence → "I read it!" → recorded comprehension question ("Who sat on the mat?") → picture choices where a DISTRACTOR IS ANOTHER WORD FROM THE SENTENCE (mat) — word-matching loses, reading wins. 6 new recorded question clips.
       - PostcardWriter FIXED: postcard now shows a PHOTO that determines the answer; choices are TEXT-ONLY words (log/mug/bat) so the work is decoding. Logic hole closed.
