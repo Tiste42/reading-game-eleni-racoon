@@ -329,6 +329,11 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'two-of-these-start-with',
   'which-one-doesnt-tap-the-odd-one-out',
 
+  // --- World 2 rebuild: generic instructions composed with phoneme audio ---
+  'what-letter-makes-this-sound',
+  'which-picture-starts-with-this-sound',
+  'what-letter-does-it-start-with',
+
   // --- Coverage gap fixes ---
   'the-word-is-them-which-two-letters-make-the-special-sound-is-it-sh-ch-or-th',
   '1', '2', '3', '4',

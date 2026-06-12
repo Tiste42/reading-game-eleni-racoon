@@ -1,49 +1,47 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
+import PressButton from '@/components/ui/PressButton';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
+// Every word here has a pre-generated "What letter does X start with?" narration line
 interface PictureRound {
   word: string;
-  icon: string;
   letter: string;
 }
 
 const ALL_PICTURES: PictureRound[] = [
-  { word: 'sun', icon: '☀️', letter: 's' },
-  { word: 'snake', icon: '🐍', letter: 's' },
-  { word: 'apple', icon: '🍎', letter: 'a' },
-  { word: 'ant', icon: '🐜', letter: 'a' },
-  { word: 'tiger', icon: '🐯', letter: 't' },
-  { word: 'tent', icon: '⛺', letter: 't' },
-  { word: 'penguin', icon: '🐧', letter: 'p' },
-  { word: 'pig', icon: '🐷', letter: 'p' },
-  { word: 'igloo', icon: '🏠', letter: 'i' },
-  { word: 'insect', icon: '🐛', letter: 'i' },
-  { word: 'nut', icon: '🥜', letter: 'n' },
-  { word: 'nest', icon: '🪹', letter: 'n' },
-  { word: 'egg', icon: '🥚', letter: 'e' },
-  { word: 'elephant', icon: '🐘', letter: 'e' },
-  { word: 'lemon', icon: '🍋', letter: 'l' },
-  { word: 'lion', icon: '🦁', letter: 'l' },
+  { word: 'sun', letter: 's' },
+  { word: 'snake', letter: 's' },
+  { word: 'apple', letter: 'a' },
+  { word: 'ant', letter: 'a' },
+  { word: 'tiger', letter: 't' },
+  { word: 'tent', letter: 't' },
+  { word: 'penguin', letter: 'p' },
+  { word: 'pig', letter: 'p' },
+  { word: 'igloo', letter: 'i' },
+  { word: 'insect', letter: 'i' },
+  { word: 'nut', letter: 'n' },
+  { word: 'nest', letter: 'n' },
+  { word: 'egg', letter: 'e' },
+  { word: 'elephant', letter: 'e' },
+  { word: 'lemon', letter: 'l' },
+  { word: 'lion', letter: 'l' },
 ];
 
-const SATPIN_EL = ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l'];
+// World 2 letter set — distractors only ever come from taught letters
+const W2_LETTERS = ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l'];
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
-}
-
-function makeLetterChoices(correct: string): string[] {
-  return shuffle(
-    SATPIN_EL.filter((l) => l !== correct)
-  ).slice(0, 3).concat([correct]).sort(() => Math.random() - 0.5);
 }
 
 interface Props {
@@ -51,194 +49,174 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'play' | 'won' | 'model';
+
 export default function LetterTrace({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('play');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(ALL_PICTURES).slice(0, 8));
-  const [choicesByRound] = useState(() => rounds.map(r => makeLetterChoices(r.letter)));
-  const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak } = useGameStore();
+  const [rounds] = useState(() => shuffle(ALL_PICTURES).slice(0, 6));
+  const [choicesByRound] = useState(() =>
+    rounds.map((r) =>
+      shuffle([r.letter, ...shuffle(W2_LETTERS.filter((l) => l !== r.letter)).slice(0, 2)]),
+    ),
+  );
+  const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
   const choices = choicesByRound[round];
+  const isLast = round >= rounds.length - 1;
 
-  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
-    `What letter does ${current.word} start with?`,
-    choices,
+  useEffect(() => {
+    setPhase('play');
+    setWrongPick(null);
+  }, [round]);
+
+  // Per-word instruction line — every one exists as a pre-generated narration file
+  const { replay } = useComposedSpeech(
+    [{ say: `What letter does ${current.word} start with?` }],
     [round],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 
-  useEffect(() => {
-    if (shouldReveal) {
-      const pronunciation = PHONEME_PRONUNCIATIONS[current.letter] || current.letter;
-      speakReveal(`${current.word} starts with the letter ${current.letter}. ${pronunciation}!`);
-      const timer = setTimeout(() => {
-        setFeedback(null);
-        if (round >= rounds.length - 1) {
-          completeGame(worldId, 'letter-trace');
-          addCoins(8);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      }, 2500);
-      return () => clearTimeout(timer);
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'letter-trace');
+      addCoins(8);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
     }
-  }, [shouldReveal, current, round, rounds, worldId, completeGame, addCoins]);
+  }, [isLast, worldId, completeGame, addCoins]);
 
-  const handleChoice = useCallback(
-    (chosen: string) => {
-      if (feedback || !doneSpeaking || shouldReveal) return;
-      if (chosen === current.letter) {
-        const isLast = round >= rounds.length - 1;
-        setFeedback('correct');
+  // Two misses → Leni models: "Not quite, the answer is... /s/" + the word,
+  // with the right tile glowing green. Then auto-advance — never a dead end.
+  const modeling = useRef(false);
+  useEffect(() => {
+    if (shouldReveal && phase === 'play' && !modeling.current) {
+      modeling.current = true;
+      setPhase('model');
+      (async () => {
+        recordSoundAttempt(current.letter, false);
+        await speakReveal(current.letter);
+        await speakWord(current.word);
+        await new Promise((r) => setTimeout(r, 800));
+        modeling.current = false;
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pickLetter = useCallback(
+    (letter: string) => {
+      if (phase !== 'play') return;
+      if (letter === current.letter) {
+        recordSoundAttempt(letter, true);
         incrementStreak();
-        masterPhoneme(chosen);
-        speakFeedback(isLast ? 'complete' : 'correct');
-        setTimeout(() => {
-          setFeedback(null);
-          if (isLast) {
-            completeGame(worldId, 'letter-trace');
-            addCoins(8);
-            setShowCelebration(true);
-          } else {
-            setRound((r) => r + 1);
-          }
-        }, 1200);
+        masterPhoneme(letter);
+        playSoundEffect('coin');
+        setPhase('won');
+        (async () => {
+          await speakPhoneme(letter);
+          await speakWord(current.word);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 800));
+          advance();
+        })();
       } else {
-        setFeedback('wrong');
+        recordSoundAttempt(current.letter, false);
         recordWrong();
         resetStreak();
-        speakWrongExplanation(chosen, current.letter);
-        setTimeout(() => setFeedback(null), 2000);
+        playSoundEffect('wrong');
+        setWrongPick(letter);
+        // Re-teach: replay the word so she re-hears its first sound, then retry
+        (async () => {
+          await speakWord(current.word);
+          setWrongPick(null);
+        })();
       }
     },
-    [feedback, doneSpeaking, shouldReveal, current, round, rounds, worldId, completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordWrong]
+    [phase, current, isLast, advance, incrementStreak, masterPhoneme, resetStreak, recordWrong, recordSoundAttempt],
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-400/90 to-pink-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md"
-        >
-          {'<'}
-        </motion.button>
-
-          <ReplayButton onReplay={replay} />
-
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🌻"
+      bgClassName="from-purple-400/60 to-pink-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={120} />
+          <p className="text-purple-900 font-[Fredoka] font-bold text-2xl text-center">
+            What letter does <span className="text-pink-600">{current.word}</span> start with?
+          </p>
         </div>
-        <div className="flex gap-1">
-          {rounds.map((_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full ${
-                i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
 
-      <div className="text-center mb-4">
-        <EleniCharacter
-          pose={feedback === 'correct' ? 'celebrating' : 'excited'}
-          size={80}
-        />
-        <p className="text-white font-[Nunito] text-lg mt-2 drop-shadow">
-          What letter does this start with?
-        </p>
-      </div>
-
-      {/* Picture display */}
-      <AnimatePresence mode="wait">
+        {/* Big picture — tap to re-hear the word */}
         <motion.div
           key={round}
-          initial={{ scale: 0, rotateY: 180 }}
-          animate={{ scale: 1, rotateY: 0 }}
-          exit={{ scale: 0, rotateY: -180 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-          className="mx-auto mb-6"
+          initial={{ scale: 0, rotate: -6 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 16 }}
         >
-          <div className="bg-white/90 rounded-[2rem] w-36 h-36 flex flex-col items-center justify-center shadow-2xl">
-            <span className="text-7xl">{current.icon}</span>
-          </div>
+          <PressButton
+            silent
+            onClick={() => speakWord(current.word)}
+            className="bg-white rounded-[2rem] p-4 shadow-xl flex items-center justify-center"
+            aria-label={`Hear ${current.word}`}
+          >
+            <WordCard word={current.word} size={170} />
+          </PressButton>
         </motion.div>
-      </AnimatePresence>
 
-      {/* Letter choices */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="grid grid-cols-2 gap-4 max-w-xs w-full">
-          {choices.map((letter, index) => {
-            const isCorrect = letter === current.letter;
-            const isBeingSpoken = activeOption === index;
-            const revealThis = shouldReveal && isCorrect;
-
+        {/* The letter choices */}
+        <div className="flex gap-4">
+          {choices.map((letter) => {
+            const isAnswer = letter === current.letter;
+            const highlight = (phase !== 'play' || shouldReveal) && isAnswer;
             return (
               <motion.button
                 key={`${round}-${letter}`}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: index * 0.08 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleChoice(letter)}
-                disabled={!doneSpeaking || feedback !== null || shouldReveal}
-                className={`h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                  feedback === 'correct' && isCorrect
-                    ? 'bg-green-200 ring-4 ring-green-400'
-                    : revealThis
-                    ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                    : isBeingSpoken
-                    ? 'bg-white ring-4 ring-blue-400 scale-105'
-                    : 'bg-white/90'
+                onClick={() => pickLetter(letter)}
+                disabled={phase !== 'play'}
+                animate={wrongPick === letter ? { x: [-8, 8, -8, 8, 0] } : highlight ? { scale: [1, 1.15, 1] } : {}}
+                whileTap={{ scale: 0.92 }}
+                className={`w-[104px] h-[112px] rounded-3xl bg-white shadow-xl press-3d flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase transition-all ${
+                  highlight ? 'ring-4 ring-green-400 animate-hint-pulse' : ''
                 }`}
               >
-                <span className="text-5xl font-bold font-[Fredoka] text-gray-800 lowercase">
-                  {letter}
-                </span>
+                {letter}
               </motion.button>
             );
           })}
         </div>
+
+        {/* On win/model: connect the letter to the word */}
+        <div className="min-h-[48px] flex items-center justify-center">
+          <AnimatePresence>
+            {phase !== 'play' && (
+              <motion.p
+                initial={{ scale: 0, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-3xl font-bold font-[Fredoka] text-purple-700 lowercase"
+              >
+                {current.letter} — {current.word}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Feedback */}
-      <AnimatePresence>
-        {feedback === 'correct' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-center py-3"
-          >
-            <p className="text-white font-[Fredoka] text-lg">
-              {current.icon} {current.word} starts with {current.letter}!
-            </p>
-          </motion.div>
-        )}
-        {feedback === 'wrong' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, x: [-5, 5, -5, 5, 0] }}
-            exit={{ opacity: 0 }}
-            className="text-center py-3"
-          >
-            <span className="text-xl text-white font-bold">Not that one! Try again!</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <CelebrationOverlay
-        show={showCelebration}
-        message="You know your beginning sounds!"
-        onComplete={onComplete}
-      />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Beginning sounds star!" onComplete={onComplete} />
+    </GameShell>
   );
 }

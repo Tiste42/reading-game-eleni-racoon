@@ -1,34 +1,47 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakPhoneme, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import { speakPhoneme, speakWord, speakFeedback } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
-interface MatchPair {
-  letter: string;
-  icon: string;
-  word: string;
-}
-
-const PAIRS: MatchPair[] = [
-  { letter: 's', icon: getIcon('snake'), word: 'snake' },
-  { letter: 'a', icon: getIcon('apple'), word: 'apple' },
-  { letter: 't', icon: getIcon('tiger'), word: 'tiger' },
-  { letter: 'p', icon: getIcon('penguin'), word: 'penguin' },
-  { letter: 'i', icon: getIcon('iguana'), word: 'iguana' },
-  { letter: 'n', icon: getIcon('nut'), word: 'nut' },
-  { letter: 'e', icon: getIcon('egg'), word: 'egg' },
-  { letter: 'l', icon: getIcon('lemon'), word: 'lemon' },
-];
+// Toddler-recognizable words per letter — every one has real art AND audio
+const LETTER_WORDS: Record<string, string[]> = {
+  s: ['sun', 'sock', 'star', 'snake'],
+  a: ['ant', 'apple'],
+  t: ['tiger', 'tent'],
+  p: ['pig', 'penguin', 'pen'],
+  i: ['igloo', 'insect'],
+  n: ['nest', 'nut', 'net'],
+  e: ['egg', 'elephant'],
+  l: ['lion', 'lemon', 'lip'],
+};
+const LETTERS = Object.keys(LETTER_WORDS);
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+interface Pair {
+  letter: string;
+  word: string;
+}
+
+// 2 rounds × 3 pairs, all different letters
+function buildRounds(): Pair[][] {
+  const letters = shuffle(LETTERS).slice(0, 6);
+  return [letters.slice(0, 3), letters.slice(3, 6)].map((group) =>
+    group.map((letter) => ({ letter, word: pick(LETTER_WORDS[letter]) })),
+  );
 }
 
 interface Props {
@@ -37,150 +50,180 @@ interface Props {
 }
 
 export default function LetterMatch({ worldId, onComplete }: Props) {
-  const gamePairs = useMemo(() => shuffle(PAIRS).slice(0, 6), []);
+  const [round, setRound] = useState(0);
   const [matched, setMatched] = useState<Set<string>>(new Set());
-  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
+  const [advancing, setAdvancing] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const { completeGame, addCoins, masterPhoneme } = useGameStore();
+  const [rounds] = useState(buildRounds);
+  const [letterOrders] = useState(() => rounds.map((r) => shuffle(r.map((p) => p.letter))));
+  const [pictureOrders] = useState(() => rounds.map((r) => shuffle([...r])));
+  const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const shuffledLetters = useMemo(() => shuffle(gamePairs.map((p) => p.letter)), [gamePairs]);
-  const shuffledPictures = useMemo(() => shuffle([...gamePairs]), [gamePairs]);
-
-  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
-    `Match each letter to its picture! Tap a letter, then tap the picture that starts with it!`,
-    gamePairs.map(p => p.word),
-    [],
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(matched.size);
+  const pairs = rounds[round];
+  const letters = letterOrders[round];
+  const pictures = pictureOrders[round];
+  const isLastRound = round >= rounds.length - 1;
 
   useEffect(() => {
-    if (shouldReveal && selectedLetter) {
-      const correctPair = gamePairs.find(p => p.letter === selectedLetter);
-      if (correctPair) {
-        speakReveal(correctPair.word);
-        const timer = setTimeout(() => {
-          setFeedback('correct');
-          masterPhoneme(correctPair.letter);
-          const next = new Set(matched);
-          next.add(correctPair.letter);
-          setMatched(next);
-          setTimeout(() => {
-            setFeedback(null);
-            setSelectedLetter(null);
-            if (next.size >= gamePairs.length) {
-              completeGame(worldId, 'letter-match');
-              addCoins(8);
-              setShowCelebration(true);
-            }
-          }, 800);
-        }, 2000);
-        return () => clearTimeout(timer);
+    setMatched(new Set());
+    setSelected(null);
+    setWrongPick(null);
+    setAdvancing(false);
+  }, [round]);
+
+  const { replay } = useGameSpeech(
+    'Match each letter to its picture! Tap a letter, then tap the picture that starts with it!',
+    [round],
+  );
+
+  // After 4 wrong taps in a round, hint-pulse the right picture for the
+  // selected letter so she can always succeed — never a dead end.
+  const { shouldReveal: showHint, recordWrong } = useWrongAttempts(round, 4);
+
+  const tapLetter = useCallback(
+    (letter: string) => {
+      if (advancing || matched.has(letter)) return;
+      setSelected(letter);
+      speakPhoneme(letter);
+    },
+    [advancing, matched],
+  );
+
+  const tapPicture = useCallback(
+    (pair: Pair) => {
+      if (advancing || !selected || matched.has(pair.letter)) return;
+      if (pair.letter === selected) {
+        recordSoundAttempt(selected, true);
+        incrementStreak();
+        masterPhoneme(pair.letter);
+        playSoundEffect('coin');
+        const next = new Set(matched);
+        next.add(pair.letter);
+        setMatched(next);
+        setSelected(null);
+        const roundDone = next.size >= pairs.length;
+        (async () => {
+          await speakWord(pair.word);
+          if (!roundDone) return;
+          setAdvancing(true);
+          await speakFeedback(isLastRound ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 700));
+          if (isLastRound) {
+            completeGame(worldId, 'letter-match');
+            addCoins(8);
+            setShowCelebration(true);
+          } else {
+            setRound((r) => r + 1);
+          }
+        })();
+      } else {
+        recordSoundAttempt(selected, false);
+        recordWrong();
+        resetStreak();
+        playSoundEffect('wrong');
+        setWrongPick(pair.word);
+        // Re-teach: play the selected letter's sound again so she can re-listen
+        (async () => {
+          await speakPhoneme(selected);
+          setWrongPick(null);
+        })();
       }
-    }
-  }, [shouldReveal, selectedLetter, gamePairs, matched, worldId, completeGame, addCoins, masterPhoneme]);
-
-  const handleLetterTap = useCallback((letter: string) => {
-    if (feedback || matched.has(letter) || !doneSpeaking) return;
-    setSelectedLetter(letter);
-    speakPhoneme(letter);
-  }, [feedback, matched, doneSpeaking]);
-
-  const handlePictureTap = useCallback((pair: MatchPair) => {
-    if (feedback || !selectedLetter || matched.has(pair.letter) || shouldReveal) return;
-    if (pair.letter === selectedLetter) {
-      const isLastMatch = (() => { const next = new Set(matched); next.add(pair.letter); return next.size >= gamePairs.length; })();
-      setFeedback('correct');
-      speakFeedback(isLastMatch ? 'complete' : 'correct');
-      masterPhoneme(pair.letter);
-      const next = new Set(matched);
-      next.add(pair.letter);
-      setMatched(next);
-      setTimeout(() => {
-        setFeedback(null);
-        setSelectedLetter(null);
-        if (next.size >= gamePairs.length) {
-          completeGame(worldId, 'letter-match');
-          addCoins(8);
-          setShowCelebration(true);
-        }
-      }, 800);
-    } else {
-      setFeedback('wrong');
-      recordWrong();
-      speakWrongExplanation(pair.word, selectedLetter, 'starts-with');
-      setTimeout(() => {
-        setFeedback(null);
-        setSelectedLetter(null);
-      }, 2000);
-    }
-  }, [feedback, selectedLetter, matched, shouldReveal, gamePairs, worldId, completeGame, addCoins, masterPhoneme, recordWrong]);
+    },
+    [
+      advancing, selected, matched, pairs.length, isLastRound, worldId,
+      completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak,
+      recordWrong, recordSoundAttempt,
+    ],
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-400/90 to-pink-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-
-          <ReplayButton onReplay={replay} />
-
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🌸"
+      bgClassName="from-pink-400/60 to-rose-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-evenly py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={advancing || showCelebration ? 'celebrating' : 'excited'} size={120} />
+          <p className="text-pink-800 font-[Fredoka] font-bold text-2xl text-center">
+            Match each letter to its picture!
+          </p>
         </div>
-        <div className="bg-white/80 rounded-full px-4 py-2 shadow">
-          <span className="font-[Fredoka] text-purple-600">{matched.size}/{gamePairs.length}</span>
+
+        {/* Letters on the left, pictures on the right */}
+        <div className="flex items-center gap-8">
+          <div className="flex flex-col gap-3">
+            {letters.map((letter) => {
+              const done = matched.has(letter);
+              return (
+                <motion.button
+                  key={`${round}-${letter}`}
+                  onClick={() => tapLetter(letter)}
+                  disabled={done || advancing}
+                  animate={done ? { scale: 0.9 } : selected === letter ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+                  transition={selected === letter && !done ? { duration: 0.9, repeat: Infinity } : {}}
+                  whileTap={!done ? { scale: 0.92 } : {}}
+                  className={`w-[96px] h-[96px] rounded-3xl shadow-xl press-3d flex items-center justify-center text-6xl font-bold font-[Fredoka] lowercase transition-all ${
+                    done
+                      ? 'bg-green-200 text-green-700'
+                      : selected === letter
+                        ? 'bg-yellow-200 text-gray-800 ring-4 ring-yellow-400'
+                        : 'bg-white text-gray-800'
+                  }`}
+                >
+                  {letter}
+                </motion.button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {pictures.map((pair) => {
+              const done = matched.has(pair.letter);
+              const hint = showHint && !done && selected === pair.letter;
+              return (
+                <motion.button
+                  key={`${round}-${pair.word}`}
+                  onClick={() => tapPicture(pair)}
+                  disabled={done || advancing}
+                  animate={
+                    wrongPick === pair.word
+                      ? { x: [-8, 8, -8, 8, 0] }
+                      : done
+                        ? { scale: 0.9 }
+                        : hint
+                          ? { scale: [1, 1.1, 1] }
+                          : { scale: 1 }
+                  }
+                  transition={hint && wrongPick !== pair.word ? { duration: 0.9, repeat: Infinity } : {}}
+                  whileTap={!done ? { scale: 0.92 } : {}}
+                  className={`rounded-3xl p-2 shadow-xl press-3d flex items-center justify-center transition-all ${
+                    done
+                      ? 'bg-green-200'
+                      : hint
+                        ? 'bg-white ring-4 ring-green-400 animate-hint-pulse'
+                        : 'bg-white'
+                  }`}
+                >
+                  <WordCard word={pair.word} size={100} />
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
+
+        <p className="text-pink-800/90 font-[Fredoka] font-semibold text-lg text-center px-6">
+          Tap a letter, then tap its picture!
+        </p>
       </div>
 
-      <div className="text-center mb-3">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'waving'} size={70} />
-        <p className="text-white/80 font-[Nunito] text-sm mt-1">Tap a letter, then tap its picture!</p>
-      </div>
-
-      <div className="flex-1 flex gap-4 max-w-md mx-auto w-full">
-        <div className="flex-1 flex flex-col gap-2">
-          {shuffledLetters.map((letter) => (
-            <motion.button key={letter} whileTap={{ scale: 0.9 }}
-              onClick={() => handleLetterTap(letter)} disabled={matched.has(letter) || !doneSpeaking}
-              className={`flex-1 rounded-2xl shadow-lg flex items-center justify-center text-3xl font-bold font-[Fredoka] lowercase transition-all ${
-                matched.has(letter) ? 'bg-green-200 text-green-600 opacity-50'
-                : selectedLetter === letter ? 'bg-yellow-200 ring-4 ring-yellow-400 scale-105' : 'bg-white/90 text-gray-800'
-              }`}>
-              {letter}
-            </motion.button>
-          ))}
-        </div>
-        <div className="flex-1 flex flex-col gap-2">
-          {shuffledPictures.map((pair, index) => {
-            const isBeingSpoken = activeOption === gamePairs.findIndex(p => p.letter === pair.letter);
-            const isCorrectReveal = shouldReveal && selectedLetter === pair.letter;
-
-            return (
-              <motion.button key={pair.letter} whileTap={{ scale: 0.9 }}
-                onClick={() => handlePictureTap(pair)} disabled={matched.has(pair.letter) || shouldReveal}
-                className={`flex-1 rounded-2xl shadow-lg flex items-center justify-center text-4xl transition-all ${
-                  matched.has(pair.letter) ? 'bg-green-200 opacity-50'
-                  : feedback === 'correct' && pair.letter === selectedLetter ? 'bg-green-200 ring-4 ring-green-400'
-                  : isCorrectReveal ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                  : isBeingSpoken ? 'bg-white ring-4 ring-blue-400 scale-105'
-                  : 'bg-white/90'
-                }`}>
-                {pair.icon}
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {feedback === 'wrong' && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-            className="text-center text-white font-bold text-lg mt-3">Not a match! Try again</motion.p>
-        )}
-      </AnimatePresence>
-
-      <CelebrationOverlay show={showCelebration} message="All matched!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Matching marvel!" onComplete={onComplete} />
+    </GameShell>
   );
 }

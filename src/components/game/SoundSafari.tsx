@@ -1,34 +1,51 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
+import PressButton from '@/components/ui/PressButton';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakPhoneme, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
-interface SafariRound {
-  letter: string;
-  correct: { word: string; icon: string };
-  distractors: { word: string; icon: string }[];
-}
-
-const ROUNDS: SafariRound[] = [
-  { letter: 's', correct: { word: 'snake', icon: getIcon('snake') }, distractors: [{ word: 'cat', icon: getIcon('cat') }, { word: 'dog', icon: getIcon('dog') }] },
-  { letter: 'a', correct: { word: 'apple', icon: getIcon('apple') }, distractors: [{ word: 'pen', icon: getIcon('pen') }, { word: 'hat', icon: getIcon('hat') }] },
-  { letter: 't', correct: { word: 'tiger', icon: getIcon('tiger') }, distractors: [{ word: 'fish', icon: getIcon('fish') }, { word: 'moon', icon: getIcon('moon') }] },
-  { letter: 'p', correct: { word: 'penguin', icon: getIcon('penguin') }, distractors: [{ word: 'sun', icon: getIcon('sun') }, { word: 'bed', icon: getIcon('bed') }] },
-  { letter: 'i', correct: { word: 'igloo', icon: getIcon('igloo') }, distractors: [{ word: 'bus', icon: getIcon('bus') }, { word: 'rat', icon: getIcon('rat') }] },
-  { letter: 'n', correct: { word: 'nut', icon: getIcon('nut') }, distractors: [{ word: 'cup', icon: getIcon('cup') }, { word: 'pig', icon: getIcon('pig') }] },
-  { letter: 'e', correct: { word: 'egg', icon: getIcon('egg') }, distractors: [{ word: 'van', icon: getIcon('van') }, { word: 'log', icon: getIcon('log') }] },
-  { letter: 'l', correct: { word: 'lemon', icon: getIcon('lemon') }, distractors: [{ word: 'bat', icon: getIcon('bat') }, { word: 'hen', icon: getIcon('hen') }] },
-];
+// Toddler-recognizable words per letter — every one has real art AND audio
+const LETTER_WORDS: Record<string, string[]> = {
+  s: ['sun', 'sock', 'star', 'snake'],
+  a: ['ant', 'apple'],
+  t: ['tiger', 'tent'],
+  p: ['pig', 'penguin', 'pen'],
+  i: ['igloo', 'insect'],
+  n: ['nest', 'nut', 'net'],
+  e: ['egg', 'elephant'],
+  l: ['lion', 'lemon', 'lip'],
+};
+const LETTERS = Object.keys(LETTER_WORDS);
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+interface Round {
+  letter: string;
+  word: string; // the correct picture
+  choices: Array<{ letter: string; word: string }>;
+}
+
+function buildRounds(): Round[] {
+  return shuffle(LETTERS).slice(0, 6).map((letter) => {
+    const word = pick(LETTER_WORDS[letter]);
+    const others = shuffle(LETTERS.filter((l) => l !== letter))
+      .slice(0, 2)
+      .map((l) => ({ letter: l, word: pick(LETTER_WORDS[l]) }));
+    return { letter, word, choices: shuffle([{ letter, word }, ...others]) };
+  });
 }
 
 interface Props {
@@ -36,138 +53,174 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'play' | 'won' | 'model';
+
 export default function SoundSafari({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('play');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(ROUNDS).slice(0, 6));
-  const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak } = useGameStore();
+  const [rounds] = useState(buildRounds);
+  const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
+  const isLast = round >= rounds.length - 1;
 
-  const [choicesByRound] = useState(() =>
-    rounds.map(r => shuffle([r.correct, ...r.distractors]))
-  );
-  const choices = choicesByRound[round];
+  useEffect(() => {
+    setPhase('play');
+    setWrongPick(null);
+  }, [round]);
 
-  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
-    `Find the picture that starts with ${current.letter}!`,
-    choices.map(c => c.word),
+  // Instruction + the REAL human letter sound (never TTS saying "sss")
+  const { replay } = useComposedSpeech(
+    [
+      { say: 'Which picture starts with this sound?' },
+      { pause: 250 },
+      { phoneme: current.letter },
+    ],
     [round],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 
-  useEffect(() => {
-    if (shouldReveal) {
-      let cancelled = false;
-      (async () => {
-        await speakReveal(current.correct.word);
-        if (cancelled) return;
-        await new Promise(r => setTimeout(r, 500));
-        if (cancelled) return;
-        setFeedback(null);
-        if (round >= rounds.length - 1) {
-          completeGame(worldId, 'sound-safari');
-          addCoins(8);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      })();
-      return () => { cancelled = true; };
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'sound-safari');
+      addCoins(8);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
     }
-  }, [shouldReveal, current, round, rounds, worldId, completeGame, addCoins]);
+  }, [isLast, worldId, completeGame, addCoins]);
 
-  const handleChoice = useCallback(
-    (word: string) => {
-      if (feedback || !doneSpeaking || shouldReveal) return;
-      const isLast = round >= rounds.length - 1;
-      if (word === current.correct.word) {
-        setFeedback('correct');
+  // Two misses → Leni models the answer (highlights the picture + says the word)
+  const modeling = useRef(false);
+  useEffect(() => {
+    if (shouldReveal && phase === 'play' && !modeling.current) {
+      modeling.current = true;
+      setPhase('model');
+      (async () => {
+        recordSoundAttempt(current.letter, false);
+        await speakReveal(current.word);
+        await speakPhoneme(current.letter);
+        await new Promise((r) => setTimeout(r, 800));
+        modeling.current = false;
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pickPicture = useCallback(
+    (choice: { letter: string; word: string }) => {
+      if (phase !== 'play') return;
+      if (choice.letter === current.letter) {
+        recordSoundAttempt(current.letter, true);
         incrementStreak();
         masterPhoneme(current.letter);
+        playSoundEffect('coin');
+        setPhase('won');
         (async () => {
+          await speakWord(choice.word);
+          await speakPhoneme(current.letter);
           await speakFeedback(isLast ? 'complete' : 'correct');
-          await new Promise(r => setTimeout(r, 400));
-          setFeedback(null);
-          if (isLast) {
-            completeGame(worldId, 'sound-safari');
-            addCoins(8);
-            setShowCelebration(true);
-          } else {
-            setRound((r) => r + 1);
-          }
+          await new Promise((r) => setTimeout(r, 800));
+          advance();
         })();
       } else {
-        setFeedback('wrong');
+        recordSoundAttempt(current.letter, false);
         recordWrong();
-        speakWrongExplanation(word, current.correct.word, 'starts-with');
         resetStreak();
-        setTimeout(() => setFeedback(null), 2000);
+        playSoundEffect('wrong');
+        setWrongPick(choice.word);
+        // Re-teach: play the target sound again so she can re-listen
+        (async () => {
+          await speakPhoneme(current.letter);
+          setWrongPick(null);
+        })();
       }
     },
-    [feedback, doneSpeaking, shouldReveal, current, round, rounds, worldId, completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordWrong]
+    [phase, current, isLast, advance, incrementStreak, masterPhoneme, resetStreak, recordWrong, recordSoundAttempt],
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-400/75 to-pink-300/75 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-
-          <ReplayButton onReplay={replay} />
-
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🦁"
+      bgClassName="from-emerald-300/60 to-lime-200/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={120} />
+          <p className="text-emerald-900 font-[Fredoka] font-bold text-2xl text-center">
+            Which picture starts with this sound?
+          </p>
         </div>
-        <div className="flex gap-1">
-          {rounds.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
+
+        {/* Big hear-the-sound button */}
+        <PressButton
+          silent
+          onClick={() => speakPhoneme(current.letter)}
+          className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-xl flex items-center justify-center"
+          aria-label="Hear the sound"
+        >
+          <motion.span
+            animate={{ scale: [1, 1.15, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+            className="text-6xl"
+          >
+            🔊
+          </motion.span>
+        </PressButton>
+
+        {/* The picture choices */}
+        <div className="flex gap-3">
+          {current.choices.map((choice) => {
+            const isAnswer = choice.letter === current.letter;
+            const highlight = (phase !== 'play' || shouldReveal) && isAnswer;
+            return (
+              <motion.button
+                key={`${round}-${choice.word}`}
+                onClick={() => pickPicture(choice)}
+                disabled={phase !== 'play'}
+                animate={wrongPick === choice.word ? { x: [-8, 8, -8, 8, 0] } : highlight ? { scale: [1, 1.12, 1] } : {}}
+                whileTap={{ scale: 0.92 }}
+                className={`rounded-3xl p-3 bg-white shadow-xl press-3d flex items-center justify-center transition-all ${
+                  highlight ? 'ring-4 ring-green-400 animate-hint-pulse' : ''
+                }`}
+              >
+                <WordCard word={choice.word} size={110} />
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* On win/model: show the letter so the sound connects to its symbol */}
+        <div className="min-h-[130px] flex items-center justify-center">
+          <AnimatePresence>
+            {phase !== 'play' && (
+              <motion.div
+                initial={{ scale: 0, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="flex flex-col items-center"
+              >
+                <div className="w-[96px] h-[96px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-6xl font-bold font-[Fredoka] text-gray-800 lowercase">
+                  {current.letter}
+                </div>
+                <p className="text-2xl font-bold font-[Fredoka] text-emerald-800 lowercase mt-1">
+                  {current.letter} — {current.word}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={80} />
-        <div className="bg-white/90 rounded-2xl px-6 py-3 shadow-lg text-center">
-          <span className="text-sm font-[Nunito] text-gray-500">Find the one that starts with</span>
-          <div className="text-6xl font-bold font-[Fredoka] text-purple-600 lowercase mt-1 cursor-pointer" onClick={() => { if (doneSpeaking && !feedback) speakPhoneme(current.letter); }}>{current.letter}</div>
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div key={round} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }} className="flex gap-4">
-            {choices.map((item, index) => {
-              const isCorrect = item.word === current.correct.word;
-              const isBeingSpoken = activeOption === index;
-              const revealCorrect = shouldReveal && isCorrect;
-
-              return (
-                <motion.button key={item.word} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(item.word)}
-                  disabled={feedback !== null || !doneSpeaking || shouldReveal}
-                  className={`w-28 h-28 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition-all ${
-                    feedback === 'correct' && isCorrect ? 'bg-green-200 ring-4 ring-green-400' :
-                    revealCorrect ? 'bg-green-200 ring-4 ring-green-400 animate-pulse' :
-                    isBeingSpoken ? 'bg-white ring-4 ring-blue-400 scale-105' :
-                    'bg-white/90'
-                  }`}>
-                  <span className="text-5xl">{item.icon}</span>
-                </motion.button>
-              );
-            })}
-          </motion.div>
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {feedback === 'wrong' && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-              className="text-lg text-white font-bold">That doesn&apos;t start with &quot;{current.letter}&quot;</motion.p>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <CelebrationOverlay show={showCelebration} message="Safari complete!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Sound safari star!" onComplete={onComplete} />
+    </GameShell>
   );
 }

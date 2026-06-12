@@ -525,6 +525,11 @@ function buildManifest(): AudioClip[] {
     { text: 'Two of these start with...', ttsText: 'Two of these start with...' },
     { text: "Which one doesn't? Tap the odd one out!" },
 
+    // --- World 2 rebuild: generic instructions composed with real phoneme audio ---
+    { text: 'What letter makes this sound?' },
+    { text: 'Which picture starts with this sound?' },
+    { text: 'What letter does it start with?' },
+
     // --- Coverage gap fixes ---
     { text: 'The word is them. Which two letters make the special sound? Is it sh, ch, or th?' },
     { text: '1', ttsText: 'one!' },

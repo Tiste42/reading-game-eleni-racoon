@@ -62,14 +62,15 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
   }, [isLast, worldId, completeGame, addCoins]);
 
   // Sound the word out with the human letter sounds (optionally revealing each
-  // letter as its sound plays). Never the stretched TTS clip.
+  // letter as its sound plays). Each sound plays to COMPLETION — a fixed timer
+  // truncates the recordings and the sounds never get to "blend".
   const soundOut = useCallback(
     async (reveal = false) => {
       const ls = word.split('');
       for (let i = 0; i < ls.length; i++) {
         if (reveal) setRevealed(i + 1);
-        speakPhoneme(ls[i]);
-        if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 560));
+        await speakPhoneme(ls[i]);
+        if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 120));
       }
     },
     [word],

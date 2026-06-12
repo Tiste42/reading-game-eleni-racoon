@@ -87,13 +87,14 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
     }
   }, [isLast, worldId, completeGame, addCoins]);
 
-  // Sound the word out using the SAME human letter sounds, one after another
-  // (the "blend" cue) — never the stretched TTS clip, which clashes in voice.
+  // Sound the word out using the SAME human letter sounds. Each sound must
+  // play to COMPLETION (await) — a fixed timer cuts the recordings off and
+  // the sounds never get to "blend".
   const soundOut = useCallback(async () => {
     const ls = word.split('');
     for (let i = 0; i < ls.length; i++) {
-      speakPhoneme(ls[i]);
-      if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 520));
+      await speakPhoneme(ls[i]);
+      if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 120));
     }
   }, [word]);
 

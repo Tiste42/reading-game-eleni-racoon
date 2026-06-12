@@ -21,13 +21,14 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - [x] ReplayButton → prominent "🔊 Again" pill (user couldn't find hear-directions button)
 - [x] BIG & SIMPLE template established (GameShell + justify-between + Leni 120-140 + pics 150-180 + letter tiles 96-104). See [[design-big-simple]].
 - [x] Rebuilt big/simple on template: MarketBuilder (foolproof tap-in-order build), SurfSlide (foolproof tap-glowing-letter continuous blend). Both verified in preview.
-- [ ] RETROFIT remaining games onto GameShell + big-simple template (they still use old cramped layouts; raccoon now big from trim but layouts need work):
-      W3: sailboat-race, sound-telescope, plaza-puzzle
+- [x] SHIPPED (commit 8783e74): W1 complete + boss, SurfSlide/SoundTelescope/MarketBuilder, human phonemes, varied praise. Live on lenis-sound-safari.vercel.app
+- [x] Sound-out truncation fix: soundOut must AWAIT each speakPhoneme (fixed timers cut the 1-1.5s human recordings off — "sounds don't blend")
+- [x] W2 fully rebuilt: LetterIntro (hear REAL phoneme → pick letter), SoundSafari (sound → pick picture), LetterMatch (letter↔picture pairs), SoundSort (two-basket sort), LetterTrace (picture → first letter). All drive-tested, diagnostics recording.
+- [x] W3 fully rebuilt: SailboatRace (read sail word w/ tappable letters → sail to 🏝️ island w/ picture), PlazaPuzzle (big picture → read 3 words, mosaic fills). Drive-tested.
+- [ ] RETROFIT remaining games onto big-simple template:
       W4: potion-lab, word-towers, knights-doors, dragon-feed, garden-grow
       W5: heart-word-map, digraph-discovery, ruin-decoder, treasure-memory, souk-sentences
       W6: story-stroll, comic-creator, manatee-rescue, beach-detective, postcard-writer
-      W2: letter-intro, sound-safari, letter-match, sound-sort, letter-trace
-      + BossLevel
 - [ ] NEXT: coin shop/dress-up, PWA service worker
 
 ## Phase 1 — Fix the sounds (the #1 reported problem)
