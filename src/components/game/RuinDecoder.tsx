@@ -161,7 +161,7 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
         </div>
 
         {/* Picture choices */}
-        <div className="flex justify-center gap-4">
+        <div className="grid grid-cols-3 gap-3 w-full max-w-md mx-auto px-1">
           {choices.map((w) => {
             const highlight = (phase === 'won' || shouldReveal) && w === word;
             return (
@@ -171,11 +171,11 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
                 disabled={phase !== 'read'}
                 animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
                 whileTap={{ scale: 0.92 }}
-                className={`rounded-3xl p-3 shadow-xl bg-white press-3d transition-all ${
+                className={`rounded-3xl p-2 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
                   highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                 }`}
               >
-                <WordCard word={w} size={104} />
+                <WordCard word={w} size={96} />
               </motion.button>
             );
           })}

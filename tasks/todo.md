@@ -29,6 +29,8 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - [x] W5 rebuilt: HeartWordMap (regular letters sound, heart letters ❤️), DigraphDiscovery (?? slot + sh/ch/th teams), RuinDecoder (digraph-as-one-stone sound-out), TreasureMemory (4 pairs, big cards), SoukSentences (read sign → I-read-it gate → answer). Drive-tested.
 - [x] W6 rebuilt: StoryStroll/BeachDetective/ManateeRescue (read → I-read-it gate → spoken question → answer; never auto-reads her sentence), ComicCreator (comic strip fills), PostcardWriter (fill-the-blank + stamps). Drive-tested.
 - NOTE: W4-6 done solo in main loop — subagents died on session limit (resets 1:30am).
+- [x] iPhone audio root-cause fix (commit e151b8e): WebAudio + unload-every-clip; sounds no longer die after round 1. GLOBAL (shared speech.ts). See [[learnings]] mobile audio.
+- [x] PHONE-WIDTH layout sweep (390px): converted all fixed-width 3-up choice rows (SurfSlide, SoundTelescope, SailboatRace, DragonFeed, GardenGrow, RuinDecoder, ComicCreator, SoundSafari) to grid-cols-3 max-w-md; KnightsDoors doors + HeartWordMap letters → flex-1 min-w-0. Verified 0 overflow across W2-6 at 390px. SoundSort/SoundHunt/OddSoundOut already fixed earlier.
 - [ ] NEXT SESSION IDEAS: coin shop/dress-up, PWA service worker, W2 shaky-sound prioritization, per-game word art for remaining abstract words
 - [ ] NEXT: coin shop/dress-up, PWA service worker
 

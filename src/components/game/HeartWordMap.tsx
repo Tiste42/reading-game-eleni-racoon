@@ -120,7 +120,7 @@ export default function HeartWordMap({ worldId, onComplete }: Props) {
         </div>
 
         {/* The word — big tappable letters; heart letters get hearts */}
-        <div className="flex gap-3">
+        <div className="flex gap-2 justify-center w-full px-2">
           {letters.map((letter, i) => {
             const isHeart = current.heartLetters.includes(i);
             const isTapped = tapped.includes(i);
@@ -131,7 +131,7 @@ export default function HeartWordMap({ worldId, onComplete }: Props) {
                 disabled={done || isTapped}
                 animate={isTapped ? { scale: [1, 1.2, 1] } : { scale: 1 }}
                 whileTap={{ scale: 0.9 }}
-                className={`relative w-[104px] h-[116px] rounded-3xl shadow-xl press-3d flex items-center justify-center text-7xl font-bold font-[Fredoka] lowercase transition-colors ${
+                className={`relative flex-1 min-w-0 max-w-[104px] h-[112px] rounded-3xl shadow-xl press-3d flex items-center justify-center text-6xl font-bold font-[Fredoka] lowercase transition-colors ${
                   isTapped
                     ? isHeart
                       ? 'bg-rose-200 text-rose-700 ring-4 ring-rose-300'

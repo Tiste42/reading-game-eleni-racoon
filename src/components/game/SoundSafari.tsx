@@ -178,7 +178,7 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
         </PressButton>
 
         {/* The picture choices */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-3 gap-3 w-full max-w-md mx-auto px-1">
           {current.choices.map((choice) => {
             const isAnswer = choice.letter === current.letter;
             const highlight = (phase !== 'play' || shouldReveal) && isAnswer;
@@ -189,11 +189,11 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
                 disabled={phase !== 'play'}
                 animate={wrongPick === choice.word ? { x: [-8, 8, -8, 8, 0] } : highlight ? { scale: [1, 1.12, 1] } : {}}
                 whileTap={{ scale: 0.92 }}
-                className={`rounded-3xl p-3 bg-white shadow-xl press-3d flex items-center justify-center transition-all ${
+                className={`rounded-3xl p-2 bg-white shadow-xl press-3d flex items-center justify-center transition-all ${
                   highlight ? 'ring-4 ring-green-400 animate-hint-pulse' : ''
                 }`}
               >
-                <WordCard word={choice.word} size={110} />
+                <WordCard word={choice.word} size={96} />
               </motion.button>
             );
           })}

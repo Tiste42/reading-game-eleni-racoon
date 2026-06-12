@@ -171,7 +171,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
         </motion.div>
 
         {/* The islands */}
-        <div className="flex justify-center gap-4 w-full">
+        <div className="grid grid-cols-3 gap-2 w-full max-w-md mx-auto px-1">
           {choices.map((w, index) => {
             const isAnswer = w === word;
             const highlight = (phase !== 'read' || shouldReveal) && isAnswer;
@@ -193,8 +193,8 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
                   highlight ? 'bg-green-200/80 ring-4 ring-green-400' : ''
                 }`}
               >
-                <span className="bg-white rounded-3xl p-2 shadow-xl press-3d">
-                  <WordCard word={w} size={104} />
+                <span className="bg-white rounded-3xl p-1.5 shadow-xl press-3d">
+                  <WordCard word={w} size={88} />
                 </span>
                 <span className="text-6xl -mt-3">🏝️</span>
               </motion.button>

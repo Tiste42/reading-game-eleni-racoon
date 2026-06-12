@@ -214,7 +214,7 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex justify-center gap-4 mt-1"
+              className="grid grid-cols-3 gap-3 w-full max-w-md mx-auto px-1 mt-1"
             >
               {choices.map((w) => {
                 const isAnswer = w === word;
@@ -226,11 +226,11 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
                     disabled={phase === 'won'}
                     animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
                     whileTap={{ scale: 0.92 }}
-                    className={`rounded-3xl p-3 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
+                    className={`rounded-3xl p-2 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
                       revealAnswer ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                     }`}
                   >
-                    <WordCard word={w} size={120} />
+                    <WordCard word={w} size={96} />
                   </motion.button>
                 );
               })}

@@ -147,7 +147,7 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
         </div>
 
         {/* The doors */}
-        <div className="flex justify-center gap-4 items-end">
+        <div className="flex justify-center gap-2 items-end w-full px-1">
           {doors.map((w) => {
             const isOpen = openDoor === w;
             const highlight = (phase === 'won' || shouldReveal) && w === target;
@@ -158,10 +158,10 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
                 disabled={phase !== 'read'}
                 animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
                 whileTap={{ scale: 0.95 }}
-                className="flex flex-col items-center"
+                className="flex flex-col items-center flex-1 min-w-0 max-w-[132px]"
               >
                 <div
-                  className={`relative w-[120px] h-[180px] rounded-t-[60px] shadow-xl flex flex-col items-center justify-center transition-all press-3d ${
+                  className={`relative w-full h-[180px] rounded-t-[60px] shadow-xl flex flex-col items-center justify-center transition-all press-3d ${
                     isOpen
                       ? 'bg-emerald-100 ring-4 ring-green-400'
                       : highlight
@@ -171,7 +171,7 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
                 >
                   {isOpen ? (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: [0, 1.3, 1] }}>
-                      <WordCard word={w} size={100} />
+                      <WordCard word={w} size={88} />
                     </motion.div>
                   ) : (
                     <>
@@ -183,7 +183,7 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
                     </>
                   )}
                 </div>
-                <div className="w-[132px] h-3 bg-stone-500/60 rounded-b-lg" />
+                <div className="w-full h-3 bg-stone-500/60 rounded-b-lg" />
               </motion.button>
             );
           })}
