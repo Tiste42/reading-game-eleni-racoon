@@ -50,3 +50,6 @@ public/audio/phonemes/_*/
 public/images/generated/eleni/_untrimmed/
 /tasks/audio-test/
 /tasks/phoneme-work/
+
+# generated each build by next.config (write-version.mjs)
+public/version.json

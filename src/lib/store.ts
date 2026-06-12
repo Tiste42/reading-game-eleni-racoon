@@ -92,8 +92,8 @@ export const useGameStore = create<GameState>()(
       sessionHistory: [],
       soundEnabled: true,
       musicEnabled: true,
-      volume: 0.8,
-      musicVolume: 0.12,
+      volume: 0.9,
+      musicVolume: 0.08, // music sits well under Leni's voice by default
       freePlay: false,
 
       setCurrentWorld: (world) => set({ currentWorld: world }),
@@ -183,8 +183,15 @@ export const useGameStore = create<GameState>()(
         })),
       toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
       toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
-      setVolume: (volume) => set({ volume }),
-      setMusicVolume: (musicVolume) => set({ musicVolume }),
+      // Leni's voice must always sit above the music: music is capped at 60%
+      // of the voice volume, and lowering the voice pulls the music down too.
+      setVolume: (volume) =>
+        set((state) => ({
+          volume,
+          musicVolume: Math.min(state.musicVolume, volume * 0.6),
+        })),
+      setMusicVolume: (musicVolume) =>
+        set((state) => ({ musicVolume: Math.min(musicVolume, state.volume * 0.6) })),
       toggleFreePlay: () => set((state) => ({ freePlay: !state.freePlay })),
 
       isWorldUnlocked: (world) => {

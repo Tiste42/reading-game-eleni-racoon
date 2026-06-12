@@ -211,16 +211,26 @@ export function stopBackgroundMusic(): void {
 
 export function setMusicVolume(volume: number): void {
   currentMusicVolume = volume;
-  if (bgMusic) bgMusic.volume(duckCount > 0 ? volume * DUCK_FACTOR : volume);
+  if (bgMusic) {
+    // Cancel any in-flight duck/fade so the slider change applies immediately.
+    bgMusic.fade(bgMusic.volume(), duckCount > 0 ? volume * DUCK_FACTOR : volume, 80);
+  }
 }
 
 // --- Music ducking: lower music while Leni speaks so the child hears her clearly ---
 
-const DUCK_FACTOR = 0.12; // duck to 12% of normal — clearly noticeable
+// Music should be MUCH quieter than speech — drop it to ~5% while Leni talks.
+const DUCK_FACTOR = 0.05;
 let duckCount = 0;
+
+let unduckTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function duckMusic(): void {
   duckCount++;
+  if (unduckTimer) {
+    clearTimeout(unduckTimer);
+    unduckTimer = null;
+  }
   if (bgMusic && duckCount === 1) {
     bgMusic.fade(bgMusic.volume(), currentMusicVolume * DUCK_FACTOR, 120);
   }
@@ -228,7 +238,14 @@ export function duckMusic(): void {
 
 export function unduckMusic(): void {
   duckCount = Math.max(0, duckCount - 1);
-  if (bgMusic && duckCount === 0) {
-    bgMusic.fade(bgMusic.volume(), currentMusicVolume, 350);
-  }
+  if (duckCount !== 0) return;
+  // Lazy restore: stay ducked through the short gaps between clips in a
+  // spoken sequence so the music doesn't pump up and down between words.
+  if (unduckTimer) clearTimeout(unduckTimer);
+  unduckTimer = setTimeout(() => {
+    unduckTimer = null;
+    if (bgMusic && duckCount === 0) {
+      bgMusic.fade(bgMusic.volume(), currentMusicVolume, 400);
+    }
+  }, 450);
 }

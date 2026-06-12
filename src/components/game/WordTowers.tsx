@@ -136,7 +136,7 @@ export default function WordTowers({ worldId, onComplete }: Props) {
       progressIcon="🗼"
       bgClassName="from-emerald-400/60 to-teal-300/50"
     >
-      <div className="flex-1 flex flex-col items-center justify-between py-2">
+      <div className="flex-1 flex flex-col items-center justify-evenly py-2">
         {/* Leni + family pattern */}
         <div className="flex flex-col items-center">
           <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={120} />
@@ -170,8 +170,11 @@ export default function WordTowers({ worldId, onComplete }: Props) {
         </div>
 
         {/* The tower grows */}
-        <div className="flex flex-col-reverse items-center min-h-[170px] justify-start">
+        <div className="flex flex-col-reverse items-center justify-start">
           <div className="w-40 h-3 bg-stone-500/60 rounded" />
+          {tower.length === 0 && (
+            <p className="text-emerald-900/50 font-[Fredoka] text-sm mb-1">Build your word tower here!</p>
+          )}
           {tower.map((w, i) => (
             <motion.div
               key={i}

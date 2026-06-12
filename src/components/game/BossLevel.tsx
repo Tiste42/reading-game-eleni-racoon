@@ -7,7 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import GameShell from '@/components/ui/GameShell';
 import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 import WordCard from '@/components/ui/WordCard';
 import { playSoundEffect } from '@/lib/audio';
@@ -163,7 +163,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
       playSoundEffect('wrong');
       setFeedback('wrong');
       recordWrong();
-      speakWrongExplanation(answer, current.correct);
+      speakFeedback('wrong');
       setTimeout(() => setFeedback(null), 2000);
     }
   }, [feedback, doneSpeaking, shouldReveal, current, round, challenges, worldId, world, completeBoss, addCoins, addPassportStamp, addCompanion, addCostume, recordWrong]);

@@ -84,17 +84,20 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
   const targetCount = current.items.filter((i) => i.startsWithTarget).length;
   const roundComplete = sorted.length >= targetCount;
 
-  // Instruction + the sound only — speaking all six words was fragile on
-  // phones, and naming the pictures herself is the skill.
-  const { replay } = useComposedSpeech(
+  // Leni names every item (with its card highlighted), then repeats the
+  // target sound. Reliable now that the iOS audio-element leak is fixed.
+  const { activeOption, replay } = useComposedSpeech(
     [
       { say: 'Tap everything that starts with this sound!' },
       { pause: 200 },
       { phoneme: current.targetLetter },
+      { pause: 350 },
+      { options: current.items.map((i) => i.word) },
+      { pause: 250 },
+      { phoneme: current.targetLetter },
     ],
     [round],
   );
-  const activeOption = -1;
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 

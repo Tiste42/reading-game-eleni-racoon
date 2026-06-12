@@ -31,7 +31,11 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - NOTE: W4-6 done solo in main loop — subagents died on session limit (resets 1:30am).
 - [x] iPhone audio root-cause fix (commit e151b8e): WebAudio + unload-every-clip; sounds no longer die after round 1. GLOBAL (shared speech.ts). See [[learnings]] mobile audio.
 - [x] PHONE-WIDTH layout sweep (390px): converted all fixed-width 3-up choice rows (SurfSlide, SoundTelescope, SailboatRace, DragonFeed, GardenGrow, RuinDecoder, ComicCreator, SoundSafari) to grid-cols-3 max-w-md; KnightsDoors doors + HeartWordMap letters → flex-1 min-w-0. Verified 0 overflow across W2-6 at 390px. SoundSort/SoundHunt/OddSoundOut already fixed earlier.
-- [ ] NEXT SESSION IDEAS: coin shop/dress-up, PWA service worker, W2 shaky-sound prioritization, per-game word art for remaining abstract words
+- [x] Settings & audio polish batch: voice slider now actually controls speech volume (was hardcoded 0.9); AudioContext resumed before each clip (speech worked only when music kept ctx awake — why muting music seemed to kill speech); ducking to 5% + lazy unduck (no pumping between words); music clamped ≤60% of voice in store; defaults voice .9 / music .08; ⚙️ settings button in-game; progress bar clears the floating buttons.
+- [x] VersionWatcher auto-update: version.json (no-store) + NEXT_PUBLIC_APP_VERSION; reloads home-screen PWA on new deploys (iOS standalone caches aggressively).
+- [x] WordTowers slug fix ('-at' → textToSlug strips hyphen; KNOWN set had '--at' → TTS fallback). Audited ALL 257 slugs vs disk: 0 missing.
+- [x] SoundHunt/SoundSorting: item-naming sequence RESTORED (root cause was the iOS audio leak, now fixed); hint 22s; network-verified all 6 items speak in order.
+- [ ] NEXT SESSION IDEAS: coin shop/dress-up (coins currently earn-only!), PWA service worker, W2 shaky-sound prioritization, per-game word art for remaining abstract words
 - [ ] NEXT: coin shop/dress-up, PWA service worker
 
 ## Phase 1 — Fix the sounds (the #1 reported problem)

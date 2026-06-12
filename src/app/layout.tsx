@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import BackgroundMusic from '@/components/BackgroundMusic';
+import VersionWatcher from '@/components/VersionWatcher';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-[Nunito] bg-gradient-to-b from-pink-50 to-purple-50 min-h-screen overflow-x-hidden">
+        <VersionWatcher />
         <BackgroundMusic />
         {children}
       </body>

@@ -1,7 +1,17 @@
 'use client';
 
-import { Howl } from 'howler';
+import { Howl, Howler } from 'howler';
 import { duckMusic, unduckMusic, AUDIO_VERSION } from './audio';
+import { useGameStore } from './store';
+
+// The parent "Voice Volume" slider — applied to every spoken clip.
+function voiceVolume(): number {
+  try {
+    return useGameStore.getState().volume;
+  } catch {
+    return 0.9;
+  }
+}
 
 // --- Static audio playback via Howler ---
 
@@ -143,8 +153,8 @@ const KNOWN_NARRATION_SLUGS = new Set([
   // SoundTelescope instructions
   'listen-to-the-sounds-sssaaat-what-word-is-that',
   'listen-to-the-sounds-piiinnn-what-word-is-that',
-  'listen-to-the-sounds-nnneeeet-what-word-is-that',
-  'listen-to-the-sounds-peeeet-what-word-is-that',
+  'listen-to-the-sounds-nnneeet-what-word-is-that',
+  'listen-to-the-sounds-peeet-what-word-is-that',
   'listen-to-the-sounds-sssiiip-what-word-is-that',
   'listen-to-the-sounds-llleeet-what-word-is-that',
   // PlazaPuzzle — show picture, child reads word options
@@ -163,11 +173,11 @@ const KNOWN_NARRATION_SLUGS = new Set([
 
   // --- World 4: Castle of Words ---
   // WordTowers instructions
-  'find-words-in-the--at-family-which-word-belongs',
-  'find-words-in-the--an-family-which-word-belongs',
-  'find-words-in-the--in-family-which-word-belongs',
-  'find-words-in-the--og-family-which-word-belongs',
-  'find-words-in-the--ug-family-which-word-belongs',
+  'find-words-in-the-at-family-which-word-belongs',
+  'find-words-in-the-an-family-which-word-belongs',
+  'find-words-in-the-in-family-which-word-belongs',
+  'find-words-in-the-og-family-which-word-belongs',
+  'find-words-in-the-ug-family-which-word-belongs',
   // PotionLab instructions
   'put-the-letters-c-a-t-into-the-cauldron-to-make-cat',
   'put-the-letters-p-i-n-into-the-cauldron-to-make-pin',
@@ -373,6 +383,11 @@ function playStatic(path: string, fallbackText?: string): Promise<void> {
   if (thisGen !== speakGeneration) return Promise.resolve();
 
   duckMusic();
+  // iOS suspends the WebAudio context during silence (the music kept it awake);
+  // with music OFF that made speech go silent. Wake it before every clip.
+  if (Howler.ctx && Howler.ctx.state !== 'running') {
+    try { Howler.ctx.resume(); } catch { /* ignore */ }
+  }
   return new Promise<void>((resolve) => {
     // WebAudio (html5:false): iOS only allows a handful of live HTML5 audio
     // elements — with html5:true, sounds went silent after the first round.
@@ -380,7 +395,7 @@ function playStatic(path: string, fallbackText?: string): Promise<void> {
       src: [`/audio/${path}?v=${AUDIO_VERSION}`],
       format: ['mp3'], // querystring hides the extension from Howler
       html5: false,
-      volume: 0.9,
+      volume: voiceVolume(),
       onend: () => finish(),
       // Resolve on stop too — an interrupted clip must not leave callers
       // awaiting forever (that froze speech sequences mid-game).
@@ -434,7 +449,7 @@ function browserSpeak(text: string, rate = 0.85): Promise<void> {
     const utter = new SpeechSynthesisUtterance(text);
     utter.rate = rate;
     utter.pitch = 1.2;
-    utter.volume = 1;
+    utter.volume = voiceVolume();
 
     const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(v =>

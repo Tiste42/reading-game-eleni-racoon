@@ -70,7 +70,8 @@ const SLOTS = [
 ];
 
 // Long delay so the hint helps a stuck child without giving answers away
-const HINT_DELAY_MS = 16000;
+// (the naming sequence itself takes ~12s, so the hint must come well after)
+const HINT_DELAY_MS = 22000;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -97,13 +98,17 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   const targetCount = targetItems.length;
   const roundDone = found.length >= targetCount;
 
-  // Instruction + the sound only. (Speaking all six item words was fragile on
-  // phones — audio cut off mid-sequence — and naming the pictures herself IS
-  // the skill. She can tap "Find b 🔊" anytime to re-hear the sound.)
-  const { replay } = useComposedSpeech(
+  // Leni names every item (with its circle highlighted) so the child knows
+  // what each picture is, then gives the target sound. The old cut-off-after-
+  // one-word problem was the iOS audio-element leak, fixed in speech.ts.
+  const { activeOption, replay } = useComposedSpeech(
     [
       { say: 'Tap everything that starts with this sound!' },
       { pause: 200 },
+      { phoneme: current.targetSound },
+      { pause: 350 },
+      { options: current.items.map((i) => i.word) },
+      { pause: 250 },
       { phoneme: current.targetSound },
     ],
     [roundIdx],
@@ -227,6 +232,7 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
             {current.items.map((item, index) => {
               const slot = SLOTS[index % SLOTS.length];
               const isFound = found.includes(item.word);
+              const isBeingSpoken = activeOption === index;
               const hintThis = hintWord === item.word;
 
               return (
@@ -248,8 +254,8 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
                       : { scale: { delay: index * 0.07, type: 'spring', stiffness: 260, damping: 18 } }
                   }
                   className={`absolute w-[104px] h-[104px] rounded-full bg-white/95 shadow-xl flex items-center justify-center ${
-                    hintThis ? 'animate-hint-pulse ring-4 ring-yellow-300 z-10' : ''
-                  }`}
+                    isBeingSpoken ? 'ring-4 ring-blue-400 z-10' : ''
+                  } ${hintThis ? 'animate-hint-pulse ring-4 ring-yellow-300 z-10' : ''}`}
                   style={{ left: `${slot.left}%`, top: `${slot.top}%`, rotate: `${slot.rot}deg` }}
                 >
                   <WordCard word={item.word} size={70} />

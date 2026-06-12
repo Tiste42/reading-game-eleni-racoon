@@ -52,8 +52,9 @@ export default function GameShell({
           </motion.button>
           {onReplay && <ReplayButton onReplay={onReplay} />}
 
-          {/* Progress bar */}
-          <div className="relative flex-1 h-6 bg-white/50 backdrop-blur-sm rounded-full shadow-inner mr-10">
+          {/* Progress bar — extra right margin so the floating music/settings/home
+              buttons (fixed top-right) never cover it */}
+          <div className="relative flex-1 h-6 bg-white/50 backdrop-blur-sm rounded-full shadow-inner mr-[150px]">
             <motion.div
               className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-yellow-300 to-amber-400"
               initial={false}

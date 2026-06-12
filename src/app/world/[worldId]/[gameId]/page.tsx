@@ -137,6 +137,17 @@ export default function GamePage() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
               whileTap={{ scale: 0.9 }}
+              onClick={() => router.push('/parent')}
+              className="w-10 h-10 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center text-lg shadow-md"
+              aria-label="Settings"
+            >
+              ⚙️
+            </motion.button>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => router.push('/')}
               className="w-12 h-12 rounded-full bg-white/40 backdrop-blur-sm flex items-center justify-center text-xl shadow-md"
               aria-label="Home"
