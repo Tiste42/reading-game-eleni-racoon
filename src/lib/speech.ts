@@ -346,6 +346,14 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'which-one-does-not-start-with-this-sound',
   'listen-first-then-tap-the-one-that-is-different',
 
+  // --- World 6 ComicCreator: real comprehension questions ---
+  'who-sat-on-the-mat',
+  'who-ran',
+  'what-did-the-bug-sit-on',
+  'what-did-he-get',
+  'what-fell-in-the-pot',
+  'who-sat-in-the-van',
+
   // --- Coverage gap fixes ---
   'the-word-is-them-which-two-letters-make-the-special-sound-is-it-sh-ch-or-th',
   '1', '2', '3', '4',

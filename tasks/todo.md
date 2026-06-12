@@ -36,6 +36,11 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - [x] WordTowers slug fix ('-at' → textToSlug strips hyphen; KNOWN set had '--at' → TTS fallback). Audited ALL 257 slugs vs disk: 0 missing.
 - [x] SoundHunt/SoundSorting: item-naming sequence RESTORED (root cause was the iOS audio leak, now fixed); hint 22s; network-verified all 6 items speak in order.
 - [ ] NEXT SESSION IDEAS: coin shop/dress-up (coins currently earn-only!), PWA service worker, W2 shaky-sound prioritization, per-game word art for remaining abstract words
+- [x] WORLD 6 REWORK (Baptiste: "just pick some so they're better"):
+      - ComicCreator FIXED: read sentence → "I read it!" → recorded comprehension question ("Who sat on the mat?") → picture choices where a DISTRACTOR IS ANOTHER WORD FROM THE SENTENCE (mat) — word-matching loses, reading wins. 6 new recorded question clips.
+      - PostcardWriter FIXED: postcard now shows a PHOTO that determines the answer; choices are TEXT-ONLY words (log/mug/bat) so the work is decoding. Logic hole closed.
+      - KEEPERS unchanged: StoryStroll, BeachDetective, ManateeRescue (already real comprehension).
+      - Slug audit after: 263/263 spoken lines have audio files.
 - [ ] NEXT: coin shop/dress-up, PWA service worker
 
 ## Phase 1 — Fix the sounds (the #1 reported problem)

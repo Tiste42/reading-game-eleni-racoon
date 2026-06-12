@@ -138,10 +138,16 @@ export default function PostcardWriter({ worldId, onComplete }: Props) {
           </p>
         </div>
 
-        {/* The postcard */}
-        <div className="bg-white rounded-3xl px-7 py-6 shadow-xl max-w-lg border-4 border-dashed border-orange-200 relative">
+        {/* The postcard — the PHOTO decides the answer; she must READ the
+            word options below to find the one that matches it */}
+        <div className="bg-white rounded-3xl px-7 py-5 shadow-xl max-w-lg border-4 border-dashed border-orange-200 relative">
           <span className="absolute top-2 right-3 text-3xl">{filled ? '📮' : '🖊️'}</span>
-          <p className="text-4xl font-bold font-[Fredoka] text-gray-800 leading-snug">
+          <div className="flex justify-center mb-2">
+            <div className="bg-cyan-50 border-4 border-white rounded-2xl p-2 shadow-md rotate-[-2deg]">
+              <WordCard word={current.correct} size={120} />
+            </div>
+          </div>
+          <p className="text-4xl font-bold font-[Fredoka] text-gray-800 leading-snug text-center">
             {current.template.split('___')[0]}
             <span
               className={`inline-block min-w-[110px] text-center mx-1 rounded-xl px-2 ${
@@ -154,8 +160,8 @@ export default function PostcardWriter({ worldId, onComplete }: Props) {
           </p>
         </div>
 
-        {/* Word choices with pictures */}
-        <div className="flex gap-4 flex-wrap justify-center">
+        {/* TEXT-ONLY word choices — the reading is in decoding these */}
+        <div className="flex gap-3 flex-wrap justify-center">
           {choices.map((w) => {
             const highlight = (filled || shouldReveal) && w === current.correct;
             return (
@@ -165,12 +171,11 @@ export default function PostcardWriter({ worldId, onComplete }: Props) {
                 disabled={phase !== 'pick'}
                 animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
                 whileTap={{ scale: 0.92 }}
-                className={`px-5 py-4 rounded-3xl shadow-xl bg-white press-3d flex flex-col items-center gap-1 transition-all ${
+                className={`px-7 py-5 rounded-3xl shadow-xl bg-white press-3d transition-all ${
                   highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                 }`}
               >
-                <WordCard word={w} size={84} />
-                <span className="text-2xl font-bold font-[Fredoka] text-gray-800 lowercase">{w}</span>
+                <span className="text-5xl font-bold font-[Fredoka] text-gray-800 lowercase">{w}</span>
               </motion.button>
             );
           })}

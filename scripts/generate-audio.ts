@@ -532,6 +532,14 @@ function buildManifest(): AudioClip[] {
     { text: 'Which one does not start with this sound?' },
     { text: 'Listen first... then tap the one that is different!' },
 
+    // --- World 6 ComicCreator: real comprehension questions ---
+    { text: 'Who sat on the mat?' },
+    { text: 'Who ran?' },
+    { text: 'What did the bug sit on?' },
+    { text: 'What did he get?' },
+    { text: 'What fell in the pot?' },
+    { text: 'Who sat in the van?' },
+
     // --- Coverage gap fixes ---
     { text: 'The word is them. Which two letters make the special sound? Is it sh, ch, or th?' },
     { text: '1', ttsText: 'one!' },

@@ -6,24 +6,28 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
+import PressButton from '@/components/ui/PressButton';
 import { useGameStore } from '@/lib/store';
-import { speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { speak, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 
 interface ComicPanel {
-  sentence: string;
-  word: string; // picturable key for the panel art
-  distractors: string[];
+  sentence: string; // SHE reads this — never spoken before she answers
+  question: string; // recorded; asked AFTER she reads
+  answer: string;
+  choices: string[]; // includes another word FROM the sentence as the trap —
+  // matching any picture you saw in the sentence no longer wins; only
+  // understanding the question does
 }
 
 const STORY: ComicPanel[] = [
-  { sentence: 'The cat sat on a mat.', word: 'cat', distractors: ['dog', 'bug'] },
-  { sentence: 'A dog ran to the cat.', word: 'dog', distractors: ['van', 'cup'] },
-  { sentence: 'The cat and dog had a nap.', word: 'nap', distractors: ['hot', 'ship'] },
-  { sentence: 'A bug sat on a log.', word: 'bug', distractors: ['cat', 'jet'] },
-  { sentence: 'He got a red hat.', word: 'hat', distractors: ['net', 'hen'] },
-  { sentence: 'The bug fell in the pot.', word: 'pot', distractors: ['bed', 'fin'] },
+  { sentence: 'The cat sat on a mat.', question: 'Who sat on the mat?', answer: 'cat', choices: ['cat', 'mat', 'dog'] },
+  { sentence: 'A dog ran to the cat.', question: 'Who ran?', answer: 'dog', choices: ['dog', 'cat', 'bus'] },
+  { sentence: 'A bug sat on a log.', question: 'What did the bug sit on?', answer: 'log', choices: ['log', 'bug', 'bed'] },
+  { sentence: 'He got a red hat.', question: 'What did he get?', answer: 'hat', choices: ['hat', 'red', 'cup'] },
+  { sentence: 'The bug fell in the pot.', question: 'What fell in the pot?', answer: 'bug', choices: ['bug', 'pot', 'fish'] },
+  { sentence: 'A pig sat in the van.', question: 'Who sat in the van?', answer: 'pig', choices: ['pig', 'van', 'hen'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -35,7 +39,7 @@ interface Props {
   onComplete: () => void;
 }
 
-type Phase = 'read' | 'won';
+type Phase = 'read' | 'answer' | 'won';
 
 export default function ComicCreator({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
@@ -53,12 +57,12 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
   useEffect(() => {
     setPhase('read');
     setWrongPick(null);
-    setChoices(shuffle([rounds[round].word, ...rounds[round].distractors]));
+    setChoices(shuffle([...rounds[round].choices]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
   const { replay } = useGameSpeech(
-    phase === 'read' ? 'Read the sentence! Which picture matches?' : null,
+    phase === 'read' ? 'Read the sentence!' : phase === 'answer' ? current.question : null,
     [round, phase],
   );
 
@@ -75,12 +79,12 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
   }, [isLast, worldId, completeGame, addCoins]);
 
   useEffect(() => {
-    if (shouldReveal && phase === 'read') {
+    if (shouldReveal && phase === 'answer') {
       (async () => {
         recordSoundAttempt('sentences', false);
-        await speakReveal(current.word);
+        await speakReveal(current.answer);
         setPhase('won');
-        setPanels((p) => [...p, current.word]);
+        setPanels((p) => [...p, current.answer]);
         await new Promise((r) => setTimeout(r, 1100));
         advance();
       })();
@@ -88,15 +92,21 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldReveal, phase]);
 
+  const startAnswer = useCallback(() => {
+    playSoundEffect('tap');
+    setPhase('answer');
+    speak(current.question);
+  }, [current.question]);
+
   const pick = useCallback(
     (w: string) => {
-      if (phase !== 'read') return;
-      if (w === current.word) {
+      if (phase !== 'answer') return;
+      if (w === current.answer) {
         recordSoundAttempt('sentences', true);
         incrementStreak();
         playSoundEffect('coin');
         setPhase('won');
-        setPanels((p) => [...p, current.word]);
+        setPanels((p) => [...p, current.answer]);
         (async () => {
           await speakWord(w);
           await speakFeedback(isLast ? 'complete' : 'correct');
@@ -109,8 +119,9 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
         resetStreak();
         playSoundEffect('wrong');
         setWrongPick(w);
+        // Re-ask the question so she re-reads the sentence with it in mind
         (async () => {
-          await speakWord(w); // hear what she picked — doesn't match the sentence
+          await speak(current.question);
           setWrongPick(null);
         })();
       }
@@ -132,7 +143,7 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
         <div className="flex flex-col items-center">
           <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={116} />
           <p className="text-cyan-900 font-[Fredoka] font-bold text-2xl text-center px-3">
-            Read it — pick the picture for your comic!
+            {phase === 'read' ? 'Read the comic out loud!' : phase === 'answer' ? 'Answer the question!' : 'New panel earned!'}
           </p>
         </div>
 
@@ -142,26 +153,36 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
           <span className="absolute -bottom-4 left-10 w-8 h-8 bg-white border-b-4 border-r-4 border-gray-200 rotate-45" />
         </div>
 
-        {/* Picture choices */}
-        <div className="grid grid-cols-3 gap-3 w-full max-w-md mx-auto px-1">
-          {choices.map((w) => {
-            const highlight = (phase === 'won' || shouldReveal) && w === current.word;
-            return (
-              <motion.button
-                key={`${round}-${w}`}
-                onClick={() => pick(w)}
-                disabled={phase !== 'read'}
-                animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
-                whileTap={{ scale: 0.92 }}
-                className={`rounded-3xl p-2 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
-                  highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
-                }`}
-              >
-                <WordCard word={w} size={96} />
-              </motion.button>
-            );
-          })}
-        </div>
+        {/* Read gate, then the question's picture choices */}
+        {phase === 'read' ? (
+          <PressButton
+            silent
+            onClick={startAnswer}
+            className="bg-gradient-to-br from-cyan-500 to-green-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka]"
+          >
+            ✋ I read it!
+          </PressButton>
+        ) : (
+          <div className="grid grid-cols-3 gap-3 w-full max-w-md mx-auto px-1">
+            {choices.map((w) => {
+              const highlight = (phase === 'won' || shouldReveal) && w === current.answer;
+              return (
+                <motion.button
+                  key={`${round}-${w}`}
+                  onClick={() => pick(w)}
+                  disabled={phase !== 'answer'}
+                  animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                  whileTap={{ scale: 0.92 }}
+                  className={`rounded-3xl p-2 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
+                    highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                  }`}
+                >
+                  <WordCard word={w} size={96} />
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
 
         {/* The comic strip fills in */}
         <div className="flex gap-2 bg-white/60 rounded-2xl px-4 py-2 shadow-inner items-center min-h-[72px]">
