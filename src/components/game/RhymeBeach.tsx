@@ -1,48 +1,37 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { speak, speakClip, speakFeedback } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import { playSoundEffect } from '@/lib/audio';
 
-interface RhymeGroup {
-  target: { word: string; icon: string };
-  match: { word: string; icon: string };
-  distractors: Array<{ word: string; icon: string }>;
+interface RhymeRound {
+  target: string;
+  match: string;
+  distractors: string[];
 }
 
-const RHYME_ROUNDS: RhymeGroup[] = [
-  {
-    target: { word: 'cat', icon: getIcon('cat') },
-    match: { word: 'hat', icon: getIcon('hat') },
-    distractors: [{ word: 'dog', icon: getIcon('dog') }, { word: 'sun', icon: getIcon('sun') }],
-  },
-  {
-    target: { word: 'bug', icon: getIcon('bug') },
-    match: { word: 'mug', icon: getIcon('mug') },
-    distractors: [{ word: 'fish', icon: getIcon('fish') }, { word: 'pen', icon: getIcon('pen') }],
-  },
-  {
-    target: { word: 'log', icon: getIcon('log') },
-    match: { word: 'dog', icon: getIcon('dog') },
-    distractors: [{ word: 'cat', icon: getIcon('cat') }, { word: 'bed', icon: getIcon('bed') }],
-  },
-  {
-    target: { word: 'hen', icon: getIcon('hen') },
-    match: { word: 'ten', icon: getIcon('ten') },
-    distractors: [{ word: 'cup', icon: getIcon('cup') }, { word: 'map', icon: getIcon('map') }],
-  },
-  {
-    target: { word: 'pin', icon: getIcon('pin') },
-    match: { word: 'bin', icon: getIcon('bin') },
-    distractors: [{ word: 'car', icon: getIcon('car') }, { word: 'egg', icon: getIcon('egg') }],
-  },
+const RHYME_ROUNDS: RhymeRound[] = [
+  { target: 'cat', match: 'hat', distractors: ['dog', 'sun'] },
+  { target: 'bug', match: 'mug', distractors: ['fish', 'pen'] },
+  { target: 'log', match: 'dog', distractors: ['cat', 'bed'] },
+  { target: 'hen', match: 'ten', distractors: ['cup', 'map'] },
+  { target: 'pin', match: 'bin', distractors: ['car', 'egg'] },
 ];
+
+const PINATA_STYLES = [
+  'from-pink-400 via-yellow-300 to-purple-400',
+  'from-cyan-400 via-lime-300 to-pink-400',
+  'from-orange-400 via-fuchsia-300 to-blue-400',
+];
+
+const CANDY = ['🍬', '🍭', '🍫', '🍪', '⭐'];
 
 interface Props {
   worldId: number;
@@ -55,222 +44,238 @@ function shuffle<T>(arr: T[]): T[] {
 
 export default function RhymeBeach({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<'play' | 'burst' | 'model'>('play');
+  const [fallen, setFallen] = useState<string[]>([]);
+  const [candies, setCandies] = useState(0);
+  const [burstAt, setBurstAt] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [score, setScore] = useState(0);
-  const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  // Shuffle round order and choices within each round
-  const [rounds] = useState(() => {
-    const shuffled = shuffle(RHYME_ROUNDS);
-    return shuffled.map(r => ({
+  const [rounds] = useState(() =>
+    shuffle(RHYME_ROUNDS).map((r) => ({
       ...r,
       choices: shuffle([r.match, ...r.distractors]),
-    }));
-  });
+    })),
+  );
 
-  const currentRound = rounds[round];
+  const current = rounds[round];
   const isLastRound = round >= rounds.length - 1;
-  const roundChoices = currentRound.choices;
 
-  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
-    `What rhymes with ${currentRound.target.word}?`,
-    roundChoices.map(c => c.word),
+  const { activeOption, replay } = useGameSpeechWithOptions(
+    `What rhymes with ${current.target}?`,
+    current.choices,
     [round],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 
-  useEffect(() => {
-    if (shouldReveal) {
-      let cancelled = false;
-      (async () => {
-        await speakReveal(currentRound.match.word);
-        if (cancelled) return;
-        await new Promise(r => setTimeout(r, 500));
-        if (cancelled) return;
-        setFeedback(null);
-        if (isLastRound) {
-          completeGame(worldId, 'rhyme-match');
-          addCoins(5);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      })();
-      return () => { cancelled = true; };
-    }
-  }, [shouldReveal, currentRound, isLastRound, worldId, completeGame, addCoins]);
-
-  const handleChoice = useCallback((chosen: { word: string; icon: string }) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
-
-    if (chosen.word === currentRound.match.word) {
-      setFeedback('correct');
-      (async () => {
-        await speakFeedback(isLastRound ? 'complete' : 'correct');
-        await new Promise(r => setTimeout(r, 400));
-        setFeedback(null);
-        if (isLastRound) {
-          completeGame(worldId, 'rhyme-match');
-          addCoins(5);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      })();
+  const advance = useCallback(() => {
+    setPhase('play');
+    setFallen([]);
+    setBurstAt(null);
+    if (isLastRound) {
+      completeGame(worldId, 'rhyme-match');
+      addCoins(5);
+      setShowCelebration(true);
     } else {
-      setFeedback('wrong');
-      recordWrong();
-      speakWrongExplanation(chosen.word, currentRound.match.word, 'rhyme');
-      resetStreak();
-      setTimeout(() => setFeedback(null), 2000);
+      setRound((r) => r + 1);
     }
-  }, [feedback, doneSpeaking, shouldReveal, currentRound, isLastRound, round, worldId, completeGame, addCoins, incrementStreak, resetStreak, recordWrong, score]);
+  }, [isLastRound, worldId, completeGame, addCoins]);
+
+  // After 2 misses: Leni models the rhyme pair, then we move on (no dead ends)
+  const modeling = useRef(false);
+  useEffect(() => {
+    if (shouldReveal && phase === 'play' && !modeling.current) {
+      modeling.current = true;
+      setPhase('model');
+      (async () => {
+        await speak(`${current.target} and ${current.match} rhyme! Listen: ${current.target}... ${current.match}!`);
+        await new Promise((r) => setTimeout(r, 700));
+        modeling.current = false;
+        advance();
+      })();
+    }
+  }, [shouldReveal, phase, current, advance]);
+
+  const handleChoice = useCallback(
+    (word: string, index: number) => {
+      if (phase !== 'play' || fallen.includes(word)) return;
+
+      if (word === current.match) {
+        recordSoundAttempt('rhyme', true);
+        incrementStreak();
+        setPhase('burst');
+        setBurstAt(index);
+        playSoundEffect('celebrate');
+        setCandies((c) => c + 1);
+        (async () => {
+          await speakFeedback(isLastRound ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 500));
+          advance();
+        })();
+      } else {
+        recordSoundAttempt('rhyme', false);
+        recordWrong();
+        resetStreak();
+        playSoundEffect('wrong');
+        // Scaffold down: the wrong piñata falls off its rope, fewer choices remain
+        setFallen((f) => [...f, word]);
+        speakClip('rhyme-hint', 'Listen! Rhyming words sound the same at the end!');
+      }
+    },
+    [phase, fallen, current, isLastRound, advance, recordWrong, resetStreak, incrementStreak, recordSoundAttempt],
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-300/75 via-cyan-200/75 to-amber-100/75 px-4 py-6 flex flex-col">
-      {/* Back button */}
-      <div className="flex items-center gap-2">
-
-      <motion.button
-        whileTap={{ scale: 0.9 }}
-        onClick={onComplete}
-        className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md self-start mb-4"
-        aria-label="Back"
-      >
-        ◀
-      </motion.button>
-
-        <ReplayButton onReplay={replay} />
-
-      </div>
-
-      {/* Progress dots */}
-      <div className="flex justify-center gap-2 mb-4">
-        {rounds.map((_, i) => (
-          <div
-            key={i}
-            className={`w-4 h-4 rounded-full transition-all ${
-              i < round ? 'bg-green-400 scale-100' :
-              i === round ? 'bg-white scale-125 ring-2 ring-pink-400' :
-              'bg-white/40'
-            }`}
-          />
-        ))}
-      </div>
-
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🪅"
+      bgClassName="from-pink-400/80 via-orange-300/80 to-amber-200/80"
+    >
       {/* Eleni + target word */}
-      <div className="text-center mb-6">
+      <div className="text-center pt-2 pb-1">
         <EleniCharacter
-          pose={feedback === 'correct' ? 'celebrating' : feedback === 'wrong' ? 'standing' : 'excited'}
-          size={100}
+          pose={phase === 'burst' ? 'celebrating' : 'excited'}
+          size={148}
         />
         <motion.div
           key={round}
-          initial={{ scale: 0.8, opacity: 0 }}
+          initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="mt-2"
+          transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+          className="mt-1"
         >
-          <p className="text-sm text-blue-600 font-[Nunito] mb-1">
-            Find what rhymes with...
-          </p>
-          <div className="inline-flex items-center gap-3 bg-white/80 rounded-2xl px-6 py-3 shadow-lg">
-            <span className="text-5xl">{currentRound.target.icon}</span>
-            <span className="text-2xl font-bold font-[Fredoka] text-purple-600 lowercase">
-              {currentRound.target.word}
+          <p className="text-base text-pink-800 font-[Fredoka] font-semibold mb-1">Find what rhymes with...</p>
+          <button
+            onClick={() => speak(current.target)}
+            className="inline-flex items-center gap-3 bg-white/90 rounded-2xl px-6 py-3 shadow-lg press-3d"
+          >
+            <WordCard word={current.target} size={64} />
+            <span className="text-4xl font-bold font-[Fredoka] text-purple-600 lowercase">
+              {current.target}
             </span>
-          </div>
+            <span className="text-2xl">🔊</span>
+          </button>
         </motion.div>
       </div>
 
-      {/* Answer choices - BIG tap targets */}
-      <div className="flex-1 flex items-center justify-center">
-        <motion.div
-          key={round}
-          className="grid grid-cols-3 gap-4 max-w-md w-full"
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: {},
-            visible: { transition: { staggerChildren: 0.1 } },
-          }}
-        >
-          {roundChoices.map((choice, index) => {
-            const isCorrectAnswer = choice.word === currentRound.match.word;
-            const showCorrect = feedback === 'correct' && isCorrectAnswer;
-            const isBeingSpoken = activeOption === index;
-            const revealCorrect = shouldReveal && isCorrectAnswer;
+      {/* Piñatas hanging from a rope */}
+      <div className="flex-1 flex flex-col justify-evenly py-2">
+        <div className="relative max-w-md w-full mx-auto">
+          {/* rope */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-700/70 rounded-full" />
 
-            return (
-              <motion.button
-                key={choice.word}
-                variants={{
-                  hidden: { y: 30, opacity: 0 },
-                  visible: { y: 0, opacity: 1 },
-                }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleChoice(choice)}
-                disabled={!doneSpeaking || feedback !== null || shouldReveal}
-                className={`
-                  tap-target flex-col rounded-3xl p-4 shadow-lg transition-all
-                  min-h-[110px]
-                  ${showCorrect ? 'bg-green-200 ring-4 ring-green-400 scale-110' :
-                    revealCorrect ? 'bg-green-200 ring-4 ring-green-400 animate-pulse scale-110' :
-                    isBeingSpoken ? 'bg-white ring-4 ring-blue-400 scale-105' :
-                    feedback === 'wrong' && isCorrectAnswer ? 'bg-white/90' :
-                    'bg-white/90 hover:bg-white active:bg-pink-50'}
-                `}
-              >
-                <span className="text-5xl block mb-1">{choice.icon}</span>
-                <span className="text-lg font-bold font-[Fredoka] text-gray-600 lowercase">
-                  {choice.word}
-                </span>
-                {showCorrect && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="text-2xl mt-1"
+          <div className="grid grid-cols-3 gap-4 pt-2">
+            {current.choices.map((word, index) => {
+              const hasFallen = fallen.includes(word);
+              const isCorrect = word === current.match;
+              const isBurst = phase === 'burst' && burstAt === index;
+              const isBeingSpoken = activeOption === index;
+              const revealThis = phase === 'model' && isCorrect;
+
+              return (
+                <div key={`${round}-${word}`} className="relative flex flex-col items-center">
+                  {/* string */}
+                  <div className={`w-0.5 h-6 bg-amber-800/60 ${hasFallen ? 'opacity-0' : ''}`} />
+
+                  <AnimatePresence>
+                    {isBurst && (
+                      <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+                        {CANDY.map((c, ci) => (
+                          <motion.span
+                            key={ci}
+                            className="absolute text-3xl"
+                            initial={{ x: 0, y: 0, scale: 0 }}
+                            animate={{
+                              x: (ci - 2) * 38 + (ci % 2 ? 14 : -14),
+                              y: [0, -50 - ci * 8, 90],
+                              scale: [0, 1.3, 1],
+                              rotate: (ci - 2) * 90,
+                              opacity: [1, 1, 0],
+                            }}
+                            transition={{ duration: 1.0, ease: 'easeOut' }}
+                          >
+                            {c}
+                          </motion.span>
+                        ))}
+                      </div>
+                    )}
+                  </AnimatePresence>
+
+                  <motion.button
+                    onClick={() => handleChoice(word, index)}
+                    disabled={phase !== 'play' || hasFallen}
+                    initial={{ y: -60, opacity: 0 }}
+                    animate={
+                      hasFallen
+                        ? { y: 220, rotate: 35, opacity: 0 }
+                        : isBurst
+                          ? { scale: [1, 1.35, 0], rotate: [0, -12, 12] }
+                          : {
+                              y: 0,
+                              opacity: 1,
+                              rotate: isBeingSpoken ? [0, -5, 5, 0] : [0, -2.5, 2.5, 0],
+                            }
+                    }
+                    transition={
+                      hasFallen
+                        ? { duration: 0.7, ease: 'easeIn' }
+                        : isBurst
+                          ? { duration: 0.55 }
+                          : {
+                              y: { type: 'spring', stiffness: 200, damping: 16, delay: index * 0.12 },
+                              rotate: { duration: isBeingSpoken ? 0.5 : 2.4, repeat: Infinity, ease: 'easeInOut' },
+                            }
+                    }
+                    whileTap={{ scale: 0.92 }}
+                    className={`
+                      relative w-full min-h-[150px] rounded-3xl p-3 shadow-xl flex flex-col items-center justify-center gap-1
+                      bg-gradient-to-br ${PINATA_STYLES[index % PINATA_STYLES.length]}
+                      ${isBeingSpoken ? 'ring-4 ring-white' : ''}
+                      ${revealThis ? 'ring-4 ring-green-400 animate-hint-pulse' : ''}
+                    `}
+                    style={{ transformOrigin: 'top center' }}
                   >
-                    ✅
-                  </motion.span>
-                )}
-              </motion.button>
-            );
-          })}
-        </motion.div>
+                    <span className="bg-white/90 rounded-2xl p-2 shadow-inner flex flex-col items-center">
+                      <WordCard word={word} size={68} />
+                      <span className="text-lg font-bold font-[Fredoka] text-gray-600 lowercase">{word}</span>
+                    </span>
+                    {/* piñata fringe */}
+                    <div className="absolute -bottom-1 left-4 right-4 flex justify-between pointer-events-none">
+                      {Array.from({ length: 5 }).map((_, fi) => (
+                        <span key={fi} className="w-2 h-3 rounded-b-full bg-white/70" />
+                      ))}
+                    </div>
+                  </motion.button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Candy jar */}
+        <div className="flex justify-center mt-6">
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl px-5 py-2 shadow-lg flex items-center gap-1.5 min-h-[44px]">
+            <span className="text-xl">🫙</span>
+            {Array.from({ length: rounds.length }).map((_, i) => (
+              <motion.span
+                key={i}
+                className="text-2xl"
+                initial={false}
+                animate={i < candies ? { scale: [0, 1.5, 1], opacity: 1 } : { opacity: 0.25, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+              >
+                🍬
+              </motion.span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Feedback messages via Eleni (visual, not text-dependent) */}
-      <AnimatePresence>
-        {feedback === 'correct' && (
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            className="text-center py-4"
-          >
-            <span className="text-4xl">🎉</span>
-          </motion.div>
-        )}
-        {feedback === 'wrong' && (
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1, x: [-5, 5, -5, 5, 0] }}
-            exit={{ y: 50, opacity: 0 }}
-            className="text-center py-4"
-          >
-            <span className="text-4xl">🤔</span>
-            <p className="text-sm text-gray-500 mt-1">Try again!</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <CelebrationOverlay
-        show={showCelebration}
-        message="Great job!"
-        onComplete={onComplete}
-      />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Rhyme Champion!" onComplete={onComplete} />
+    </GameShell>
   );
 }

@@ -13,6 +13,7 @@ export default function ParentDashboard() {
     coins,
     masteredPhonemes,
     masteredWords,
+    soundStats,
     sessionHistory,
     freePlay,
     soundEnabled,
@@ -67,6 +68,37 @@ export default function ParentDashboard() {
             <p className="text-xs text-gray-500">Coins</p>
           </div>
         </div>
+
+        {/* Sound diagnostics — per-sound success rates from gameplay */}
+        {Object.keys(soundStats).length > 0 && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+            <h3 className="font-bold text-gray-700 mb-1">Sound Check</h3>
+            <p className="text-xs text-gray-400 mb-3">
+              How often she gets each sound or skill right. Red = needs more practice.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(soundStats)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([sound, s]) => {
+                  const total = s.correct + s.wrong;
+                  const rate = total > 0 ? s.correct / total : 0;
+                  const color =
+                    total < 3
+                      ? 'bg-gray-100 text-gray-500'
+                      : rate >= 0.8
+                        ? 'bg-green-100 text-green-700'
+                        : rate >= 0.6
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700';
+                  return (
+                    <span key={sound} className={`${color} px-3 py-1 rounded-full text-sm font-bold lowercase`}>
+                      {sound} {Math.round(rate * 100)}% ({total})
+                    </span>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* Skills mastered */}
         <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">

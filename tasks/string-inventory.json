@@ -1,0 +1,1121 @@
+{
+  "GameWrapper": {
+    "spoken": [],
+    "displayed_words": [],
+    "notes": ["Wrapper only - calls stopSpeaking() on unmount. No spoken or displayed strings."]
+  },
+  "RhymeBeach": {
+    "spoken": [
+      "What rhymes with cat?",
+      "What rhymes with bug?",
+      "What rhymes with log?",
+      "What rhymes with hen?",
+      "What rhymes with pin?",
+      "hat", "dog", "sun", "mug", "fish", "pen", "cat", "bed", "ten", "cup", "map", "bin", "car", "egg"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "getIcon"},
+      {"word": "hat", "source": "getIcon"},
+      {"word": "dog", "source": "getIcon"},
+      {"word": "sun", "source": "getIcon"},
+      {"word": "bug", "source": "getIcon"},
+      {"word": "mug", "source": "getIcon"},
+      {"word": "fish", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "log", "source": "getIcon"},
+      {"word": "bed", "source": "getIcon"},
+      {"word": "hen", "source": "getIcon"},
+      {"word": "ten", "source": "getIcon"},
+      {"word": "cup", "source": "getIcon"},
+      {"word": "map", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "bin", "source": "getIcon"},
+      {"word": "car", "source": "getIcon"},
+      {"word": "egg", "source": "getIcon"}
+    ],
+    "notes": [
+      "speakReveal() args: hat, mug, dog, ten, bin (match words, already listed in spoken).",
+      "speakWrongExplanation(chosen, match, 'rhyme') plays only a generic wrong-feedback clip - no per-word audio."
+    ]
+  },
+  "SoundHunt": {
+    "spoken": [
+      "Tap everything that starts with this sound!",
+      "s", "b", "m", "t", "p",
+      "sun", "snake", "dog", "sock", "cat", "hat",
+      "ball", "bird", "fish", "bus", "pen", "cup",
+      "moon", "mouse", "tree", "milk", "bed", "van",
+      "tiger", "tent", "rain", "top", "leg", "egg",
+      "pig", "pot", "net"
+    ],
+    "displayed_words": [
+      {"word": "sun", "source": "hardcoded", "emoji": "☀️"},
+      {"word": "snake", "source": "hardcoded", "emoji": "🐍"},
+      {"word": "dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "sock", "source": "hardcoded", "emoji": "🧦"},
+      {"word": "cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "hat", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "ball", "source": "hardcoded", "emoji": "🏀"},
+      {"word": "bird", "source": "hardcoded", "emoji": "🐦"},
+      {"word": "fish", "source": "hardcoded", "emoji": "🐟"},
+      {"word": "bus", "source": "hardcoded", "emoji": "🚌"},
+      {"word": "pen", "source": "hardcoded", "emoji": "🖊️"},
+      {"word": "cup", "source": "hardcoded", "emoji": "☕"},
+      {"word": "moon", "source": "hardcoded", "emoji": "🌙"},
+      {"word": "mouse", "source": "hardcoded", "emoji": "🐭"},
+      {"word": "tree", "source": "hardcoded", "emoji": "🌳"},
+      {"word": "milk", "source": "hardcoded", "emoji": "🥛"},
+      {"word": "bed", "source": "hardcoded", "emoji": "🛏️"},
+      {"word": "van", "source": "hardcoded", "emoji": "🚐"},
+      {"word": "tiger", "source": "hardcoded", "emoji": "🐯"},
+      {"word": "tent", "source": "hardcoded", "emoji": "⛺"},
+      {"word": "rain", "source": "hardcoded", "emoji": "🌧️"},
+      {"word": "top", "source": "hardcoded", "emoji": "🪀"},
+      {"word": "leg", "source": "hardcoded", "emoji": "🦵"},
+      {"word": "egg", "source": "hardcoded", "emoji": "🥚"},
+      {"word": "pig", "source": "hardcoded", "emoji": "🐷"},
+      {"word": "pot", "source": "hardcoded", "emoji": "🍲"},
+      {"word": "net", "source": "hardcoded", "emoji": "🥅"}
+    ],
+    "notes": [
+      "speakReveal() args are the correct items: sun, snake, sock, ball, bird, bus, moon, mouse, milk, tiger, tent, top, pig, pen, pot (all already listed in spoken).",
+      "Instruction + phoneme + options are spoken via a custom inline sequence (speak + speakPhoneme), not useGameSpeechWithOptions.",
+      "Hardcoded emojis diverge from the wordIcons map for: top (🪀 vs map 🔝), moon (🌙 vs map 🌕), dog (🐶 vs map 🐕), bed (🛏️ vs map 🛌)."
+    ]
+  },
+  "OddSoundOut": {
+    "spoken": [
+      "Two of these start with kuh. Which one doesn't? Find the odd one out!",
+      "Two of these start with sss. Which one doesn't? Find the odd one out!",
+      "Two of these start with puh. Which one doesn't? Find the odd one out!",
+      "Two of these start with buh. Which one doesn't? Find the odd one out!",
+      "Two of these start with mmm. Which one doesn't? Find the odd one out!",
+      "Two of these start with rrr. Which one doesn't? Find the odd one out!",
+      "Two of these start with huh. Which one doesn't? Find the odd one out!",
+      "Two of these start with fff. Which one doesn't? Find the odd one out!",
+      "cat", "cap", "dog", "sun", "soap", "hat", "pen", "pot", "net",
+      "bat", "bin", "cup", "man", "mug", "fan", "red", "rat", "log",
+      "hen", "hot", "van", "fox", "fin"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "cap", "source": "hardcoded", "emoji": "🧢"},
+      {"word": "dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "sun", "source": "hardcoded", "emoji": "☀️"},
+      {"word": "soap", "source": "hardcoded", "emoji": "🧼"},
+      {"word": "hat", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "pen", "source": "hardcoded", "emoji": "🖊️"},
+      {"word": "pot", "source": "hardcoded", "emoji": "🍲"},
+      {"word": "net", "source": "hardcoded", "emoji": "🥅"},
+      {"word": "bat", "source": "hardcoded", "emoji": "🦇"},
+      {"word": "bin", "source": "hardcoded", "emoji": "🗑️"},
+      {"word": "cup", "source": "hardcoded", "emoji": "🥤"},
+      {"word": "man", "source": "hardcoded", "emoji": "👨"},
+      {"word": "mug", "source": "hardcoded", "emoji": "☕"},
+      {"word": "fan", "source": "hardcoded", "emoji": "🌬️"},
+      {"word": "red", "source": "hardcoded", "emoji": "🔴"},
+      {"word": "rat", "source": "hardcoded", "emoji": "🐀"},
+      {"word": "log", "source": "hardcoded", "emoji": "🪵"},
+      {"word": "hen", "source": "hardcoded", "emoji": "🐔"},
+      {"word": "hot", "source": "hardcoded", "emoji": "🔥"},
+      {"word": "van", "source": "hardcoded", "emoji": "🚐"},
+      {"word": "fox", "source": "hardcoded", "emoji": "🦊"},
+      {"word": "fin", "source": "hardcoded", "emoji": "🦈"}
+    ],
+    "notes": [
+      "Instruction resolved via PHONEME_PRONUNCIATIONS[commonSound] for sounds c, s, p, b, m, r, h, f.",
+      "speakReveal() args: dog, hat, net, cup, fan, log, van (odd words, already in spoken).",
+      "Buttons display icon only (no word label); word appears in correct-feedback text.",
+      "Hardcoded emojis diverge from wordIcons map: cup (🥤 vs ☕), mug (☕ vs 🍵), fin (🦈 vs 🐠), dog (🐶 vs 🐕)."
+    ]
+  },
+  "SyllableClap": {
+    "spoken": [
+      "How many beats does this word have? Clap for each beat!",
+      "cat", "dog", "sun", "apple", "monkey", "rabbit", "banana", "elephant", "tomato", "butterfly", "dinosaur", "watermelon",
+      "cat has 1 beats", "dog has 1 beats", "sun has 1 beats",
+      "apple has 2 beats", "monkey has 2 beats", "rabbit has 2 beats",
+      "banana has 3 beats", "elephant has 3 beats", "tomato has 3 beats",
+      "butterfly has 3 beats", "dinosaur has 3 beats", "watermelon has 4 beats"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "sun", "source": "hardcoded", "emoji": "☀️"},
+      {"word": "apple", "source": "hardcoded", "emoji": "🍎"},
+      {"word": "monkey", "source": "hardcoded", "emoji": "🐵"},
+      {"word": "rabbit", "source": "hardcoded", "emoji": "🐰"},
+      {"word": "banana", "source": "hardcoded", "emoji": "🍌"},
+      {"word": "elephant", "source": "hardcoded", "emoji": "🐘"},
+      {"word": "tomato", "source": "hardcoded", "emoji": "🍅"},
+      {"word": "butterfly", "source": "hardcoded", "emoji": "🦋"},
+      {"word": "dinosaur", "source": "hardcoded", "emoji": "🦕"},
+      {"word": "watermelon", "source": "hardcoded", "emoji": "🍉"}
+    ],
+    "notes": [
+      "speakReveal('<word> has <n> beats') phrases do not match any KNOWN_WORDS or narration slug, so only the 'not-quite-the-answer-is' template plays and the explanation itself is silent.",
+      "Hardcoded emojis diverge from wordIcons map: monkey (🐵 vs 🐒), dog (🐶 vs 🐕)."
+    ]
+  },
+  "SoundSafari": {
+    "spoken": [
+      "Find the picture that starts with s!",
+      "Find the picture that starts with a!",
+      "Find the picture that starts with t!",
+      "Find the picture that starts with p!",
+      "Find the picture that starts with i!",
+      "Find the picture that starts with n!",
+      "Find the picture that starts with e!",
+      "Find the picture that starts with l!",
+      "s", "a", "t", "p", "i", "n", "e", "l",
+      "snake", "cat", "dog", "apple", "pen", "hat",
+      "tiger", "fish", "moon", "penguin", "sun", "bed",
+      "igloo", "bus", "rat", "nut", "cup", "pig",
+      "egg", "van", "log", "lemon", "bat", "hen"
+    ],
+    "displayed_words": [
+      {"word": "snake", "source": "getIcon"},
+      {"word": "cat", "source": "getIcon"},
+      {"word": "dog", "source": "getIcon"},
+      {"word": "apple", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "hat", "source": "getIcon"},
+      {"word": "tiger", "source": "getIcon"},
+      {"word": "fish", "source": "getIcon"},
+      {"word": "moon", "source": "getIcon"},
+      {"word": "penguin", "source": "getIcon"},
+      {"word": "sun", "source": "getIcon"},
+      {"word": "bed", "source": "getIcon"},
+      {"word": "igloo", "source": "getIcon"},
+      {"word": "bus", "source": "getIcon"},
+      {"word": "rat", "source": "getIcon"},
+      {"word": "nut", "source": "getIcon"},
+      {"word": "cup", "source": "getIcon"},
+      {"word": "pig", "source": "getIcon"},
+      {"word": "egg", "source": "getIcon"},
+      {"word": "van", "source": "getIcon"},
+      {"word": "log", "source": "getIcon"},
+      {"word": "lemon", "source": "getIcon"},
+      {"word": "bat", "source": "getIcon"},
+      {"word": "hen", "source": "getIcon"}
+    ],
+    "notes": [
+      "speakPhoneme(current.letter) fires when the big letter is tapped (letters s,a,t,p,i,n,e,l).",
+      "speakReveal() args: snake, apple, tiger, penguin, igloo, nut, egg, lemon (already in spoken).",
+      "Choice buttons show icon only, no word label."
+    ]
+  },
+  "SoundSort": {
+    "spoken": [
+      "Sort the pictures! Does it start with s or t?",
+      "Sort the pictures! Does it start with p or n?",
+      "Sort the pictures! Does it start with a or e?",
+      "Sort the pictures! Does it start with l or i?",
+      "sun", "top", "sock", "tent",
+      "pig", "net", "pen", "nut",
+      "apple", "egg", "ant", "elf",
+      "lemon", "igloo", "lamp", "ink",
+      "sun starts with s, put it in the s bucket",
+      "top starts with t, put it in the t bucket",
+      "sock starts with s, put it in the s bucket",
+      "tent starts with t, put it in the t bucket",
+      "pig starts with p, put it in the p bucket",
+      "net starts with n, put it in the n bucket",
+      "pen starts with p, put it in the p bucket",
+      "nut starts with n, put it in the n bucket",
+      "apple starts with a, put it in the a bucket",
+      "egg starts with e, put it in the e bucket",
+      "ant starts with a, put it in the a bucket",
+      "elf starts with e, put it in the e bucket",
+      "lemon starts with l, put it in the l bucket",
+      "igloo starts with i, put it in the i bucket",
+      "lamp starts with l, put it in the l bucket",
+      "ink starts with i, put it in the i bucket"
+    ],
+    "displayed_words": [
+      {"word": "sun", "source": "getIcon"},
+      {"word": "top", "source": "getIcon"},
+      {"word": "sock", "source": "getIcon"},
+      {"word": "tent", "source": "getIcon"},
+      {"word": "pig", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "nut", "source": "getIcon"},
+      {"word": "apple", "source": "getIcon"},
+      {"word": "egg", "source": "getIcon"},
+      {"word": "ant", "source": "getIcon"},
+      {"word": "elf", "source": "getIcon"},
+      {"word": "lemon", "source": "getIcon"},
+      {"word": "igloo", "source": "getIcon"},
+      {"word": "lamp", "source": "getIcon"},
+      {"word": "ink", "source": "getIcon"}
+    ],
+    "notes": [
+      "speakReveal('<word> starts with <letter>, put it in the <letter> bucket') phrases match no audio file -> only the 'not-quite-the-answer-is' template plays.",
+      "BUG: getIcon('ant') returns ❓ - 'ant' has no entry in WORD_ICONS (only 'insect' 🐜 / 'small' 🐜 exist).",
+      "Wrong-bucket message 'No, <word> starts with <letter>, put it in the <letter> bucket!' is displayed only; speakFeedback('wrong') plays generic clip."
+    ]
+  },
+  "SoundSorting": {
+    "spoken": [
+      "Tap everything that starts with this sound!",
+      "s", "m", "t",
+      "sun", "sock", "ball", "star", "dog", "snake",
+      "moon", "cat", "mouse", "milk", "tree", "map",
+      "tiger", "tent", "fish", "top", "hat", "turtle"
+    ],
+    "displayed_words": [
+      {"word": "sun", "source": "hardcoded", "emoji": "☀️"},
+      {"word": "sock", "source": "hardcoded", "emoji": "🧦"},
+      {"word": "ball", "source": "hardcoded", "emoji": "🏀"},
+      {"word": "star", "source": "hardcoded", "emoji": "⭐"},
+      {"word": "dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "snake", "source": "hardcoded", "emoji": "🐍"},
+      {"word": "moon", "source": "hardcoded", "emoji": "🌙"},
+      {"word": "cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "mouse", "source": "hardcoded", "emoji": "🐭"},
+      {"word": "milk", "source": "hardcoded", "emoji": "🥛"},
+      {"word": "tree", "source": "hardcoded", "emoji": "🌳"},
+      {"word": "map", "source": "hardcoded", "emoji": "🗺️"},
+      {"word": "tiger", "source": "hardcoded", "emoji": "🐯"},
+      {"word": "tent", "source": "hardcoded", "emoji": "⛺"},
+      {"word": "fish", "source": "hardcoded", "emoji": "🐟"},
+      {"word": "top", "source": "hardcoded", "emoji": "🔝"},
+      {"word": "hat", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "turtle", "source": "hardcoded", "emoji": "🐢"}
+    ],
+    "notes": [
+      "speakReveal() args are correct items: sun, sock, star, snake, moon, mouse, milk, map, tiger, tent, top, turtle (already in spoken).",
+      "targetSound strings 'sss'/'mmm'/'ttt' are display data only; audio uses speakPhoneme(targetLetter)."
+    ]
+  },
+  "LetterIntro": {
+    "spoken": [
+      "What letter makes the sss sound? Tap it!",
+      "What letter makes the aah sound? Tap it!",
+      "What letter makes the tuh sound? Tap it!",
+      "What letter makes the puh sound? Tap it!",
+      "What letter makes the ih sound? Tap it!",
+      "What letter makes the nnn sound? Tap it!",
+      "What letter makes the eh sound? Tap it!",
+      "What letter makes the lll sound? Tap it!",
+      "s", "a", "t", "p", "i", "n", "e", "l",
+      "The letter s makes the sss sound, like snake",
+      "The letter a makes the aah sound, like ant",
+      "The letter t makes the tuh sound, like tiger",
+      "The letter p makes the puh sound, like penguin",
+      "The letter i makes the ih sound, like iguana",
+      "The letter n makes the nnn sound, like nut",
+      "The letter e makes the eh sound, like egg",
+      "The letter l makes the lll sound, like lemon"
+    ],
+    "displayed_words": [
+      {"word": "snake", "source": "hardcoded", "emoji": "🐍"},
+      {"word": "ant", "source": "hardcoded", "emoji": "🐜"},
+      {"word": "tiger", "source": "hardcoded", "emoji": "🐯"},
+      {"word": "penguin", "source": "hardcoded", "emoji": "🐧"},
+      {"word": "iguana", "source": "hardcoded", "emoji": "🦎"},
+      {"word": "nut", "source": "hardcoded", "emoji": "🥜"},
+      {"word": "egg", "source": "hardcoded", "emoji": "🥚"},
+      {"word": "lemon", "source": "hardcoded", "emoji": "🍋"}
+    ],
+    "notes": [
+      "Options spoken are the letter choices themselves (speak() routes single letters to phoneme files): s, a, t, p, i, n, e, l.",
+      "Reveal sentences resolve to known narration slugs (the-letter-X-makes-the-Y-sound-like-Z).",
+      "Icon + '<letter> is for <word>!' text shown only in correct feedback."
+    ]
+  },
+  "LetterTrace": {
+    "spoken": [
+      "What letter does sun start with?",
+      "What letter does snake start with?",
+      "What letter does apple start with?",
+      "What letter does ant start with?",
+      "What letter does tiger start with?",
+      "What letter does tent start with?",
+      "What letter does penguin start with?",
+      "What letter does pig start with?",
+      "What letter does igloo start with?",
+      "What letter does insect start with?",
+      "What letter does nut start with?",
+      "What letter does nest start with?",
+      "What letter does egg start with?",
+      "What letter does elephant start with?",
+      "What letter does lemon start with?",
+      "What letter does lion start with?",
+      "s", "a", "t", "p", "i", "n", "e", "l",
+      "sun starts with the letter s. sss!",
+      "snake starts with the letter s. sss!",
+      "apple starts with the letter a. aah!",
+      "ant starts with the letter a. aah!",
+      "tiger starts with the letter t. tuh!",
+      "tent starts with the letter t. tuh!",
+      "penguin starts with the letter p. puh!",
+      "pig starts with the letter p. puh!",
+      "igloo starts with the letter i. ih!",
+      "insect starts with the letter i. ih!",
+      "nut starts with the letter n. nnn!",
+      "nest starts with the letter n. nnn!",
+      "egg starts with the letter e. eh!",
+      "elephant starts with the letter e. eh!",
+      "lemon starts with the letter l. lll!",
+      "lion starts with the letter l. lll!"
+    ],
+    "displayed_words": [
+      {"word": "sun", "source": "hardcoded", "emoji": "☀️"},
+      {"word": "snake", "source": "hardcoded", "emoji": "🐍"},
+      {"word": "apple", "source": "hardcoded", "emoji": "🍎"},
+      {"word": "ant", "source": "hardcoded", "emoji": "🐜"},
+      {"word": "tiger", "source": "hardcoded", "emoji": "🐯"},
+      {"word": "tent", "source": "hardcoded", "emoji": "⛺"},
+      {"word": "penguin", "source": "hardcoded", "emoji": "🐧"},
+      {"word": "pig", "source": "hardcoded", "emoji": "🐷"},
+      {"word": "igloo", "source": "hardcoded", "emoji": "🏠"},
+      {"word": "insect", "source": "hardcoded", "emoji": "🐛"},
+      {"word": "nut", "source": "hardcoded", "emoji": "🥜"},
+      {"word": "nest", "source": "hardcoded", "emoji": "🪹"},
+      {"word": "egg", "source": "hardcoded", "emoji": "🥚"},
+      {"word": "elephant", "source": "hardcoded", "emoji": "🐘"},
+      {"word": "lemon", "source": "hardcoded", "emoji": "🍋"},
+      {"word": "lion", "source": "hardcoded", "emoji": "🦁"}
+    ],
+    "notes": [
+      "speakReveal('<word> starts with the letter <l>. <pron>!') phrases match no audio file -> only the 'not-quite-the-answer-is' template plays.",
+      "Options spoken are letter choices drawn from SATPIN_EL (s,a,t,p,i,n,e,l).",
+      "Hardcoded emojis diverge from wordIcons map: igloo (🏠 vs 🏔️), insect (🐛 vs 🐜)."
+    ]
+  },
+  "LetterMatch": {
+    "spoken": [
+      "Match each letter to its picture! Tap a letter, then tap the picture that starts with it!",
+      "snake", "apple", "tiger", "penguin", "iguana", "nut", "egg", "lemon",
+      "s", "a", "t", "p", "i", "n", "e", "l"
+    ],
+    "displayed_words": [
+      {"word": "snake", "source": "getIcon"},
+      {"word": "apple", "source": "getIcon"},
+      {"word": "tiger", "source": "getIcon"},
+      {"word": "penguin", "source": "getIcon"},
+      {"word": "iguana", "source": "getIcon"},
+      {"word": "nut", "source": "getIcon"},
+      {"word": "egg", "source": "getIcon"},
+      {"word": "lemon", "source": "getIcon"}
+    ],
+    "notes": [
+      "speakPhoneme(letter) fires on letter tap; letters s,a,t,p,i,n,e,l.",
+      "speakReveal() args: pair words snake/apple/tiger/penguin/iguana/nut/egg/lemon (already in spoken).",
+      "Picture buttons show icon only, no word label."
+    ]
+  },
+  "GardenGrow": {
+    "spoken": [
+      "Read the seed! Which picture matches?",
+      "pan", "bug", "hot", "jet", "rat", "fin", "hug", "red"
+    ],
+    "displayed_words": [
+      {"word": "pan", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "bug", "source": "getIcon"},
+      {"word": "mug", "source": "getIcon"},
+      {"word": "rug", "source": "getIcon"},
+      {"word": "hot", "source": "getIcon"},
+      {"word": "pot", "source": "getIcon"},
+      {"word": "dot", "source": "getIcon"},
+      {"word": "jet", "source": "getIcon"},
+      {"word": "wet", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "rat", "source": "getIcon"},
+      {"word": "hat", "source": "getIcon"},
+      {"word": "bat", "source": "getIcon"},
+      {"word": "fin", "source": "getIcon"},
+      {"word": "bin", "source": "getIcon"},
+      {"word": "win", "source": "getIcon"},
+      {"word": "hug", "source": "getIcon"},
+      {"word": "red", "source": "getIcon"},
+      {"word": "bed", "source": "getIcon"},
+      {"word": "fed", "source": "getIcon"}
+    ],
+    "notes": [
+      "Words listed in spoken after the instruction are speakReveal() args (target words).",
+      "Target word displayed as text only (seed packet); choices are icon-only buttons. Child must read - no option audio by design."
+    ]
+  },
+  "SurfSlide": {
+    "spoken": [
+      "Blend the sounds together! What word do the letters make?",
+      "sat", "pin", "tap", "sit", "nap", "net", "pet", "let"
+    ],
+    "displayed_words": [
+      {"word": "sat", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "tap", "source": "getIcon"},
+      {"word": "sit", "source": "getIcon"},
+      {"word": "nap", "source": "getIcon"},
+      {"word": "pan", "source": "getIcon"},
+      {"word": "tip", "source": "getIcon"},
+      {"word": "lip", "source": "getIcon"},
+      {"word": "pet", "source": "getIcon"},
+      {"word": "let", "source": "getIcon"},
+      {"word": "tin", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "nip", "source": "getIcon"}
+    ],
+    "notes": [
+      "Words after the instruction are speakReveal() args (target words).",
+      "Letters are displayed as tiles but never spoken individually; choices are icon-only buttons."
+    ]
+  },
+  "SoundTelescope": {
+    "spoken": [
+      "Listen to the sounds: sss...aaa...t. What word is that?",
+      "Listen to the sounds: p...iii...nnn. What word is that?",
+      "Listen to the sounds: nnn...eee...t. What word is that?",
+      "Listen to the sounds: p...eee...t. What word is that?",
+      "Listen to the sounds: sss...iii...p. What word is that?",
+      "Listen to the sounds: lll...eee...t. What word is that?",
+      "sat", "pin", "net", "pet", "sip", "let"
+    ],
+    "displayed_words": [
+      {"word": "sat", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "tap", "source": "getIcon"},
+      {"word": "pet", "source": "getIcon"},
+      {"word": "sip", "source": "getIcon"},
+      {"word": "pan", "source": "getIcon"},
+      {"word": "tin", "source": "getIcon"},
+      {"word": "nap", "source": "getIcon"},
+      {"word": "ten", "source": "getIcon"},
+      {"word": "let", "source": "getIcon"},
+      {"word": "nip", "source": "getIcon"}
+    ],
+    "notes": [
+      "Instruction slugs strip dots, so they resolve to narration slugs like listen-to-the-sounds-sssaaat-what-word-is-that.",
+      "Words after instructions are speakReveal() args (target words). Choices are icon-only buttons."
+    ]
+  },
+  "PlazaPuzzle": {
+    "spoken": [
+      "Which word matches the picture? Read the words!",
+      "sat", "pet", "ten", "nap", "lip", "pen"
+    ],
+    "displayed_words": [
+      {"word": "sat", "source": "getIcon"},
+      {"word": "pet", "source": "getIcon"},
+      {"word": "ten", "source": "getIcon"},
+      {"word": "nap", "source": "getIcon"},
+      {"word": "lip", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"}
+    ],
+    "notes": [
+      "Words after the instruction are speakReveal() args (target words).",
+      "Word options displayed as TEXT ONLY (child reads them): sat, pin, net, pet, tap, sip, ten, pan, tip, nap, let, set, lip, pen, tin, nip, pat."
+    ]
+  },
+  "MarketBuilder": {
+    "spoken": [
+      "Build the word sat! Tap the letters in order!",
+      "Build the word pin! Tap the letters in order!",
+      "Build the word tap! Tap the letters in order!",
+      "Build the word net! Tap the letters in order!",
+      "Build the word pet! Tap the letters in order!",
+      "Build the word let! Tap the letters in order!",
+      "Build the word tin! Tap the letters in order!",
+      "Build the word sip! Tap the letters in order!",
+      "sat", "pin", "tap", "net", "pet", "let", "tin", "sip"
+    ],
+    "displayed_words": [
+      {"word": "sat", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "tap", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "pet", "source": "getIcon"},
+      {"word": "let", "source": "getIcon"},
+      {"word": "tin", "source": "getIcon"},
+      {"word": "sip", "source": "getIcon"}
+    ],
+    "notes": [
+      "Single words in spoken are speakWord(current.word) on successful build.",
+      "DYNAMIC/UNRESOLVABLE: speakWrongExplanation(builtSoFar, ...) receives an arbitrary partial letter string (e.g. 'sa'+wrong letter); only a generic wrong clip plays, no audio for the string itself."
+    ]
+  },
+  "SailboatRace": {
+    "spoken": [
+      "Read the word! Sail to the right island!",
+      "sat", "pan", "tip", "pen", "pet", "ten"
+    ],
+    "displayed_words": [
+      {"word": "sat", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "pan", "source": "getIcon"},
+      {"word": "sit", "source": "getIcon"},
+      {"word": "let", "source": "getIcon"},
+      {"word": "tip", "source": "getIcon"},
+      {"word": "nap", "source": "getIcon"},
+      {"word": "set", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "tap", "source": "getIcon"},
+      {"word": "tin", "source": "getIcon"},
+      {"word": "pet", "source": "getIcon"},
+      {"word": "nip", "source": "getIcon"},
+      {"word": "sip", "source": "getIcon"},
+      {"word": "ten", "source": "getIcon"},
+      {"word": "pat", "source": "getIcon"},
+      {"word": "lip", "source": "getIcon"}
+    ],
+    "notes": [
+      "Words after the instruction are speakReveal() args (target words).",
+      "Target word displayed as text; choices are icon-only buttons."
+    ]
+  },
+  "WordTowers": {
+    "spoken": [
+      "Find words in the -at family! Which word belongs?",
+      "Find words in the -an family! Which word belongs?",
+      "Find words in the -in family! Which word belongs?",
+      "Find words in the -og family! Which word belongs?",
+      "Find words in the -ug family! Which word belongs?",
+      "cat", "hat", "bat", "mat",
+      "can", "man", "van", "fan",
+      "bin", "fin", "win", "pin",
+      "dog", "log", "fog", "hog",
+      "bug", "rug", "mug", "hug"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "hat", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "bat", "source": "hardcoded", "emoji": "🦇"},
+      {"word": "mat", "source": "hardcoded", "emoji": "🧹"},
+      {"word": "can", "source": "hardcoded", "emoji": "🥫"},
+      {"word": "man", "source": "hardcoded", "emoji": "👨"},
+      {"word": "van", "source": "hardcoded", "emoji": "🚐"},
+      {"word": "fan", "source": "hardcoded", "emoji": "🌬️"},
+      {"word": "bin", "source": "hardcoded", "emoji": "🗑️"},
+      {"word": "fin", "source": "hardcoded", "emoji": "🦈"},
+      {"word": "win", "source": "hardcoded", "emoji": "🏆"},
+      {"word": "pin", "source": "hardcoded", "emoji": "📌"},
+      {"word": "dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "log", "source": "hardcoded", "emoji": "🪵"},
+      {"word": "fog", "source": "hardcoded", "emoji": "🌫️"},
+      {"word": "hog", "source": "hardcoded", "emoji": "🐷"},
+      {"word": "bug", "source": "hardcoded", "emoji": "🐛"},
+      {"word": "rug", "source": "hardcoded", "emoji": "🪨"},
+      {"word": "mug", "source": "hardcoded", "emoji": "☕"},
+      {"word": "hug", "source": "hardcoded", "emoji": "🤗"}
+    ],
+    "notes": [
+      "Spoken option words: only the first 4 words of each family are ever target words (wordsPerFamily=4); distractors resolve to [can, man] for the -at family and [cat, hat] for all other families, all already listed.",
+      "speakReveal() args: same first-4 family words (already in spoken).",
+      "Data words rat 🐀, sat 🪑, ran 🏃, pan 🍳, tin 🥫, din 🔔, jog 🏃, cog ⚙️, dug ⛏️, jug 🍶 exist in FAMILIES but are unreachable (never displayed or spoken) given current logic.",
+      "Hardcoded emojis diverge from wordIcons map: mat (🧹 vs 🏖️), can (🥫 vs 🫙), fin (🦈 vs 🐠), dog (🐶 vs 🐕), hog (🐷 vs 🐗), rug (🪨 vs 🧶), mug (☕ vs 🍵)."
+    ]
+  },
+  "PotionLab": {
+    "spoken": [
+      "Put the letters c, a, t into the cauldron to make cat!",
+      "Put the letters p, i, n into the cauldron to make pin!",
+      "Put the letters h, o, t into the cauldron to make hot!",
+      "Put the letters b, a, t into the cauldron to make bat!",
+      "Put the letters d, o, g into the cauldron to make dog!",
+      "Put the letters c, u, p into the cauldron to make cup!"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "getIcon"},
+      {"word": "hat", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "bin", "source": "getIcon"},
+      {"word": "hot", "source": "getIcon"},
+      {"word": "pot", "source": "getIcon"},
+      {"word": "bat", "source": "getIcon"},
+      {"word": "mat", "source": "getIcon"},
+      {"word": "dog", "source": "getIcon"},
+      {"word": "log", "source": "getIcon"},
+      {"word": "cup", "source": "getIcon"},
+      {"word": "pup", "source": "getIcon"}
+    ],
+    "notes": [
+      "Instruction slug must match e.g. put-the-letters-c-a-t-into-the-cauldron-to-make-cat (commas stripped by textToSlug).",
+      "DYNAMIC/UNRESOLVABLE: speakWrongExplanation(builtSoFar, ...) receives an arbitrary partial letter string; only a generic wrong clip plays.",
+      "Swap words (hat, bin, pot, mat, log, pup) are displayed with icon + text after the swap but are never spoken.",
+      "Swap button text 'Swap <from> for <to>!' is displayed only, not spoken."
+    ]
+  },
+  "KnightsDoors": {
+    "spoken": [
+      "Find the door that says cat!",
+      "Find the door that says dog!",
+      "Find the door that says cup!",
+      "Find the door that says hen!",
+      "Find the door that says bed!",
+      "Find the door that says van!",
+      "cat", "hat", "bat",
+      "log", "dog", "fog",
+      "pup", "cut", "cup",
+      "hen", "pen", "ten",
+      "red", "bed", "fed",
+      "man", "fan", "van"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "hat", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "bat", "source": "hardcoded", "emoji": "🦇"},
+      {"word": "log", "source": "hardcoded", "emoji": "🪵"},
+      {"word": "dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "fog", "source": "hardcoded", "emoji": "🌫️"},
+      {"word": "pup", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "cut", "source": "hardcoded", "emoji": "✂️"},
+      {"word": "cup", "source": "hardcoded", "emoji": "☕"},
+      {"word": "hen", "source": "hardcoded", "emoji": "🐔"},
+      {"word": "pen", "source": "hardcoded", "emoji": "🖊️"},
+      {"word": "ten", "source": "hardcoded", "emoji": "🔟"},
+      {"word": "red", "source": "hardcoded", "emoji": "🔴"},
+      {"word": "bed", "source": "hardcoded", "emoji": "🛏️"},
+      {"word": "fed", "source": "hardcoded", "emoji": "🍽️"},
+      {"word": "man", "source": "hardcoded", "emoji": "👨"},
+      {"word": "fan", "source": "hardcoded", "emoji": "🌬️"},
+      {"word": "van", "source": "hardcoded", "emoji": "🚐"}
+    ],
+    "notes": [
+      "speakReveal() args: cat, dog, cup, hen, bed, van (already in spoken).",
+      "Door icons only revealed when opened; closed doors show word text on a door emoji 🚪.",
+      "Funny messages ('A hat, not a cat!' etc.) are displayed only, never spoken."
+    ]
+  },
+  "DragonFeed": {
+    "spoken": [
+      "Read the word! Feed the dragon the right picture!",
+      "cat", "dog", "bug", "hen", "cup", "pot", "bed", "van", "fin", "jet"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "getIcon"},
+      {"word": "hat", "source": "getIcon"},
+      {"word": "bat", "source": "getIcon"},
+      {"word": "dog", "source": "getIcon"},
+      {"word": "log", "source": "getIcon"},
+      {"word": "fog", "source": "getIcon"},
+      {"word": "bug", "source": "getIcon"},
+      {"word": "rug", "source": "getIcon"},
+      {"word": "mug", "source": "getIcon"},
+      {"word": "hen", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "ten", "source": "getIcon"},
+      {"word": "cup", "source": "getIcon"},
+      {"word": "pup", "source": "getIcon"},
+      {"word": "cut", "source": "getIcon"},
+      {"word": "pot", "source": "getIcon"},
+      {"word": "hot", "source": "getIcon"},
+      {"word": "dot", "source": "getIcon"},
+      {"word": "bed", "source": "getIcon"},
+      {"word": "red", "source": "getIcon"},
+      {"word": "fed", "source": "getIcon"},
+      {"word": "van", "source": "getIcon"},
+      {"word": "man", "source": "getIcon"},
+      {"word": "fan", "source": "getIcon"},
+      {"word": "fin", "source": "getIcon"},
+      {"word": "bin", "source": "getIcon"},
+      {"word": "win", "source": "getIcon"},
+      {"word": "jet", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "wet", "source": "getIcon"}
+    ],
+    "notes": [
+      "Words after the instruction are speakReveal() args (target words).",
+      "Target word displayed as text; choices are icon-only buttons."
+    ]
+  },
+  "DigraphDiscovery": {
+    "spoken": [
+      "The word is ship. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is shop. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is shin. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is shed. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is chip. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is chop. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is chin. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is chat. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is thin. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is this. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is that. Which two letters make the special sound? Is it sh, ch, or th?",
+      "The word is them. Which two letters make the special sound? Is it sh, ch, or th?",
+      "sh", "ch", "th"
+    ],
+    "displayed_words": [
+      {"word": "ship", "source": "hardcoded", "emoji": "🚢"},
+      {"word": "shop", "source": "hardcoded", "emoji": "🏪"},
+      {"word": "shin", "source": "hardcoded", "emoji": "🦵"},
+      {"word": "shed", "source": "hardcoded", "emoji": "🏠"},
+      {"word": "chip", "source": "hardcoded", "emoji": "🍟"},
+      {"word": "chop", "source": "hardcoded", "emoji": "🪓"},
+      {"word": "chin", "source": "hardcoded", "emoji": "🙂"},
+      {"word": "chat", "source": "hardcoded", "emoji": "💬"},
+      {"word": "thin", "source": "hardcoded", "emoji": "🫰"},
+      {"word": "this", "source": "hardcoded", "emoji": "👉"},
+      {"word": "that", "source": "hardcoded", "emoji": "👈"},
+      {"word": "them", "source": "hardcoded", "emoji": "👥"}
+    ],
+    "notes": [
+      "POSSIBLE GAP: narration slug list in speech.ts has the-word-is-X variants for 11 words but NOT for 'them' - the 'them' instruction would fall back to browser TTS.",
+      "speakReveal() args: sh, ch, th (digraphs, resolve to phoneme files).",
+      "Hardcoded emojis diverge from wordIcons map: shed (🏠 vs 🏚️), chin (🙂 vs 😊), thin (🫰 vs 📏)."
+    ]
+  },
+  "HeartWordMap": {
+    "spoken": [
+      "The heart word is the. Tap each letter to learn it!",
+      "The heart word is was. Tap each letter to learn it!",
+      "The heart word is said. Tap each letter to learn it!",
+      "The heart word is is. Tap each letter to learn it!",
+      "The heart word is to. Tap each letter to learn it!",
+      "The heart word is he. Tap each letter to learn it!",
+      "The heart word is she. Tap each letter to learn it!",
+      "The heart word is we. Tap each letter to learn it!",
+      "The heart word is you. Tap each letter to learn it!",
+      "The heart word is are. Tap each letter to learn it!",
+      "The heart word is have. Tap each letter to learn it!",
+      "The heart word is do. Tap each letter to learn it!",
+      "The heart word is no. Tap each letter to learn it!",
+      "The heart word is go. Tap each letter to learn it!",
+      "The heart word is my. Tap each letter to learn it!"
+    ],
+    "displayed_words": [],
+    "notes": [
+      "No words displayed with icons - letter tiles and hint text only.",
+      "Hint strings (e.g. '\"th\" makes a special sound together!') are displayed only, never spoken.",
+      "Only other audio is speakFeedback('correct'/'complete') generic clips."
+    ]
+  },
+  "TreasureMemory": {
+    "spoken": [
+      "Match the word pairs! Tap a card to flip it!",
+      "the", "was", "said", "is", "to", "he", "she", "we", "my", "you"
+    ],
+    "displayed_words": [],
+    "notes": [
+      "Sight words shown as text on cards, no icons.",
+      "speakWord(card.word) fires on every card flip."
+    ]
+  },
+  "RuinDecoder": {
+    "spoken": [
+      "Read the ancient word! Which picture matches?",
+      "ship", "chat", "thin", "chop", "shed", "this"
+    ],
+    "displayed_words": [
+      {"word": "ship", "source": "getIcon"},
+      {"word": "chip", "source": "getIcon"},
+      {"word": "thin", "source": "getIcon"},
+      {"word": "chat", "source": "getIcon"},
+      {"word": "shop", "source": "getIcon"},
+      {"word": "that", "source": "getIcon"},
+      {"word": "chin", "source": "getIcon"},
+      {"word": "shin", "source": "getIcon"},
+      {"word": "chop", "source": "getIcon"},
+      {"word": "shed", "source": "getIcon"},
+      {"word": "them", "source": "getIcon"}
+    ],
+    "notes": [
+      "Words after the instruction are speakReveal() args (target words: ship, chat, thin, chop, shed, this).",
+      "'this' is also displayed via getIcon (both target text and icon choice).",
+      "Target word displayed as text; choices are icon-only buttons."
+    ]
+  },
+  "SoukSentences": {
+    "spoken": [
+      "Read the sign! What does it say?",
+      "a cat", "a hat", "sad", "run", "red", "a dog", "go", "van"
+    ],
+    "displayed_words": [
+      {"word": "the cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "a big hat", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "she is sad", "source": "hardcoded", "emoji": "😢"},
+      {"word": "he can run", "source": "hardcoded", "emoji": "🏃"},
+      {"word": "the red cup", "source": "hardcoded", "emoji": "☕"},
+      {"word": "I have a dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "we can go", "source": "hardcoded", "emoji": "🚶"},
+      {"word": "my big van", "source": "hardcoded", "emoji": "🚐"}
+    ],
+    "notes": [
+      "Spoken items after instruction are speakReveal() args (correct answers). Multi-word reveals ('a cat', 'a hat', 'a dog') need the corresponding narration phrase files; single words use word files.",
+      "Answer options displayed as text only: a cat, a dog, a hat, a cup, a net, sad, happy, big, run, sit, nap, red, hot, a bug, go, no, do, van, man, fan.",
+      "Displayed entries are phrases paired with one scene emoji, not per-word icons."
+    ]
+  },
+  "StoryStroll": {
+    "spoken": [
+      "Read the sentence!",
+      "What did Sam sit on?",
+      "Is the cat big or small?",
+      "Where is the bug?",
+      "What color is the hat?",
+      "Where is the fish?",
+      "What can she see?",
+      "What pet do I have?",
+      "Is the cup hot or cold?",
+      "a mat", "big", "on the log", "red", "in the net", "the ship", "a dog", "hot"
+    ],
+    "displayed_words": [
+      {"word": "Sam sat on a mat.", "source": "hardcoded", "emoji": "🧑"},
+      {"word": "The cat is big.", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "A bug is on the log.", "source": "hardcoded", "emoji": "🐛"},
+      {"word": "He got a red hat.", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "The fish is in the net.", "source": "hardcoded", "emoji": "🐟"},
+      {"word": "She can see the ship.", "source": "hardcoded", "emoji": "🚢"},
+      {"word": "I have a pet dog.", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "The cup is hot.", "source": "hardcoded", "emoji": "☕"}
+    ],
+    "notes": [
+      "Questions are spoken via speak(current.question) when child taps 'I read it!'.",
+      "Final spoken group are speakReveal() args (correct answers - mix of words and multi-word phrases).",
+      "Answer options displayed as text only: a mat, a cat, a hat, big, small, red, on the log, in the cup, on the hat, blue, green, in the net, on the bed, the ship, the cat, the dog, a dog, a fish, hot, cold."
+    ]
+  },
+  "ComicCreator": {
+    "spoken": [
+      "Read the sentence! Which picture matches?"
+    ],
+    "displayed_words": [
+      {"word": "cat", "source": "getIcon"},
+      {"word": "dog", "source": "getIcon"},
+      {"word": "nap", "source": "getIcon"},
+      {"word": "bug", "source": "getIcon"},
+      {"word": "fish", "source": "getIcon"},
+      {"word": "hat", "source": "getIcon"},
+      {"word": "van", "source": "getIcon"},
+      {"word": "cup", "source": "getIcon"},
+      {"word": "hot", "source": "getIcon"},
+      {"word": "ship", "source": "getIcon"},
+      {"word": "jet", "source": "getIcon"},
+      {"word": "log", "source": "getIcon"},
+      {"word": "bed", "source": "getIcon"},
+      {"word": "pot", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "hen", "source": "getIcon"},
+      {"word": "cut", "source": "getIcon"},
+      {"word": "fin", "source": "getIcon"},
+      {"word": "red", "source": "getIcon"}
+    ],
+    "notes": [
+      "Sentences displayed as text only (child decodes them): 'The cat sat on a mat.', 'A dog ran to the cat.', 'The cat and dog had a nap.', 'A bug sat on a log.', 'A big fish jumped up!', 'The bug fell in the pond.', 'He got a red hat.', 'The hat was too big!', 'He gave it to his dog.'",
+      "Two panel icons are hardcoded emoji with no word: 💦 (bug fell in pond) and 😄 (hat too big).",
+      "speakWrongExplanation receives emoji strings as args - only generic wrong clip plays. No reveal audio in this game (speakReveal not used)."
+    ]
+  },
+  "PostcardWriter": {
+    "spoken": [
+      "I can see a blank.",
+      "I have a big blank.",
+      "The blank is red.",
+      "She sat on a blank.",
+      "He got a pet blank.",
+      "We can run to the blank.",
+      "I put it in the blank.",
+      "The blank is on the mat.",
+      "fish", "cat", "log", "hat", "net", "cup",
+      "dog", "bus", "pen", "mug", "bat", "hen",
+      "rat", "ship", "shop", "shed", "pot", "dot", "cot"
+    ],
+    "displayed_words": [
+      {"word": "fish", "source": "hardcoded", "emoji": "🐟"},
+      {"word": "hat", "source": "hardcoded", "emoji": "🧢"},
+      {"word": "bus", "source": "hardcoded", "emoji": "🚌"},
+      {"word": "log", "source": "hardcoded", "emoji": "🪵"},
+      {"word": "dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "ship", "source": "hardcoded", "emoji": "⛵"},
+      {"word": "pot", "source": "hardcoded", "emoji": "🍲"},
+      {"word": "cat", "source": "hardcoded", "emoji": "🐱"}
+    ],
+    "notes": [
+      "Instruction is template.replace('___','blank') and matches narration slugs (i-can-see-a-blank etc.).",
+      "speakReveal() args: fish, hat, bus, log, dog, ship, pot, cat (already in spoken).",
+      "Postcard icon is a scene hint for the correct word, not labeled; options displayed as text only.",
+      "Hardcoded emojis diverge from wordIcons map: hat (🧢 vs 🎩), ship (⛵ vs 🚢), dog (🐶 vs 🐕)."
+    ]
+  },
+  "BeachDetective": {
+    "spoken": [
+      "Read the clue!",
+      "What color is the shell?",
+      "What color is the hat?",
+      "Who has the net?",
+      "Where is the dog?",
+      "What does the ship have?",
+      "red", "blue", "a man", "on the sand", "a red flag"
+    ],
+    "displayed_words": [
+      {"word": "red", "source": "hardcoded", "emoji": "🔴"},
+      {"word": "blue", "source": "hardcoded", "emoji": "🔵"},
+      {"word": "green", "source": "hardcoded", "emoji": "🟢"},
+      {"word": "yellow", "source": "hardcoded", "emoji": "🟡"},
+      {"word": "a dog", "source": "hardcoded", "emoji": "🐶"},
+      {"word": "a man", "source": "hardcoded", "emoji": "👨"},
+      {"word": "a cat", "source": "hardcoded", "emoji": "🐱"},
+      {"word": "in the van", "source": "hardcoded", "emoji": "🚐"},
+      {"word": "on the bed", "source": "hardcoded", "emoji": "🛏️"},
+      {"word": "on the sand", "source": "hardcoded", "emoji": "🏖️"},
+      {"word": "a blue hat", "source": "hardcoded", "emoji": "🎩"},
+      {"word": "a red flag", "source": "hardcoded", "emoji": "🚩"},
+      {"word": "a big net", "source": "hardcoded", "emoji": "🥅"}
+    ],
+    "notes": [
+      "Questions spoken via speak() when child taps 'I read it!'.",
+      "Final spoken group are speakReveal() args (correct answers; multi-word ones need narration phrase files).",
+      "Passages displayed as text only: 'The shell is red. It is big. It is on the sand.', 'A crab has a hat. The hat is blue. The crab is happy.', 'The fish is in the net. The net is big. A man has the net.', 'She has a pet dog. The dog can run fast. The dog is on the sand.', 'I can see a big ship. The ship is on the sea. It has a red flag.'"
+    ]
+  },
+  "ManateeRescue": {
+    "spoken": [
+      "The manatee needs help! The big net is on the fin. What should we do?",
+      "The manatee needs help! The log is in the path. What should we do?",
+      "The manatee needs help! The cup fell in the pond. What should we do?",
+      "The manatee needs help! A can is on the sand. What should we do?",
+      "The manatee needs help! The fish is in a net. How do we help?",
+      "Remove the net", "Add more net", "Swim away",
+      "Sit on it", "Move the log", "Jump on it",
+      "Leave it", "Push it deeper", "Pick it up",
+      "Put it in the bin", "Kick it", "Hide it",
+      "Cook it", "Free the fish", "Watch it"
+    ],
+    "displayed_words": [
+      {"word": "Remove the net", "source": "hardcoded", "emoji": "🥅"},
+      {"word": "Add more net", "source": "hardcoded", "emoji": "❌"},
+      {"word": "Swim away", "source": "hardcoded", "emoji": "🏄"},
+      {"word": "Sit on it", "source": "hardcoded", "emoji": "🪑"},
+      {"word": "Move the log", "source": "hardcoded", "emoji": "🪵"},
+      {"word": "Jump on it", "source": "hardcoded", "emoji": "🦘"},
+      {"word": "Leave it", "source": "hardcoded", "emoji": "❌"},
+      {"word": "Push it deeper", "source": "hardcoded", "emoji": "❌"},
+      {"word": "Pick it up", "source": "hardcoded", "emoji": "☕"},
+      {"word": "Put it in the bin", "source": "hardcoded", "emoji": "🗑️"},
+      {"word": "Kick it", "source": "hardcoded", "emoji": "❌"},
+      {"word": "Hide it", "source": "hardcoded", "emoji": "❌"},
+      {"word": "Cook it", "source": "hardcoded", "emoji": "❌"},
+      {"word": "Free the fish", "source": "hardcoded", "emoji": "🐟"},
+      {"word": "Watch it", "source": "hardcoded", "emoji": "❌"}
+    ],
+    "notes": [
+      "speakReveal() args: 'Remove the net', 'Move the log', 'Pick it up', 'Put it in the bin', 'Free the fish' (already in spoken; multi-word phrases need narration phrase files).",
+      "Sentence cards displayed as text with 🐳 manatee emoji (scene icon, no word)."
+    ]
+  },
+  "BossLevel": {
+    "spoken": [
+      "Which one rhymes with cat?",
+      "Which starts with \"s\"?",
+      "Which one rhymes with log?",
+      "Which starts with \"m\"?",
+      "Clap the beats: \"banana\" has...",
+      "Which doesn't start with \"b\"?",
+      "Which starts with \"p\"?",
+      "Which one rhymes with pin?",
+      "What sound does \"s\" make?",
+      "What sound does \"t\" make?",
+      "What sound does \"a\" make?",
+      "What sound does \"p\" make?",
+      "What sound does \"n\" make?",
+      "What sound does \"e\" make?",
+      "What sound does \"l\" make?",
+      "What sound does \"i\" make?",
+      "What word is this?",
+      "Read the word:",
+      "The ship is big.",
+      "She said no.",
+      "He was sad.",
+      "I have a thin cat.",
+      "We can go to the shop.",
+      "The dog is in the shed.",
+      "Sam sat on a mat.",
+      "The cat is big.",
+      "A bug is on the log.",
+      "He got a red hat.",
+      "The fish is in the net.",
+      "I have a pet dog.",
+      "hat", "dog", "cup", "sun", "cat", "pen", "red", "moon", "fan",
+      "1", "2", "3",
+      "bat", "bug", "penguin", "bin",
+      "snake", "tiger", "egg", "ant", "lemon", "nut", "apple", "iguana",
+      "sat", "pin", "net", "tap", "let", "pet", "sip", "nap", "ten", "tin", "pan", "set", "sit", "tip",
+      "log", "fog", "mug", "rug", "pup", "cut", "den", "hen", "bed", "fed", "man", "van", "fin", "win",
+      "jet", "wet", "pot", "hot", "dot",
+      "big", "small", "yes", "no", "go", "sad", "happy", "mad", "fat", "thin", "shop", "ship", "shed",
+      "a mat", "a cat", "a hat", "on the log", "in the cup", "on the hat",
+      "blue", "green", "on the bed", "in the net", "a dog", "a fish"
+    ],
+    "displayed_words": [
+      {"word": "hat", "source": "getIcon"},
+      {"word": "dog", "source": "getIcon"},
+      {"word": "cup", "source": "getIcon"},
+      {"word": "sun", "source": "getIcon"},
+      {"word": "cat", "source": "getIcon"},
+      {"word": "pen", "source": "getIcon"},
+      {"word": "red", "source": "getIcon"},
+      {"word": "moon", "source": "getIcon"},
+      {"word": "fan", "source": "getIcon"},
+      {"word": "bat", "source": "getIcon"},
+      {"word": "bug", "source": "getIcon"},
+      {"word": "penguin", "source": "getIcon"},
+      {"word": "bin", "source": "getIcon"},
+      {"word": "snake", "source": "getIcon"},
+      {"word": "tiger", "source": "getIcon"},
+      {"word": "egg", "source": "getIcon"},
+      {"word": "lemon", "source": "getIcon"},
+      {"word": "nut", "source": "getIcon"},
+      {"word": "apple", "source": "getIcon"},
+      {"word": "iguana", "source": "getIcon"},
+      {"word": "sat", "source": "getIcon"},
+      {"word": "pin", "source": "getIcon"},
+      {"word": "net", "source": "getIcon"},
+      {"word": "tap", "source": "getIcon"},
+      {"word": "let", "source": "getIcon"},
+      {"word": "pet", "source": "getIcon"},
+      {"word": "sip", "source": "getIcon"},
+      {"word": "nap", "source": "getIcon"},
+      {"word": "ten", "source": "getIcon"},
+      {"word": "tin", "source": "getIcon"},
+      {"word": "pan", "source": "getIcon"},
+      {"word": "set", "source": "getIcon"},
+      {"word": "sit", "source": "getIcon"},
+      {"word": "tip", "source": "getIcon"},
+      {"word": "log", "source": "getIcon"},
+      {"word": "fog", "source": "getIcon"},
+      {"word": "mug", "source": "getIcon"},
+      {"word": "rug", "source": "getIcon"},
+      {"word": "pup", "source": "getIcon"},
+      {"word": "cut", "source": "getIcon"},
+      {"word": "den", "source": "getIcon"},
+      {"word": "hen", "source": "getIcon"},
+      {"word": "bed", "source": "getIcon"},
+      {"word": "fed", "source": "getIcon"},
+      {"word": "man", "source": "getIcon"},
+      {"word": "van", "source": "getIcon"},
+      {"word": "fin", "source": "getIcon"},
+      {"word": "win", "source": "getIcon"},
+      {"word": "jet", "source": "getIcon"},
+      {"word": "wet", "source": "getIcon"},
+      {"word": "pot", "source": "getIcon"},
+      {"word": "hot", "source": "getIcon"},
+      {"word": "dot", "source": "getIcon"},
+      {"word": "big", "source": "getIcon"},
+      {"word": "small", "source": "getIcon"},
+      {"word": "sad", "source": "getIcon"},
+      {"word": "happy", "source": "getIcon"},
+      {"word": "mad", "source": "getIcon"},
+      {"word": "fat", "source": "getIcon"},
+      {"word": "thin", "source": "getIcon"},
+      {"word": "shop", "source": "getIcon"},
+      {"word": "ship", "source": "getIcon"},
+      {"word": "shed", "source": "getIcon"},
+      {"word": "blue", "source": "getIcon"},
+      {"word": "green", "source": "getIcon"}
+    ],
+    "notes": [
+      "Options render icon+word only when WORD_ICONS[opt] exists; text-only options: 1, 2, 3, ant, yes, no, go, and all multi-word phrases (a mat, a cat, a hat, on the log, in the cup, on the hat, on the bed, in the net, a dog, a fish).",
+      "POSSIBLE GAP: 'ant' (W2 option) is spoken (KNOWN_WORDS has it) but has no WORD_ICONS entry, so it renders text-only unlike its siblings; '1' and '2' have no audio files (only KNOWN word '3'? none - digits 1/2/3 are not in KNOWN_WORDS, fall back to browser TTS).",
+      "speakReveal() args are the 'correct' values, all already included in spoken (including phrases 'a mat', 'on the log', 'in the net', 'a dog' and digit '3').",
+      "Challenge prompt icons are scene emojis displayed without word labels: 🐱🐍🪵🌙🍌🔍🐧📌 (W1), 🐍🐯🍎🐧🥜🥚🍋🦎 (W2), 🚢🙅😢🐱🏪🐶 (W5), 🧑🐱🐛🧢🐟🐶 (W6).",
+      "Celebration message is dynamic: '<world subtitle> complete! Passport stamp earned!' (displayed only, not spoken)."
+    ]
+  }
+}

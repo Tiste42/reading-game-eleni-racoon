@@ -7,12 +7,21 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speak, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import WordCard from '@/components/ui/WordCard';
+import { playSoundEffect } from '@/lib/audio';
+
+interface ClueOption {
+  label: string;
+  icon: string;
+  // When set, render the generated word picture instead of the emoji
+  word?: string;
+}
 
 interface ClueRound {
   passage: string;
   question: string;
   correct: string;
-  options: { label: string; icon: string }[];
+  options: ClueOption[];
 }
 
 const CLUE_ROUNDS: ClueRound[] = [
@@ -27,15 +36,15 @@ const CLUE_ROUNDS: ClueRound[] = [
   { passage: 'The fish is in the net. The net is big. A man has the net.',
     question: 'Who has the net?',
     correct: 'a man',
-    options: [{ label: 'a dog', icon: '🐶' }, { label: 'a man', icon: '👨' }, { label: 'a cat', icon: '🐱' }] },
+    options: [{ label: 'a dog', icon: '🐶', word: 'dog' }, { label: 'a man', icon: '👨', word: 'man' }, { label: 'a cat', icon: '🐱', word: 'cat' }] },
   { passage: 'She has a pet dog. The dog can run fast. The dog is on the sand.',
     question: 'Where is the dog?',
     correct: 'on the sand',
-    options: [{ label: 'in the van', icon: '🚐' }, { label: 'on the bed', icon: '🛏️' }, { label: 'on the sand', icon: '🏖️' }] },
+    options: [{ label: 'in the van', icon: '🚐', word: 'van' }, { label: 'on the bed', icon: '🛏️', word: 'bed' }, { label: 'on the sand', icon: '🏖️' }] },
   { passage: 'I can see a big ship. The ship is on the sea. It has a red flag.',
     question: 'What does the ship have?',
     correct: 'a red flag',
-    options: [{ label: 'a blue hat', icon: '🎩' }, { label: 'a red flag', icon: '🚩' }, { label: 'a big net', icon: '🥅' }] },
+    options: [{ label: 'a blue hat', icon: '🎩', word: 'hat' }, { label: 'a red flag', icon: '🚩' }, { label: 'a big net', icon: '🥅', word: 'net' }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -90,6 +99,7 @@ export default function BeachDetective({ worldId, onComplete }: Props) {
 
   const handleAnswer = useCallback((answer: string) => {
     if (feedback || shouldReveal) return;
+    playSoundEffect('tap');
     if (answer === current.correct) {
       const isLastRound = round >= rounds.length - 1;
       setFeedback('correct');
@@ -156,7 +166,7 @@ export default function BeachDetective({ worldId, onComplete }: Props) {
                         ? 'bg-green-300 text-green-800'
                         : 'bg-white/90 text-gray-700'
                   }`}>
-                  <span className="text-2xl">{opt.icon}</span> {opt.label}
+                  {opt.word ? <WordCard word={opt.word} size={28} /> : <span className="text-2xl">{opt.icon}</span>} {opt.label}
                 </motion.button>
               ))}
             </div>

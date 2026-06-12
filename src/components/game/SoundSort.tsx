@@ -6,9 +6,11 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakReveal } from '@/lib/speech';
+import { speakFeedback, speakReveal, speakPhoneme } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 import { getIcon } from '@/lib/wordIcons';
+import WordCard from '@/components/ui/WordCard';
+import { playSoundEffect } from '@/lib/audio';
 
 interface SortItem {
   word: string;
@@ -113,6 +115,7 @@ export default function SoundSort({ worldId, onComplete }: Props) {
 
   const handleItemTap = useCallback((item: SortItem) => {
     if (feedback || sorted.has(item.word) || !doneSpeaking || shouldReveal) return;
+    playSoundEffect('tap');
     setSelectedItem(item);
   }, [feedback, sorted, doneSpeaking, shouldReveal]);
 
@@ -132,10 +135,13 @@ export default function SoundSort({ worldId, onComplete }: Props) {
     } else {
       setFeedback('wrong');
       recordWrong();
-      const msg = `No, ${selectedItem.word} starts with ${selectedItem.startsWith}, put it in the ${selectedItem.startsWith} bucket!`;
-      setWrongBucketMsg(msg);
-      // Play pre-generated wrong feedback instead of dynamic browser TTS
-      speakFeedback('wrong');
+      // Minimal on-screen hint + pre-generated audio only (no dynamic TTS sentence)
+      setWrongBucketMsg(`That starts with ${selectedItem.startsWith}`);
+      const wrongItem = selectedItem;
+      (async () => {
+        await speakFeedback('wrong');
+        await speakPhoneme(wrongItem.startsWith);
+      })();
       setTimeout(() => { setFeedback(null); setSelectedItem(null); setWrongBucketMsg(null); }, 2000);
     }
   }, [selectedItem, feedback, shouldReveal, sorted, current, roundIdx, rounds, worldId, completeGame, addCoins, recordWrong]);
@@ -175,7 +181,7 @@ export default function SoundSort({ worldId, onComplete }: Props) {
                 isBeingSpoken ? 'bg-white ring-4 ring-blue-400 scale-105' :
                 'bg-white/90'
               }`}>
-              {item.icon}
+              <WordCard word={item.word} size={48} />
             </motion.button>
           );
         })}
@@ -195,7 +201,7 @@ export default function SoundSort({ worldId, onComplete }: Props) {
               <span className="text-4xl font-bold font-[Fredoka] text-white lowercase">{bucket}</span>
               <div className="flex flex-wrap gap-2 justify-center">
                 {bucketItems.map((i) => (
-                  <span key={i.word} className="text-3xl">{i.icon}</span>
+                  <WordCard key={i.word} word={i.word} size={36} />
                 ))}
               </div>
             </motion.button>

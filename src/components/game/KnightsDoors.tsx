@@ -8,6 +8,8 @@ import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
+import WordCard from '@/components/ui/WordCard';
 
 interface DoorRound {
   target: string;
@@ -104,10 +106,12 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
 
   const handleDoor = useCallback((idx: number) => {
     if (feedback !== null || !doneSpeaking || shouldReveal) return;
+    playSoundEffect('tap');
     setOpenedDoor(idx);
     if (idx === current.correctIndex) {
       const isLastRound = round >= rounds.length - 1;
       setFeedback('correct');
+      playSoundEffect('correct');
       speakFeedback(isLastRound ? 'complete' : 'correct');
       masterWord(current.target);
       setTimeout(() => {
@@ -123,6 +127,7 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
       }, 1200);
     } else {
       setFeedback('wrong');
+      playSoundEffect('wrong');
       recordWrong();
       speakWrongExplanation(current.doors[idx].word, current.target);
       setFunnyMsg(current.doors[idx].funny || 'Not this door!');
@@ -160,28 +165,38 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
         </div>
 
         <div className="flex gap-4">
-          {current.doors.map((door, i) => (
-            <motion.button key={i} whileTap={{ scale: 0.9 }} onClick={() => handleDoor(i)}
-              disabled={!doneSpeaking || feedback !== null || shouldReveal}
-              className={`w-28 h-36 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-2 transition-all ${
-                shouldReveal && i === current.correctIndex
-                  ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                  : openedDoor === i
-                  ? feedback === 'correct' ? 'bg-green-200 ring-4 ring-green-400' : 'bg-red-100'
-                  : activeOption === i
-                  ? 'bg-amber-700 ring-4 ring-blue-400 scale-105'
-                  : 'bg-amber-700'
-              }`}>
-              {openedDoor === i || (shouldReveal && i === current.correctIndex) ? (
-                <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-5xl">{door.icon}</motion.span>
-              ) : (
-                <>
-                  <span className="text-3xl">🚪</span>
-                  <span className="text-lg font-bold font-[Fredoka] text-white lowercase">{door.word}</span>
-                </>
-              )}
-            </motion.button>
-          ))}
+          {current.doors.map((door, i) => {
+            const isCorrectDoor = i === current.correctIndex;
+            const isWrongTapped = openedDoor === i && feedback === 'wrong';
+            // Highlight the correct door green whenever feedback is wrong or on reveal.
+            const revealCorrect = isCorrectDoor && (feedback === 'wrong' || shouldReveal);
+            return (
+              <motion.button key={i} whileTap={{ scale: 0.9 }} onClick={() => handleDoor(i)}
+                disabled={!doneSpeaking || feedback !== null || shouldReveal}
+                animate={isWrongTapped ? { x: [0, -8, 8, -8, 8, 0] } : {}}
+                transition={{ duration: 0.4 }}
+                className={`w-28 h-36 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-2 transition-all ${
+                  revealCorrect
+                    ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
+                    : openedDoor === i
+                    ? feedback === 'correct' ? 'bg-green-200 ring-4 ring-green-400' : 'bg-red-100'
+                    : activeOption === i
+                    ? 'bg-amber-700 ring-4 ring-blue-400 scale-105'
+                    : 'bg-amber-700'
+                }`}>
+                {openedDoor === i || revealCorrect ? (
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                    <WordCard word={door.word} size={64} />
+                  </motion.div>
+                ) : (
+                  <>
+                    <span className="text-3xl">🚪</span>
+                    <span className="text-lg font-bold font-[Fredoka] text-white lowercase">{door.word}</span>
+                  </>
+                )}
+              </motion.button>
+            );
+          })}
         </div>
 
         <AnimatePresence>

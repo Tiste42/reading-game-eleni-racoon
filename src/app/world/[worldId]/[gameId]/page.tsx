@@ -122,10 +122,10 @@ export default function GamePage() {
             <img
               src={bgImage}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover opacity-50"
+              className="absolute inset-0 w-full h-full object-cover opacity-45 blur-[2px]"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/10" />
           </div>
         )}
         <div className="relative z-10 min-h-screen">

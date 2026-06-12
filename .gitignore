@@ -44,3 +44,9 @@ eleni.the.radical.racoon.books/
 
 # Claude Code
 .claude/
+
+# Audio/image backup folders + scratch (not needed in the deploy)
+public/audio/phonemes/_*/
+public/images/generated/eleni/_untrimmed/
+/tasks/audio-test/
+/tasks/phoneme-work/

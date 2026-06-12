@@ -8,6 +8,8 @@ import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { getIcon } from '@/lib/wordIcons';
+import { playSoundEffect } from '@/lib/audio';
+import WordCard from '@/components/ui/WordCard';
 
 interface PotionWord {
   letters: string[];
@@ -90,11 +92,13 @@ export default function PotionLab({ worldId, onComplete }: Props) {
   const handlePlaceLetter = useCallback(
     (letter: string) => {
       if (phase !== 'build') return;
+      playSoundEffect('tap');
       const expected = current.letters[placed.length];
       if (letter === expected) {
         const next = [...placed, letter];
         setPlaced(next);
         if (next.length === current.letters.length) {
+          playSoundEffect('correct');
           speakFeedback('correct');
           masterWord(current.word);
           if (current.swap) {
@@ -105,6 +109,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
         }
       } else {
         setFeedback('wrong');
+        playSoundEffect('wrong');
         recordWrong();
         const builtSoFar = [...placed, letter].join('');
         speakWrongExplanation(builtSoFar, current.word, 'blend');
@@ -116,6 +121,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
 
   const handleSwap = useCallback(() => {
     if (!current.swap || swapped) return;
+    playSoundEffect('celebrate');
     setSwapped(true);
     const newLetters = [...current.letters];
     newLetters[current.swap.index] = current.swap.to;
@@ -125,7 +131,6 @@ export default function PotionLab({ worldId, onComplete }: Props) {
   }, [current, swapped, masterWord, advanceRound]);
 
   const displayWord = swapped && current.swap ? current.swap.newWord : current.word;
-  const displayIcon = swapped && current.swap ? current.swap.newIcon : current.icon;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-500/90 to-teal-400/90 px-4 py-6 flex flex-col">
@@ -157,29 +162,35 @@ export default function PotionLab({ worldId, onComplete }: Props) {
             {phase === 'build' ? 'Tap letters into the cauldron!' : 'Swap a letter!'}
           </p>
           <div className="flex gap-3 justify-center">
-            {current.letters.map((_, i) => (
-              <motion.div
-                key={i}
-                layout
-                className={`w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-bold font-[Fredoka] lowercase shadow-lg ${
-                  placed[i]
-                    ? swapped && current.swap && i === current.swap.index
-                      ? 'bg-yellow-300'
-                      : 'bg-white'
-                    : 'bg-white/20 border-2 border-dashed border-white/40'
-                }`}
-              >
-                {placed[i] || ''}
-              </motion.div>
-            ))}
+            {current.letters.map((_, i) => {
+              const isSwappedTile = swapped && current.swap && i === current.swap.index;
+              return (
+                <motion.div
+                  key={i}
+                  layout
+                  // Pop + flash the changed tile so the "magic change" is visible.
+                  animate={isSwappedTile ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+                  transition={isSwappedTile ? { duration: 0.5 } : undefined}
+                  className={`w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-bold font-[Fredoka] lowercase shadow-lg ${
+                    placed[i]
+                      ? isSwappedTile
+                        ? 'bg-yellow-300 ring-4 ring-fuchsia-400'
+                        : 'bg-white'
+                      : 'bg-white/20 border-2 border-dashed border-white/40'
+                  }`}
+                >
+                  {placed[i] || ''}
+                </motion.div>
+              );
+            })}
           </div>
           {placed.length === current.letters.length && (
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="text-center mt-4"
+              className="flex flex-col items-center mt-4"
             >
-              <span className="text-5xl">{displayIcon}</span>
+              <WordCard word={displayWord} size={64} />
               <p className="text-2xl font-bold font-[Fredoka] text-white lowercase mt-1">
                 {displayWord}
               </p>

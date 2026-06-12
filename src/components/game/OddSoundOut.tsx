@@ -1,39 +1,40 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal, PHONEME_PRONUNCIATIONS } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { speak, speakPhoneme, speakFeedback, speakReveal } from '@/lib/speech';
+import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
-interface OddOneOutRound {
-  words: { word: string; icon: string }[];
-  oddIndex: number;
-  commonSound: string;
-}
-
-// Odd item stored separately; position randomized at runtime
 interface RoundData {
-  common: { word: string; icon: string }[];
-  odd: { word: string; icon: string };
+  common: string[];
+  odd: string;
   commonSound: string;
 }
 
 const ROUND_DATA: RoundData[] = [
-  { common: [{ word: 'cat', icon: '🐱' }, { word: 'cap', icon: '🧢' }], odd: { word: 'dog', icon: '🐶' }, commonSound: 'c' },
-  { common: [{ word: 'sun', icon: '☀️' }, { word: 'soap', icon: '🧼' }], odd: { word: 'hat', icon: '🎩' }, commonSound: 's' },
-  { common: [{ word: 'pen', icon: '🖊️' }, { word: 'pot', icon: '🍲' }], odd: { word: 'net', icon: '🥅' }, commonSound: 'p' },
-  { common: [{ word: 'bat', icon: '🦇' }, { word: 'bin', icon: '🗑️' }], odd: { word: 'cup', icon: '🥤' }, commonSound: 'b' },
-  { common: [{ word: 'man', icon: '👨' }, { word: 'mug', icon: '☕' }], odd: { word: 'fan', icon: '🌬️' }, commonSound: 'm' },
-  { common: [{ word: 'red', icon: '🔴' }, { word: 'rat', icon: '🐀' }], odd: { word: 'log', icon: '🪵' }, commonSound: 'r' },
-  { common: [{ word: 'hen', icon: '🐔' }, { word: 'hot', icon: '🔥' }], odd: { word: 'van', icon: '🚐' }, commonSound: 'h' },
-  { common: [{ word: 'fox', icon: '🦊' }, { word: 'fin', icon: '🦈' }], odd: { word: 'dog', icon: '🐶' }, commonSound: 'f' },
+  { common: ['cat', 'cap'], odd: 'dog', commonSound: 'c' },
+  { common: ['sun', 'soap'], odd: 'hat', commonSound: 's' },
+  { common: ['pen', 'pot'], odd: 'net', commonSound: 'p' },
+  { common: ['bat', 'bin'], odd: 'cup', commonSound: 'b' },
+  { common: ['man', 'mug'], odd: 'fan', commonSound: 'm' },
+  { common: ['red', 'rat'], odd: 'log', commonSound: 'r' },
+  { common: ['hen', 'hot'], odd: 'van', commonSound: 'h' },
+  { common: ['fox', 'fin'], odd: 'dog', commonSound: 'f' },
 ];
 
-function buildRound(data: RoundData): OddOneOutRound {
+interface BuiltRound {
+  words: string[];
+  oddIndex: number;
+  commonSound: string;
+}
+
+function buildRound(data: RoundData): BuiltRound {
   const oddIndex = Math.floor(Math.random() * 3);
   const words = [...data.common];
   words.splice(oddIndex, 0, data.odd);
@@ -51,152 +52,190 @@ interface Props {
 
 export default function OddSoundOut({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<'play' | 'won' | 'model'>('play');
+  const [wrongIdx, setWrongIdx] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [rounds] = useState(() => shuffle(ROUND_DATA).slice(0, 6).map(buildRound));
-  const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
   const oddWord = current.words[current.oddIndex];
+  const isLast = round >= rounds.length - 1;
 
-  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
-    `Two of these start with ${PHONEME_PRONUNCIATIONS[current.commonSound] || current.commonSound}. Which one doesn't? Find the odd one out!`,
-    current.words.map(w => w.word),
+  const { activeOption, replay } = useComposedSpeech(
+    [
+      { say: 'Two of these start with...' },
+      { pause: 150 },
+      { phoneme: current.commonSound },
+      { pause: 300 },
+      { say: "Which one doesn't? Tap the odd one out!" },
+      { pause: 200 },
+      { options: current.words },
+    ],
     [round],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 
-  useEffect(() => {
-    if (shouldReveal) {
-      let cancelled = false;
-      (async () => {
-        await speakReveal(oddWord.word);
-        if (cancelled) return;
-        await new Promise(r => setTimeout(r, 500));
-        if (cancelled) return;
-        setFeedback(null);
-        if (round >= rounds.length - 1) {
-          completeGame(worldId, 'odd-one-out');
-          addCoins(8);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      })();
-      return () => { cancelled = true; };
+  const advance = useCallback(() => {
+    setPhase('play');
+    setWrongIdx(null);
+    if (isLast) {
+      completeGame(worldId, 'odd-one-out');
+      addCoins(8);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
     }
-  }, [shouldReveal, oddWord, round, rounds, worldId, completeGame, addCoins]);
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  // After 2 misses: spotlight the odd one, Leni says the answer, move on
+  const modeling = useRef(false);
+  useEffect(() => {
+    if (shouldReveal && phase === 'play' && !modeling.current) {
+      modeling.current = true;
+      setPhase('model');
+      (async () => {
+        await speakReveal(oddWord);
+        await new Promise((r) => setTimeout(r, 700));
+        modeling.current = false;
+        advance();
+      })();
+    }
+  }, [shouldReveal, phase, oddWord, advance]);
 
   const handleChoice = useCallback(
     (index: number) => {
-      if (feedback || !doneSpeaking || shouldReveal) return;
-      const isLast = round >= rounds.length - 1;
+      if (phase !== 'play') return;
+
       if (index === current.oddIndex) {
-        setFeedback('correct');
+        recordSoundAttempt(current.commonSound, true);
         incrementStreak();
+        setPhase('won');
+        playSoundEffect('correct');
         (async () => {
           await speakFeedback(isLast ? 'complete' : 'correct');
-          await new Promise(r => setTimeout(r, 400));
-          setFeedback(null);
-          if (isLast) {
-            completeGame(worldId, 'odd-one-out');
-            addCoins(8);
-            setShowCelebration(true);
-          } else {
-            setRound((r) => r + 1);
-          }
+          await new Promise((r) => setTimeout(r, 600));
+          advance();
         })();
       } else {
-        setFeedback('wrong');
+        recordSoundAttempt(current.commonSound, false);
         recordWrong();
-        speakWrongExplanation(current.words[index].word, oddWord.word, 'starts-with');
         resetStreak();
-        setTimeout(() => setFeedback(null), 2000);
+        setWrongIdx(index);
+        playSoundEffect('wrong');
+        // Teach, don't scold: replay the tapped word and the shared sound
+        (async () => {
+          await speak(current.words[index]);
+          await speakPhoneme(current.commonSound);
+          setWrongIdx(null);
+        })();
       }
     },
-    [feedback, doneSpeaking, shouldReveal, current, oddWord, round, rounds, worldId, completeGame, addCoins, incrementStreak, resetStreak, recordWrong]
+    [phase, current, isLast, advance, recordWrong, resetStreak, incrementStreak, recordSoundAttempt],
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-500/75 to-orange-400/75 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">
-          {'<'}
-        </motion.button>
-
-          <ReplayButton onReplay={replay} />
-
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🎺"
+      bgClassName="from-pink-500/75 to-orange-400/75"
+    >
+      <div className="flex-1 flex flex-col items-center justify-evenly py-2">
+        <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'waving'} size={150} />
+        <div className="text-center">
+          <p className="text-pink-800 font-[Fredoka] font-semibold text-lg">Which one starts with a different sound?</p>
+          <button
+            onClick={() => speakPhoneme(current.commonSound)}
+            className="mt-1 inline-flex items-center gap-2 bg-white/80 rounded-full px-4 py-1.5 shadow press-3d"
+          >
+            <span className="font-[Fredoka] text-purple-600">Two start with</span>
+            <span className="text-2xl font-bold font-[Fredoka] text-pink-600 lowercase">{current.commonSound}</span>
+            <span>🔊</span>
+          </button>
         </div>
-        <div className="flex gap-1">
-          {rounds.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
-        </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'waving'} size={80} />
-        <p className="text-white font-[Nunito] text-center text-lg">
-          Which one doesn&apos;t start the same?
-        </p>
-
+        {/* Stage */}
         <AnimatePresence mode="wait">
           <motion.div
             key={round}
-            initial={{ scale: 0.5, opacity: 0 }}
+            initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.5, opacity: 0 }}
-            className="flex gap-4"
+            exit={{ scale: 0.6, opacity: 0 }}
+            className="relative"
           >
-            {current.words.map((item, i) => {
-              const isOdd = i === current.oddIndex;
-              const isBeingSpoken = activeOption === i;
-              const revealThis = shouldReveal && isOdd;
+            <div className="flex gap-4 items-end">
+              {current.words.map((word, i) => {
+                const isOdd = i === current.oddIndex;
+                const isBeingSpoken = activeOption === i;
+                const revealThis = phase === 'model' && isOdd;
+                const wonThis = phase === 'won' && isOdd;
+                const isWrongTap = wrongIdx === i;
 
-              return (
-                <motion.button
-                  key={item.word}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => handleChoice(i)}
-                  disabled={feedback !== null || !doneSpeaking || shouldReveal}
-                  className={`w-28 h-28 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition-all ${
-                    feedback === 'correct' && isOdd
-                      ? 'bg-green-200 ring-4 ring-green-400'
-                      : revealThis
-                      ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                      : isBeingSpoken
-                      ? 'bg-white ring-4 ring-blue-400 scale-105'
-                      : 'bg-white/90'
-                  }`}
-                >
-                  <span className="text-5xl">{item.icon}</span>
-                </motion.button>
-              );
-            })}
+                return (
+                  <div key={`${round}-${word}-${i}`} className="flex flex-col items-center">
+                    <motion.button
+                      onClick={() => handleChoice(i)}
+                      disabled={phase !== 'play'}
+                      animate={
+                        wonThis
+                          ? { y: [0, -24, 0], rotate: [0, -12, 12, 0], scale: 1.15 }
+                          : isWrongTap
+                            ? { x: [-7, 7, -7, 0] }
+                            : isBeingSpoken
+                              ? { y: [0, -10, 0], scale: 1.08 }
+                              : {}
+                      }
+                      transition={
+                        wonThis
+                          ? { duration: 0.5, repeat: 2 }
+                          : isBeingSpoken
+                            ? { duration: 0.4, repeat: Infinity }
+                            : { duration: 0.35 }
+                      }
+                      whileTap={{ scale: 0.9 }}
+                      className={`w-32 h-36 rounded-3xl shadow-xl flex flex-col items-center justify-center gap-1 bg-white/95 press-3d ${
+                        wonThis || revealThis
+                          ? 'ring-4 ring-green-400'
+                          : isBeingSpoken
+                            ? 'ring-4 ring-blue-400'
+                            : ''
+                      } ${revealThis ? 'animate-hint-pulse' : ''}`}
+                    >
+                      <WordCard word={word} size={80} />
+                      {(wonThis || revealThis) && (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-xl">
+                          🌟
+                        </motion.span>
+                      )}
+                    </motion.button>
+                    {/* podium */}
+                    <div className="w-24 h-3 mt-1 rounded bg-amber-700/50" />
+                  </div>
+                );
+              })}
+            </div>
           </motion.div>
         </AnimatePresence>
 
         <AnimatePresence>
-          {feedback === 'correct' && (
-            <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ opacity: 0 }}
-              className="text-xl text-yellow-300 font-bold">
-              {current.words[current.oddIndex].word} starts with a different sound!
-            </motion.p>
-          )}
-          {feedback === 'wrong' && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-              className="text-lg text-white font-bold">
-              That one starts with &quot;{current.commonSound}&quot; too!
+          {phase === 'won' && (
+            <motion.p
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-xl text-yellow-200 font-bold font-[Fredoka]"
+            >
+              {oddWord} starts with a different sound!
             </motion.p>
           )}
         </AnimatePresence>
       </div>
 
       <CelebrationOverlay show={showCelebration} message="Great listening!" onComplete={onComplete} />
-    </div>
+    </GameShell>
   );
 }

@@ -1,30 +1,18 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWord, speakWrongExplanation } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import { speakPhoneme, speakWord, speakFeedback } from '@/lib/speech';
+import { useGameSpeech } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
-interface BuildWord {
-  letters: string[];
-  word: string;
-  icon: string;
-}
-
-const BUILD_WORDS: BuildWord[] = [
-  { letters: ['s', 'a', 't'], word: 'sat', icon: getIcon('sat') },
-  { letters: ['p', 'i', 'n'], word: 'pin', icon: getIcon('pin') },
-  { letters: ['t', 'a', 'p'], word: 'tap', icon: getIcon('tap') },
-  { letters: ['n', 'e', 't'], word: 'net', icon: getIcon('net') },
-  { letters: ['p', 'e', 't'], word: 'pet', icon: getIcon('pet') },
-  { letters: ['l', 'e', 't'], word: 'let', icon: getIcon('let') },
-  { letters: ['t', 'i', 'n'], word: 'tin', icon: getIcon('tin') },
-  { letters: ['s', 'i', 'p'], word: 'sip', icon: getIcon('sip') },
-];
+// Only SATPIN + e, l letters AND words a 3-4 year old knows and can picture.
+const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -37,114 +25,177 @@ interface Props {
 
 export default function MarketBuilder({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [placed, setPlaced] = useState<string[]>([]);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [placed, setPlaced] = useState(0);
+  const [wrongTile, setWrongTile] = useState<number | null>(null);
+  const [done, setDone] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(BUILD_WORDS).slice(0, 6));
-  const { completeGame, addCoins, masterWord } = useGameStore();
+  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
+  const { completeGame, addCoins, masterWord, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
-  const trayLetters = useMemo(() => shuffle([...current.letters]), [current]);
+  const word = words[round];
+  const letters = word.split('');
+  const isLast = round >= words.length - 1;
 
-  const { recordWrong } = useWrongAttempts(round);
+  // Scrambled letter bank, stable per round
+  const [bank, setBank] = useState<string[]>([]);
+  useEffect(() => {
+    let s = shuffle(letters);
+    if (s.join('') === word) s = [...s].reverse();
+    setBank(s);
+    setPlaced(0);
+    setDone(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
 
-  useGameSpeech(
-    `Build the word ${current.word}! Tap the letters in order!`,
-    [round]
+  const instruction = `Build the word ${word}! Tap the letters in order!`;
+  const { replay } = useGameSpeech(done ? null : instruction, [round, done]);
+
+  // Called after the LAST letter's sound has fully played. Leni then says the
+  // whole word as the answer (no stretched-blend clip).
+  const completeWord = useCallback(() => {
+    setDone(true);
+    playSoundEffect('coin');
+    masterWord(word);
+    (async () => {
+      await speakWord(word);
+      await speakFeedback(isLast ? 'complete' : 'correct');
+      await new Promise((r) => setTimeout(r, 900));
+      if (isLast) {
+        completeGame(worldId, 'market-builder');
+        addCoins(10);
+        setShowCelebration(true);
+      } else {
+        setRound((r) => r + 1);
+      }
+    })();
+  }, [word, isLast, worldId, completeGame, addCoins, masterWord]);
+
+  const tapLetter = useCallback(
+    (letter: string, bankIdx: number) => {
+      if (done) return;
+      const needed = letters[placed];
+      if (letter === needed) {
+        playSoundEffect('tap');
+        recordSoundAttempt(letter, true);
+        const np = placed + 1;
+        setPlaced(np);
+        if (np === letters.length) {
+          // Last letter: let its human sound finish, THEN say the word
+          (async () => {
+            await speakPhoneme(letter);
+            await new Promise((r) => setTimeout(r, 150));
+            completeWord();
+          })();
+        } else {
+          speakPhoneme(letter);
+        }
+      } else {
+        // Foolproof: a wrong tap never traps her — shake + play the sound she needs
+        playSoundEffect('wrong');
+        speakPhoneme(needed);
+        recordSoundAttempt(needed, false);
+        setWrongTile(bankIdx);
+        setTimeout(() => setWrongTile(null), 500);
+      }
+    },
+    [done, letters, placed, completeWord, recordSoundAttempt],
   );
 
-  const handlePlace = useCallback((letter: string) => {
-    if (feedback) return;
-    const expected = current.letters[placed.length];
-    if (letter === expected) {
-      const next = [...placed, letter];
-      setPlaced(next);
-      if (next.length === current.letters.length) {
-        setFeedback('correct');
-        speakWord(current.word);
-        masterWord(current.word);
-        setTimeout(() => {
-          setFeedback(null);
-          setPlaced([]);
-          if (round >= words.length - 1) {
-            completeGame(worldId, 'market-builder');
-            addCoins(10);
-            setShowCelebration(true);
-            speakFeedback('complete');
-          } else {
-            setRound((r) => r + 1);
-          }
-        }, 1200);
-      }
-    } else {
-      setFeedback('wrong');
-      recordWrong();
-      const builtSoFar = [...placed, letter].join('');
-      speakWrongExplanation(builtSoFar, current.word, 'blend');
-      setTimeout(() => setFeedback(null), 2000);
-    }
-  }, [feedback, placed, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  // A bank tile is "used" once its letter has been placed (letters are unique per word)
+  const isUsed = (letter: string) => letters.slice(0, placed).includes(letter);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-400/90 to-orange-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={words.length}
+      progressIcon="🏪"
+      bgClassName="from-amber-400/85 to-orange-300/85"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-3">
+        {/* Leni + the item to build */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={done ? 'celebrating' : 'excited'} size={140} />
+          <motion.div
+            key={round}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white/90 rounded-3xl p-3 shadow-lg -mt-2"
+          >
+            <WordCard word={word} size={180} />
+          </motion.div>
+          <p className="text-amber-800 font-[Fredoka] font-bold text-2xl mt-2">Build the word!</p>
         </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={placed.length === current.letters.length ? 'celebrating' : 'excited'} size={70} />
-        <div className="text-center">
-          <span className="text-6xl">{current.icon}</span>
-          <p className="text-white/80 font-[Nunito] text-sm mt-2">Build the word to buy it!</p>
-        </div>
-
+        {/* Slots being filled */}
         <div className="flex gap-3">
-          {current.letters.map((_, i) => (
-            <div key={i} className={`w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-bold font-[Fredoka] lowercase shadow-lg ${
-              placed[i] ? 'bg-white text-gray-800' : 'bg-white/20 border-2 border-dashed border-white/40'
-            }`}>
-              {placed[i] || ''}
-            </div>
-          ))}
+          {letters.map((letter, i) => {
+            const filled = i < placed;
+            const isNext = i === placed && !done;
+            return (
+              <div
+                key={i}
+                className={`w-[84px] h-[84px] rounded-2xl flex items-center justify-center text-6xl font-bold font-[Fredoka] lowercase shadow-inner transition-colors ${
+                  filled
+                    ? 'bg-green-300 text-gray-800'
+                    : isNext
+                      ? 'bg-white/50 border-4 border-dashed border-white'
+                      : 'bg-white/30 border-4 border-dashed border-white/50'
+                }`}
+              >
+                {filled && (
+                  <motion.span initial={{ scale: 0, y: -20 }} animate={{ scale: 1, y: 0 }}>
+                    {letter}
+                  </motion.span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {placed.length < current.letters.length && (
-          <div className="flex gap-3">
-            {trayLetters.map((letter, i) => {
-              const usedCount = placed.filter((p) => p === letter).length;
-              const totalCount = current.letters.filter((l) => l === letter).length;
-              const disabled = usedCount >= totalCount;
-              return (
-                <motion.button key={`${letter}-${i}`} whileTap={{ scale: 0.85 }}
-                  onClick={() => handlePlace(letter)} disabled={disabled}
-                  className={`w-20 h-20 rounded-2xl text-4xl font-bold font-[Fredoka] lowercase shadow-lg ${
-                    disabled ? 'bg-white/20 text-white/30' : 'bg-white/90 text-gray-800'
-                  }`}>{letter}</motion.button>
-              );
-            })}
-          </div>
-        )}
-
-        {placed.length === current.letters.length && feedback === 'correct' && (
-          <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }}
-            className="text-2xl font-bold font-[Fredoka] text-white lowercase">{current.word}!</motion.p>
-        )}
+        {/* Letter bank — big tiles */}
+        <div className="flex gap-4">
+          {bank.map((letter, bankIdx) => {
+            const used = isUsed(letter);
+            const isNeeded = letter === letters[placed] && !done;
+            return (
+              <motion.button
+                key={bankIdx}
+                onClick={() => tapLetter(letter, bankIdx)}
+                disabled={used || done}
+                animate={
+                  wrongTile === bankIdx
+                    ? { x: [-8, 8, -8, 8, 0] }
+                    : used
+                      ? { scale: 0, opacity: 0 }
+                      : { scale: 1, opacity: 1 }
+                }
+                whileTap={{ scale: 0.9 }}
+                className={`w-[104px] h-[104px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
+                  isNeeded ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
+                }`}
+              >
+                {letter}
+              </motion.button>
+            );
+          })}
+        </div>
 
         <AnimatePresence>
-          {feedback === 'wrong' && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-              className="text-lg text-white font-bold">Try a different letter!</motion.p>
+          {done && (
+            <motion.p
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="text-5xl font-bold font-[Fredoka] text-amber-700 lowercase"
+            >
+              {word}!
+            </motion.p>
           )}
         </AnimatePresence>
       </div>
 
-      <CelebrationOverlay show={showCelebration} message="Market master!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Master Builder!" onComplete={onComplete} />
+    </GameShell>
   );
 }

@@ -158,6 +158,24 @@ function buildManifest(): AudioClip[] {
     { id: 'think-again', text: "Hmm, listen carefully and try again!" },
     { id: 'well-done', text: 'Well done! You are getting so good!' },
 
+    // Short, varied praise (shuffled so it never feels repetitive)
+    { id: 'awesome-job', text: 'Awesome job!' },
+    { id: 'great-work', text: 'Great work!' },
+    { id: 'youre-the-best', text: "You're the best!" },
+    { id: 'wonderful', text: 'Wonderful!' },
+    { id: 'fantastic', text: 'Fantastic!' },
+    { id: 'way-to-go', text: 'Way to go!' },
+    { id: 'brilliant', text: 'Brilliant!' },
+    { id: 'super-reading', text: 'Super reading!' },
+    { id: 'you-got-it', text: 'You got it!' },
+    { id: 'high-five', text: 'High five!' },
+    { id: 'nice-work', text: 'Nice work!' },
+    { id: 'yes-perfect', text: 'Perfect!' },
+    // Short, gentle "try again" variety
+    { id: 'almost', text: 'Almost! Try again!' },
+    { id: 'so-close', text: 'So close! One more try!' },
+    { id: 'good-try', text: "Good try! Let's listen again!" },
+
     // World intros
     { id: 'world-1-intro', text: "Welcome to the Sound Fiesta in Mexico! Let's listen for sounds and have fun!" },
     { id: 'world-2-intro', text: "Welcome to the Letter Garden in France! Let's learn what sounds letters make!" },
@@ -232,6 +250,20 @@ function buildManifest(): AudioClip[] {
     { id: 'level-complete', text: 'Level complete! You are amazing!' },
     { id: 'new-companion', text: 'You made a new friend! They will travel with you!' },
     { id: 'new-costume', text: 'You got a new outfit! Looking great!' },
+
+    // Syllable-segmented words for Maraca Beats (slow, separated beats)
+    { id: 'syll-cat', text: 'cat' },
+    { id: 'syll-dog', text: 'dog' },
+    { id: 'syll-sun', text: 'sun' },
+    { id: 'syll-apple', text: 'ap... pull' },
+    { id: 'syll-monkey', text: 'mon... key' },
+    { id: 'syll-rabbit', text: 'rab... bit' },
+    { id: 'syll-banana', text: 'ba... na... na' },
+    { id: 'syll-elephant', text: 'el... eh... fant' },
+    { id: 'syll-tomato', text: 'to... may... to' },
+    { id: 'syll-butterfly', text: 'but... ter... fly' },
+    { id: 'syll-dinosaur', text: 'dy... no... soar' },
+    { id: 'syll-watermelon', text: 'wa... ter... mel... on' },
   ];
 
   for (const n of narrations) {
@@ -467,6 +499,38 @@ function buildManifest(): AudioClip[] {
     { text: 'A bug is on the log.' },
     { text: 'The fish is in the net.' },
     { text: 'I have a pet dog.' },
+
+    // --- World 1 redesign: rhyme corrective-model lines ---
+    { text: 'cat and hat rhyme! Listen: cat... hat!' },
+    { text: 'bug and mug rhyme! Listen: bug... mug!' },
+    { text: 'log and dog rhyme! Listen: log... dog!' },
+    { text: 'hen and ten rhyme! Listen: hen... ten!' },
+    { text: 'pin and bin rhyme! Listen: pin... bin!' },
+
+    // --- World 1 redesign: syllable beat-count answers ---
+    { text: 'cat has 1 beat', ttsText: 'cat has one beat!' },
+    { text: 'dog has 1 beat', ttsText: 'dog has one beat!' },
+    { text: 'sun has 1 beat', ttsText: 'sun has one beat!' },
+    { text: 'apple has 2 beats', ttsText: 'apple has two beats!' },
+    { text: 'monkey has 2 beats', ttsText: 'monkey has two beats!' },
+    { text: 'rabbit has 2 beats', ttsText: 'rabbit has two beats!' },
+    { text: 'banana has 3 beats', ttsText: 'banana has three beats!' },
+    { text: 'elephant has 3 beats', ttsText: 'elephant has three beats!' },
+    { text: 'tomato has 3 beats', ttsText: 'tomato has three beats!' },
+    { text: 'butterfly has 3 beats', ttsText: 'butterfly has three beats!' },
+    { text: 'dinosaur has 3 beats', ttsText: 'dinosaur has three beats!' },
+    { text: 'watermelon has 4 beats', ttsText: 'watermelon has four beats!' },
+
+    // --- World 1 redesign: odd-one-out composable templates ---
+    { text: 'Two of these start with...', ttsText: 'Two of these start with...' },
+    { text: "Which one doesn't? Tap the odd one out!" },
+
+    // --- Coverage gap fixes ---
+    { text: 'The word is them. Which two letters make the special sound? Is it sh, ch, or th?' },
+    { text: '1', ttsText: 'one!' },
+    { text: '2', ttsText: 'two!' },
+    { text: '3', ttsText: 'three!' },
+    { text: '4', ttsText: 'four!' },
   ];
 
   // Multi-word option phrases (spoken as options in games)

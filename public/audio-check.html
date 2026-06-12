@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Letter Sound Check — Leni's Sound Safari</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 1.5rem auto; padding: 0 1rem; background: #faf7f2; color: #222; }
+  h1 { font-size: 1.4rem; margin-bottom: .3rem; }
+  p.note { font-size: 0.92rem; color: #555; line-height: 1.4; }
+  h2 { font-size: 1rem; margin: 1.6rem 0 .5rem; color: #7c3aed; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  button { padding: 14px 8px; border: 2px solid #ddd; border-radius: 14px; background: white; cursor: pointer; text-align: center; line-height: 1.25; }
+  button:hover { border-color: #7c3aed; }
+  button.played { background: #ede9fe; border-color: #a78bfa; }
+  .let { font-size: 1.7rem; font-weight: 800; }
+  .exp { font-size: 0.82rem; color: #888; }
+  .w3 { background: #fff7ed; }
+</style>
+</head>
+<body>
+<h1>🦝 Letter Sound Check</h1>
+<p class="note">
+  Tap each letter and listen. The small grey text is the sound it <em>should</em> make
+  (e.g. <b>L</b> should be a stretched "lll", not "el" or "eh"; <b>P</b> should be a short "p" as in <b>p</b>at).
+  The orange ones are the letters used in the surfing game.<br>
+  <b>Tell Claude which letters sound wrong</b> — that's the only reliable way to fix them.
+</p>
+
+<h2>All letter sounds</h2>
+<div class="grid" id="phonemes"></div>
+
+<h2>Sample words (these should sound clear &amp; correct)</h2>
+<div class="grid" id="words"></div>
+
+<script>
+const W3 = new Set(['l','i','p','e','s','a','t','n']);
+const PHONEMES = [
+  ['s','sss'],['a','a — apple'],['t','t — top'],['p','p — pat'],['i','i — igloo'],
+  ['n','nnn'],['e','e — egg'],['l','lll'],['c','k — cat'],['k','k — kite'],
+  ['h','h — hat'],['r','rrr'],['m','mmm'],['d','d — dog'],['g','g — got'],
+  ['o','o — on'],['u','u — up'],['f','fff'],['b','b — bat'],['j','j — jet'],
+  ['v','vvv'],['w','w — wet'],['x','ks — fox'],['y','y — yes'],['z','zzz'],
+  ['sh','shh'],['ch','ch — chip'],['th','th — this'],
+];
+const WORDS = ['pin','pen','net','pan','lip','tin','sat','sun','cat','dog','ship'];
+
+let current = null;
+function play(src, btn) {
+  if (current) current.pause();
+  current = new Audio(src + '?v=' + Date.now());
+  current.play();
+  document.querySelectorAll('button').forEach(b => b.classList.remove('played'));
+  btn.classList.add('played');
+}
+
+const pg = document.getElementById('phonemes');
+for (const [ph, exp] of PHONEMES) {
+  const b = document.createElement('button');
+  if (W3.has(ph)) b.className = 'w3';
+  b.innerHTML = `<div class="let">${ph}</div><div class="exp">${exp}</div>`;
+  b.onclick = () => play('/audio/phonemes/' + ph + '.mp3', b);
+  pg.appendChild(b);
+}
+const wg = document.getElementById('words');
+for (const w of WORDS) {
+  const b = document.createElement('button');
+  b.innerHTML = `<div class="let" style="font-size:1.3rem">${w}</div>`;
+  b.onclick = () => play('/audio/words/' + w + '.mp3', b);
+  wg.appendChild(b);
+}
+</script>
+</body>
+</html>

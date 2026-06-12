@@ -88,17 +88,74 @@ function buildManifest(): ImageRequest[] {
     });
   }
 
-  // Word picture cards (subset of the most common ones)
+  // Word picture cards — every picturable word used in the games.
+  // Custom scene prompts for words that aren't simple objects.
+  const customPrompts: Record<string, string> = {
+    sat: 'a happy child sitting cross-legged on the floor',
+    sit: 'a cute puppy sitting obediently',
+    tap: 'a water faucet with a single water drop',
+    pin: 'a single red pushpin',
+    pan: 'a frying pan with a fried egg in it',
+    nap: 'a toddler sleeping peacefully on a pillow',
+    nip: 'a small crab pinching with its claw',
+    tin: 'a shiny metal tin can',
+    sip: 'a child sipping juice through a straw',
+    ten: 'the number ten with colorful balloons around it',
+    win: 'a gold trophy with a star on it',
+    pet: 'a child gently petting a happy dog',
+    lip: 'smiling lips',
+    hot: 'a glowing campfire',
+    wet: 'a puppy under a small rain cloud, dripping wet',
+    hug: 'two teddy bears hugging each other',
+    dug: 'a happy dog that dug a hole, dirt flying',
+    jug: 'a ceramic jug pouring water',
+    pug: 'a cute pug puppy face',
+    cut: 'child-safe scissors cutting a strip of paper',
+    run: 'a happy child running fast',
+    ran: 'a smiling fox running',
+    jog: 'a turtle jogging with a sweatband',
+    cog: 'a single metal gear wheel',
+    den: 'a cozy bear cave with a sleeping bear',
+    fed: 'a parent bird feeding a baby bird a worm',
+    dot: 'one big colorful polka dot',
+    cot: 'a small simple bed',
+    red: 'a bright red balloon',
+    fog: 'soft fog over little hills',
+    chop: 'an axe chopping a log in half',
+    chip: 'a basket of french fries',
+    shop: 'a cheerful little store front with an awning',
+    shed: 'a small wooden garden shed',
+    top: 'a colorful spinning top toy',
+    ink: 'an ink bottle with a feather quill',
+    map: 'a treasure map with a dotted path and an X',
+  };
+
   const wordPics = [
-    'cat', 'hat', 'mat', 'bat', 'rat', 'dog', 'log', 'bug', 'cup', 'hen',
-    'pen', 'net', 'bed', 'red', 'van', 'fan', 'fin', 'pin', 'pot', 'sun',
-    'ship', 'shop', 'chip', 'fish',
+    // SATPIN CVC (Worlds 2-3)
+    'sat', 'sit', 'tap', 'pit', 'pin', 'pan', 'nap', 'nip', 'tin', 'sip',
+    'ten', 'net', 'pen', 'pet', 'lip',
+    // World 4 CVC families
+    'cat', 'hat', 'mat', 'bat', 'rat', 'can', 'man', 'van', 'ran', 'fan',
+    'fin', 'bin', 'win', 'dog', 'log', 'fog', 'hog', 'jog', 'cog', 'bug',
+    'rug', 'mug', 'hug', 'dug', 'jug', 'pug', 'cup', 'hot', 'pot', 'dot',
+    'cot', 'bed', 'red', 'fed', 'hen', 'den', 'wet', 'jet', 'pup', 'cut',
+    'hut', 'run', 'cap',
+    // Digraphs (World 5)
+    'ship', 'shop', 'shed', 'chip', 'chop',
+    // World 1-2 vocabulary
+    'snake', 'apple', 'tiger', 'penguin', 'iguana', 'nut', 'egg', 'lemon',
+    'tent', 'insect', 'ant', 'igloo', 'lion', 'sun', 'moon', 'banana',
+    'soap', 'ball', 'bird', 'fish', 'bus', 'sock', 'mouse', 'milk',
+    'tree', 'top', 'rain', 'star', 'map', 'turtle', 'pig', 'nest',
+    'elephant', 'car', 'fox', 'lamp', 'elf', 'ink',
+    'monkey', 'rabbit', 'tomato', 'butterfly', 'dinosaur', 'watermelon',
   ];
 
   for (const word of wordPics) {
+    const subject = customPrompts[word] || `a ${word}`;
     images.push({
       id: `word-${word}`,
-      prompt: `A simple, clear cartoon illustration of a ${word}, cute children's book style, bright colors, white background, suitable for a 4-year-old to recognize`,
+      prompt: `A simple, clear illustration of ${subject}. Cute flat children's book style with thick soft outlines and bright cheerful colors. Centered single subject on a plain white background. ABSOLUTELY NO text, letters, numbers or words in the image (exception: only if the subject itself is a number). Instantly recognizable by a 4-year-old.`,
       outputPath: `items/${word}.png`,
       useReference: false,
     });

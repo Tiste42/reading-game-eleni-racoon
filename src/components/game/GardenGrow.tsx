@@ -8,6 +8,8 @@ import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { getIcon } from '@/lib/wordIcons';
+import { playSoundEffect } from '@/lib/audio';
+import WordCard from '@/components/ui/WordCard';
 
 interface GardenWord {
   word: string;
@@ -63,7 +65,7 @@ export default function GardenGrow({ worldId, onComplete }: Props) {
       speakReveal(current.word);
       const timer = setTimeout(() => {
         setFeedback(null);
-        setGrown(g => [...g, current.icon]);
+        setGrown(g => [...g, current.word]);
         if (round >= words.length - 1) {
           completeGame(worldId, 'garden-grow');
           addCoins(10);
@@ -75,16 +77,18 @@ export default function GardenGrow({ worldId, onComplete }: Props) {
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [shouldReveal, current.word, current.icon, round, words.length, worldId, completeGame, addCoins]);
+  }, [shouldReveal, current.word, round, words.length, worldId, completeGame, addCoins]);
 
   const handleChoice = useCallback((chosen: string) => {
     if (feedback || shouldReveal) return;
+    playSoundEffect('tap');
     if (chosen === current.word) {
       const isLastRound = round >= words.length - 1;
       setFeedback('correct');
+      playSoundEffect('correct');
       speakFeedback(isLastRound ? 'complete' : 'correct');
       masterWord(current.word);
-      setGrown((g) => [...g, current.icon]);
+      setGrown((g) => [...g, current.word]);
       setTimeout(() => {
         setFeedback(null);
         if (isLastRound) {
@@ -97,6 +101,7 @@ export default function GardenGrow({ worldId, onComplete }: Props) {
       }, 1000);
     } else {
       setFeedback('wrong');
+      playSoundEffect('wrong');
       recordWrong();
       speakWrongExplanation(chosen, current.word);
       setTimeout(() => setFeedback(null), 2000);
@@ -114,8 +119,10 @@ export default function GardenGrow({ worldId, onComplete }: Props) {
       </div>
 
       <div className="bg-amber-800/30 rounded-2xl p-3 flex flex-wrap gap-2 justify-center mb-4 min-h-[80px]">
-        {grown.map((icon, i) => (
-          <motion.span key={i} initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} className="text-4xl">{icon}</motion.span>
+        {grown.map((grownWord, i) => (
+          <motion.div key={i} initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }}>
+            <WordCard word={grownWord} size={48} />
+          </motion.div>
         ))}
         {grown.length === 0 && <p className="text-white/50 font-[Nunito] text-sm self-center">Your garden is empty!</p>}
       </div>
@@ -142,7 +149,7 @@ export default function GardenGrow({ worldId, onComplete }: Props) {
                   ? 'bg-green-200 ring-4 ring-green-400'
                   : 'bg-white/90'
               }`}>
-              <span className="text-4xl">{choice.icon}</span>
+              <WordCard word={choice.word} size={56} />
             </motion.button>
           ))}
         </div>

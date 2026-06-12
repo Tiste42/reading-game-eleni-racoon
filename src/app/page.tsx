@@ -264,7 +264,7 @@ function WorldMap() {
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-xl font-bold font-[Fredoka] text-white block">
-              Lini&apos;s Library
+              Leni&apos;s Library
             </span>
             <span className="text-sm font-[Nunito] text-white/80 block">
               Storytime!

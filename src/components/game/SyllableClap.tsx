@@ -1,37 +1,43 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
+import PressButton from '@/components/ui/PressButton';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakReveal } from '@/lib/speech';
+import { speak, speakFeedback, speakSyllables } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
 interface SyllableWord {
   word: string;
   syllables: number;
-  icon: string;
 }
 
 const WORDS: SyllableWord[] = [
-  { word: 'cat', syllables: 1, icon: '🐱' },
-  { word: 'dog', syllables: 1, icon: '🐶' },
-  { word: 'sun', syllables: 1, icon: '☀️' },
-  { word: 'apple', syllables: 2, icon: '🍎' },
-  { word: 'monkey', syllables: 2, icon: '🐵' },
-  { word: 'rabbit', syllables: 2, icon: '🐰' },
-  { word: 'banana', syllables: 3, icon: '🍌' },
-  { word: 'elephant', syllables: 3, icon: '🐘' },
-  { word: 'tomato', syllables: 3, icon: '🍅' },
-  { word: 'butterfly', syllables: 3, icon: '🦋' },
-  { word: 'dinosaur', syllables: 3, icon: '🦕' },
-  { word: 'watermelon', syllables: 4, icon: '🍉' },
+  { word: 'cat', syllables: 1 },
+  { word: 'dog', syllables: 1 },
+  { word: 'sun', syllables: 1 },
+  { word: 'apple', syllables: 2 },
+  { word: 'monkey', syllables: 2 },
+  { word: 'rabbit', syllables: 2 },
+  { word: 'banana', syllables: 3 },
+  { word: 'elephant', syllables: 3 },
+  { word: 'tomato', syllables: 3 },
+  { word: 'butterfly', syllables: 3 },
+  { word: 'dinosaur', syllables: 3 },
+  { word: 'watermelon', syllables: 4 },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function beatsText(word: string, n: number): string {
+  return `${word} has ${n} ${n === 1 ? 'beat' : 'beats'}`;
 }
 
 interface Props {
@@ -42,216 +48,214 @@ interface Props {
 export default function SyllableClap({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [claps, setClaps] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<'play' | 'checking' | 'model'>('play');
+  const [bouncing, setBouncing] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(WORDS).slice(0, 8));
-  const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
+  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = words[round];
+  const isLast = round >= words.length - 1;
 
-  const { doneSpeaking, replay } = useGameSpeechWithOptions(
-    `How many beats does this word have? Clap for each beat!`,
+  const { replay } = useGameSpeechWithOptions(
+    'How many beats does this word have? Clap for each beat!',
     [current.word],
     [round],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 
-  useEffect(() => {
-    if (shouldReveal) {
-      let cancelled = false;
-      (async () => {
-        await speakReveal(`${current.word} has ${current.syllables} beats`);
-        if (cancelled) return;
-        await new Promise(r => setTimeout(r, 500));
-        if (cancelled) return;
-        setFeedback(null);
-        setSubmitted(false);
-        setClaps(0);
-        if (round >= words.length - 1) {
-          completeGame(worldId, 'syllable-clap');
-          addCoins(6);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      })();
-      return () => { cancelled = true; };
+  const advance = useCallback(() => {
+    setPhase('play');
+    setClaps(0);
+    if (isLast) {
+      completeGame(worldId, 'syllable-clap');
+      addCoins(6);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
     }
-  }, [shouldReveal, current, round, words, worldId, completeGame, addCoins]);
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  // Bounce the picture once per syllable while the segmented audio plays
+  const playBeats = useCallback(async () => {
+    setBouncing(true);
+    await speakSyllables(current.word);
+    setBouncing(false);
+  }, [current]);
+
+  // After 2 misses: model the beats, say the answer, move on
+  const modeling = useRef(false);
+  useEffect(() => {
+    if (shouldReveal && phase !== 'model' && !modeling.current) {
+      modeling.current = true;
+      setPhase('model');
+      (async () => {
+        await playBeats();
+        await speak(`${beatsText(current.word, current.syllables)}!`);
+        await new Promise((r) => setTimeout(r, 600));
+        modeling.current = false;
+        advance();
+      })();
+    }
+  }, [shouldReveal, phase, current, playBeats, advance]);
 
   const handleClap = useCallback(() => {
-    if (submitted || !doneSpeaking || shouldReveal) return;
-    setClaps((c) => c + 1);
-  }, [submitted, doneSpeaking, shouldReveal]);
+    if (phase !== 'play') return;
+    playSoundEffect('tap');
+    setClaps((c) => Math.min(c + 1, 6));
+  }, [phase]);
 
   const handleSubmit = useCallback(() => {
-    if (submitted || shouldReveal) return;
-    setSubmitted(true);
-    const isLast = round >= words.length - 1;
+    if (phase !== 'play' || claps === 0) return;
+    setPhase('checking');
+
     if (claps === current.syllables) {
-      setFeedback('correct');
+      recordSoundAttempt('syllables', true);
       incrementStreak();
+      playSoundEffect('correct');
       (async () => {
         await speakFeedback(isLast ? 'complete' : 'correct');
-        await new Promise(r => setTimeout(r, 400));
-        setFeedback(null);
-        setSubmitted(false);
-        setClaps(0);
-        if (isLast) {
-          completeGame(worldId, 'syllable-clap');
-          addCoins(6);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
+        await new Promise((r) => setTimeout(r, 400));
+        advance();
       })();
     } else {
-      setFeedback('wrong');
+      recordSoundAttempt('syllables', false);
       recordWrong();
-      speakFeedback('wrong');
       resetStreak();
-      setTimeout(() => {
-        setFeedback(null);
-        setSubmitted(false);
+      playSoundEffect('wrong');
+      // Corrective modeling: replay the segmented beats so she can recount
+      (async () => {
+        await playBeats();
         setClaps(0);
-      }, 2000);
+        setPhase('play');
+      })();
     }
-  }, [submitted, shouldReveal, claps, current, round, words, worldId, completeGame, addCoins, incrementStreak, resetStreak, recordWrong]);
+  }, [phase, claps, current, isLast, advance, playBeats, recordWrong, resetStreak, incrementStreak, recordSoundAttempt]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-500/75 to-orange-400/75 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={words.length}
+      progressIcon="🪇"
+      bgClassName="from-pink-500/75 to-orange-400/75"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-4">
+        <EleniCharacter pose={phase === 'checking' && claps === current.syllables ? 'celebrating' : 'excited'} size={150} />
 
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md"
-        >
-          {'<'}
-        </motion.button>
-
-          <ReplayButton onReplay={replay} />
-
-        </div>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full ${
-                i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter
-          pose={feedback === 'correct' ? 'celebrating' : 'excited'}
-          size={80}
-        />
-
+        {/* The word picture — its own row, with space above and below */}
         <AnimatePresence mode="wait">
-          <motion.div
-            key={round}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.5, opacity: 0 }}
-            className="text-center"
-          >
-            <span className="text-8xl block mb-4">{current.icon}</span>
-            <p className="text-3xl font-bold font-[Fredoka] text-white lowercase">
-              {current.word}
-            </p>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Clap display */}
-        <div className="flex gap-2 min-h-[60px] items-center justify-center">
-          {Array.from({ length: claps }).map((_, i) => (
-            <motion.span
-              key={i}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="text-4xl"
+            <motion.div
+              key={round}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              className="text-center"
             >
-              👏
-            </motion.span>
-          ))}
+              <motion.div
+                animate={bouncing ? { y: [0, -22, 0] } : { y: 0 }}
+                transition={bouncing ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut' } : {}}
+                className="bg-white rounded-3xl p-3 shadow-lg inline-block"
+              >
+                <WordCard word={current.word} size={190} />
+              </motion.div>
+              <p className="text-4xl font-bold font-[Fredoka] text-purple-700 lowercase mt-2">
+                {current.word}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+        {/* Middle: hear-the-beats + the beat dots */}
+        <div className="flex flex-col items-center gap-3">
+          <PressButton
+            silent
+            onClick={() => { if (phase === 'play') playBeats(); }}
+            className="bg-white rounded-full px-6 py-3 flex items-center gap-2 font-[Fredoka] text-purple-600 text-xl shadow-md"
+          >
+            🔊 Hear the beats
+          </PressButton>
+          <div className="flex gap-3 min-h-[52px] items-center justify-center">
+            {Array.from({ length: Math.max(claps, 1) }).map((_, i) =>
+              i < claps ? (
+                <motion.span
+                  key={i}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [0, 1.5, 1] }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 16 }}
+                  className="w-12 h-12 rounded-full bg-yellow-400 shadow-lg flex items-center justify-center text-2xl"
+                >
+                  👏
+                </motion.span>
+              ) : (
+                <span key={i} className="w-12 h-12 rounded-full border-4 border-dashed border-purple-300" />
+              ),
+            )}
+          </div>
         </div>
 
-        <div className="flex gap-4">
-          <motion.button
-            whileTap={{ scale: 0.85 }}
-            onClick={handleClap}
-            disabled={submitted || !doneSpeaking || shouldReveal}
-            className="w-24 h-24 rounded-full bg-white/90 shadow-xl text-5xl flex items-center justify-center"
-          >
-            👏
-          </motion.button>
+        {/* Bottom: the big maraca (hero) + check + reset */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-5">
+            <PressButton
+              silent
+              onClick={handleClap}
+              disabled={phase !== 'play'}
+              className="w-36 h-36 rounded-full bg-gradient-to-br from-yellow-300 to-orange-400 shadow-xl text-8xl flex items-center justify-center"
+              aria-label="Clap"
+            >
+              <motion.span
+                key={claps}
+                initial={{ rotate: -25, scale: 1.25 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 12 }}
+              >
+                🪇
+              </motion.span>
+            </PressButton>
 
-          <motion.button
-            whileTap={{ scale: 0.85 }}
-            onClick={handleSubmit}
-            disabled={submitted || claps === 0 || shouldReveal}
-            className={`w-24 h-24 rounded-full shadow-xl text-3xl flex items-center justify-center font-bold ${
-              claps > 0 ? 'bg-green-400 text-white' : 'bg-white/30 text-white/50'
-            }`}
-          >
-            ✓
-          </motion.button>
+            <PressButton
+              silent
+              onClick={handleSubmit}
+              disabled={phase !== 'play' || claps === 0}
+              className={`w-28 h-28 rounded-full shadow-xl text-6xl flex items-center justify-center font-bold transition-colors ${
+                claps > 0 && phase === 'play' ? 'bg-green-400 text-white' : 'bg-white/50 text-gray-400'
+              }`}
+              aria-label="Check answer"
+            >
+              ✓
+            </PressButton>
 
-          <motion.button
-            whileTap={{ scale: 0.85 }}
-            onClick={() => { if (!submitted && !shouldReveal) setClaps(0); }}
-            disabled={submitted || shouldReveal}
-            className="w-16 h-16 rounded-full bg-white/40 shadow-lg text-xl flex items-center justify-center self-center"
-          >
-            ↺
-          </motion.button>
+            <PressButton
+              silent
+              onClick={() => { if (phase === 'play') setClaps(0); }}
+              disabled={phase !== 'play'}
+              className="w-20 h-20 rounded-full bg-white/80 shadow-lg text-3xl flex items-center justify-center text-purple-500"
+              aria-label="Start over"
+            >
+              ↺
+            </PressButton>
+          </div>
+
+          <div className="min-h-[28px]">
+            <AnimatePresence>
+              {phase === 'model' && (
+                <motion.p
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-2xl text-orange-600 font-bold font-[Fredoka]"
+                >
+                  {beatsText(current.word, current.syllables)}!
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-
-        <AnimatePresence>
-          {feedback === 'correct' && (
-            <motion.p
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-2xl font-bold text-yellow-300"
-            >
-              {current.syllables} claps!
-            </motion.p>
-          )}
-          {feedback === 'wrong' && !shouldReveal && (
-            <motion.p
-              initial={{ scale: 0 }}
-              animate={{ scale: 1, x: [-4, 4, -4, 0] }}
-              exit={{ opacity: 0 }}
-              className="text-xl text-white font-bold"
-            >
-              Not quite! Try again!
-            </motion.p>
-          )}
-          {shouldReveal && (
-            <motion.p
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="text-xl text-yellow-300 font-bold animate-pulse"
-            >
-              {current.word} has {current.syllables} beats!
-            </motion.p>
-          )}
-        </AnimatePresence>
       </div>
 
-      <CelebrationOverlay
-        show={showCelebration}
-        message="Great clapping!"
-        onComplete={onComplete}
-      />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Great clapping!" onComplete={onComplete} />
+    </GameShell>
   );
 }

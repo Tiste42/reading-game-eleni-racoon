@@ -18,6 +18,13 @@ export interface WorldProgress {
   stars: number;
 }
 
+/** Per-sound attempt tracking — makes World 1 genuinely diagnostic and
+ * lets later worlds prioritize shaky sounds. */
+export interface SoundStat {
+  correct: number;
+  wrong: number;
+}
+
 interface GameState {
   currentWorld: number;
   worldProgress: Record<number, WorldProgress>;
@@ -27,6 +34,7 @@ interface GameState {
   passportStamps: number[];
   masteredPhonemes: string[];
   masteredWords: string[];
+  soundStats: Record<string, SoundStat>;
   streakCount: number;
   sessionHistory: SessionEntry[];
   soundEnabled: boolean;
@@ -44,6 +52,8 @@ interface GameState {
   addPassportStamp: (world: number) => void;
   masterPhoneme: (phoneme: string) => void;
   masterWord: (word: string) => void;
+  recordSoundAttempt: (sound: string, correct: boolean) => void;
+  getShakySounds: () => string[];
   incrementStreak: () => void;
   resetStreak: () => void;
   addSession: (session: SessionEntry) => void;
@@ -77,6 +87,7 @@ export const useGameStore = create<GameState>()(
       passportStamps: [],
       masteredPhonemes: [],
       masteredWords: [],
+      soundStats: {},
       streakCount: 0,
       sessionHistory: [],
       soundEnabled: true,
@@ -137,6 +148,32 @@ export const useGameStore = create<GameState>()(
             ? state.masteredWords
             : [...state.masteredWords, word],
         })),
+      recordSoundAttempt: (sound, correct) =>
+        set((state) => {
+          const key = sound.toLowerCase();
+          const prev = state.soundStats[key] || { correct: 0, wrong: 0 };
+          return {
+            soundStats: {
+              ...state.soundStats,
+              [key]: {
+                correct: prev.correct + (correct ? 1 : 0),
+                wrong: prev.wrong + (correct ? 0 : 1),
+              },
+            },
+          };
+        }),
+
+      // Sounds with enough attempts but a low success rate — these get extra practice
+      getShakySounds: () => {
+        const stats = get().soundStats;
+        return Object.entries(stats)
+          .filter(([, s]) => {
+            const total = s.correct + s.wrong;
+            return total >= 3 && s.correct / total < 0.7;
+          })
+          .map(([sound]) => sound);
+      },
+
       incrementStreak: () =>
         set((state) => ({ streakCount: state.streakCount + 1 })),
       resetStreak: () => set({ streakCount: 0 }),
@@ -175,6 +212,7 @@ export const useGameStore = create<GameState>()(
           passportStamps: [],
           masteredPhonemes: [],
           masteredWords: [],
+          soundStats: {},
           streakCount: 0,
           sessionHistory: [],
         }),

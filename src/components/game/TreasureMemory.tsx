@@ -7,6 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWord } from '@/lib/speech';
 import { useGameSpeech } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
 const SIGHT_WORDS = ['the', 'was', 'said', 'is', 'to', 'he', 'she', 'we', 'my', 'you'];
 
@@ -34,6 +35,7 @@ export default function TreasureMemory({ worldId, onComplete }: Props) {
     const card = cards.find((c) => c.id === id);
     if (!card || flipped.includes(id) || matched.has(card.word)) return;
 
+    playSoundEffect('tap');
     const next = [...flipped, id];
     setFlipped(next);
     speakWord(card.word);

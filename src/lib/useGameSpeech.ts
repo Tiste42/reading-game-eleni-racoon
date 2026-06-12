@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { speak, stopSpeaking } from './speech';
+import { speak, speakPhoneme, stopSpeaking } from './speech';
 
 export function useGameSpeech(text: string | null, deps: unknown[] = []) {
   const spokenRef = useRef<string | null>(null);
@@ -113,6 +113,67 @@ export function useGameSpeechWithOptions(
 
   // Never block interaction — speech is assistive, not gating
   return { activeOption, doneSpeaking: true, replay };
+}
+
+export type SpeechPart =
+  | { say: string }
+  | { phoneme: string }
+  | { pause: number }
+  | { options: string[] };
+
+/**
+ * Speak a composed sequence (e.g. instruction → letter sound → each option).
+ * activeOption highlights the option currently being spoken.
+ */
+export function useComposedSpeech(parts: SpeechPart[], deps: unknown[] = []) {
+  const [activeOption, setActiveOption] = useState(-1);
+  const runIdRef = useRef(0);
+  const partsRef = useRef(parts);
+  partsRef.current = parts;
+  const depsKey = JSON.stringify(deps);
+
+  const runSequence = useCallback(async (thisRun: number) => {
+    for (const part of partsRef.current) {
+      if (thisRun !== runIdRef.current) return;
+      if ('say' in part) {
+        await speak(part.say);
+      } else if ('phoneme' in part) {
+        await speakPhoneme(part.phoneme);
+      } else if ('pause' in part) {
+        await new Promise((r) => setTimeout(r, part.pause));
+      } else if ('options' in part) {
+        for (let i = 0; i < part.options.length; i++) {
+          if (thisRun !== runIdRef.current) return;
+          setActiveOption(i);
+          await speak(part.options[i]);
+          if (thisRun !== runIdRef.current) return;
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        if (thisRun === runIdRef.current) setActiveOption(-1);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const thisRun = ++runIdRef.current;
+    setActiveOption(-1);
+    const timer = setTimeout(() => runSequence(thisRun), 500);
+    return () => {
+      clearTimeout(timer);
+      runIdRef.current++;
+      stopSpeaking();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depsKey, runSequence]);
+
+  const replay = useCallback(() => {
+    const thisRun = ++runIdRef.current;
+    setActiveOption(-1);
+    stopSpeaking();
+    runSequence(thisRun);
+  }, [runSequence]);
+
+  return { activeOption, replay };
 }
 
 export function useWrongAttempts(roundKey: unknown, maxAttempts = 3) {

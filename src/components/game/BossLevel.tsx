@@ -4,12 +4,13 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
 import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
-import WORD_ICONS from '@/lib/wordIcons';
+import WordCard from '@/components/ui/WordCard';
+import { playSoundEffect } from '@/lib/audio';
 
 interface BossChallenge {
   type: 'picture-match' | 'word-read' | 'sentence';
@@ -127,6 +128,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
         addCoins(20);
         if (world?.reward.companion) addCompanion(world.reward.companion);
         if (world?.reward.costume) addCostume(world.reward.costume);
+        playSoundEffect('celebrate');
         setShowCelebration(true);
       } else {
         setRound((r) => r + 1);
@@ -139,6 +141,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
     if (feedback || !doneSpeaking || shouldReveal) return;
     const isLast = round >= challenges.length - 1;
     if (answer === current.correct) {
+      playSoundEffect('correct');
       setFeedback('correct');
       (async () => {
         await speakFeedback(isLast ? 'complete' : 'correct');
@@ -150,12 +153,14 @@ export default function BossLevel({ worldId, onComplete }: Props) {
           addCoins(20);
           if (world?.reward.companion) addCompanion(world.reward.companion);
           if (world?.reward.costume) addCostume(world.reward.costume);
+          playSoundEffect('celebrate');
           setShowCelebration(true);
         } else {
           setRound((r) => r + 1);
         }
       })();
     } else {
+      playSoundEffect('wrong');
       setFeedback('wrong');
       recordWrong();
       speakWrongExplanation(answer, current.correct);
@@ -164,79 +169,67 @@ export default function BossLevel({ worldId, onComplete }: Props) {
   }, [feedback, doneSpeaking, shouldReveal, current, round, challenges, worldId, world, completeBoss, addCoins, addPassportStamp, addCompanion, addCostume, recordWrong]);
 
   return (
-    <div className={`min-h-screen bg-gradient-to-b ${world?.bgGradient ? world.bgGradient + '/90' : 'from-pink-400/90 to-purple-400/90'} px-4 py-6 flex flex-col`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-
-          <ReplayButton onReplay={replay} />
-
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={challenges.length}
+      progressIcon="\uD83C\uDFC6"
+      bgClassName={world?.bgGradient || 'from-pink-400 to-purple-400'}
+    >
+      <div className="flex-1 flex flex-col items-center justify-evenly py-2">
+        {/* Leni + boss title */}
+        <div className="flex flex-col items-center gap-1">
+          <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={120} />
+          <h2 className="text-2xl font-bold font-[Fredoka] text-amber-700">\uD83C\uDFC6 {boss.name}</h2>
         </div>
-        <div className="bg-white/80 rounded-full px-4 py-2 shadow">
-          <span className="font-[Fredoka] text-amber-600">{round + 1}/{challenges.length}</span>
-        </div>
-      </div>
 
-      <div className="text-center mb-4">
-        <span className="text-4xl">{'\uD83C\uDFC6'}</span>
-        <h2 className="text-xl font-bold font-[Fredoka] text-white drop-shadow">{boss.name}</h2>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={80} />
-
+        {/* The prompt / word / sentence */}
         <AnimatePresence mode="wait">
           <motion.div key={round} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.5, opacity: 0 }} className="text-center w-full max-w-sm">
+            exit={{ scale: 0.5, opacity: 0 }} className="text-center w-full max-w-md">
             {current.type === 'word-read' ? (
-              <div className="bg-white/90 rounded-2xl px-10 py-6 shadow-xl mx-auto inline-block">
-                <span className="text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.correct}</span>
+              <div className="bg-white rounded-3xl px-12 py-7 shadow-xl mx-auto inline-block">
+                <span className="text-6xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.correct}</span>
               </div>
             ) : current.type === 'sentence' ? (
-              <div className="bg-amber-50 border-4 border-amber-700 rounded-2xl px-6 py-5 shadow-xl">
-                {current.icon && <span className="text-5xl block mb-2">{current.icon}</span>}
-                <p className="text-xl font-bold font-[Fredoka] text-gray-800">{current.prompt}</p>
+              <div className="bg-white rounded-3xl px-6 py-5 shadow-xl">
+                {current.icon && <span className="text-6xl block mb-2">{current.icon}</span>}
+                <p className="text-2xl font-bold font-[Fredoka] text-gray-800">{current.prompt}</p>
               </div>
             ) : (
-              <div className="bg-white/90 rounded-2xl px-6 py-4 shadow-xl">
-                {current.icon && <span className="text-5xl block mb-2">{current.icon}</span>}
-                <p className="text-lg font-[Nunito] text-gray-700">{current.prompt}</p>
+              <div className="bg-white rounded-3xl px-6 py-4 shadow-xl">
+                {current.icon && <span className="text-7xl block mb-1">{current.icon}</span>}
+                <p className="text-xl font-[Fredoka] font-semibold text-gray-700">{current.prompt}</p>
               </div>
             )}
           </motion.div>
         </AnimatePresence>
 
-        <div className="flex gap-3 flex-wrap justify-center">
-          {stableOptions.map((opt, i) => (
-            <motion.button key={opt} whileTap={{ scale: 0.9 }} onClick={() => handleAnswer(opt)}
-              disabled={feedback !== null || !doneSpeaking || shouldReveal}
-              className={`px-6 py-4 rounded-2xl shadow-lg text-lg font-bold font-[Fredoka] lowercase min-w-[80px] transition-all ${
-                shouldReveal && opt === current.correct
-                  ? 'bg-green-300 text-green-800 ring-4 ring-green-400 scale-105'
-                  : feedback === 'correct' && opt === current.correct
-                    ? 'bg-green-300 text-green-800'
-                    : activeOption === i
-                      ? 'bg-white/90 text-gray-700 ring-4 ring-blue-400 scale-105'
-                      : 'bg-white/90 text-gray-700'
-              }`}>
-              {WORD_ICONS[opt] ? (
-                <span className="flex flex-col items-center gap-1">
-                  <span className="text-3xl">{WORD_ICONS[opt]}</span>
-                  <span className="text-sm">{opt}</span>
-                </span>
-              ) : opt}
-            </motion.button>
-          ))}
+        {/* Big answer choices */}
+        <div className="flex gap-4 flex-wrap justify-center">
+          {stableOptions.map((opt, i) => {
+            const isRight = opt === current.correct;
+            const highlight =
+              (shouldReveal && isRight) ? 'ring-4 ring-green-400 scale-105 animate-hint-pulse'
+                : (feedback === 'correct' && isRight) ? 'ring-4 ring-green-400'
+                  : (activeOption === i) ? 'ring-4 ring-blue-400 scale-105' : '';
+            return (
+              <motion.button key={opt} whileTap={{ scale: 0.92 }} onClick={() => handleAnswer(opt)}
+                disabled={feedback !== null || !doneSpeaking || shouldReveal}
+                className={`rounded-3xl shadow-xl bg-white press-3d transition-all ${highlight}`}>
+                {current.type === 'picture-match' ? (
+                  <span className="flex flex-col items-center gap-1 p-3">
+                    <WordCard word={opt} size={96} />
+                    <span className="text-lg font-bold font-[Fredoka] text-gray-700 lowercase">{opt}</span>
+                  </span>
+                ) : (
+                  <span className="block px-8 py-5 text-4xl font-bold font-[Fredoka] text-gray-700 lowercase">{opt}</span>
+                )}
+              </motion.button>
+            );
+          })}
         </div>
-
-        <AnimatePresence>
-          {feedback === 'wrong' && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-              className="text-lg text-white font-bold">Almost! Try again!</motion.p>
-          )}
-        </AnimatePresence>
       </div>
 
       <CelebrationOverlay
@@ -244,6 +237,6 @@ export default function BossLevel({ worldId, onComplete }: Props) {
         message={`${world?.subtitle} complete! Passport stamp earned!`}
         onComplete={onComplete}
       />
-    </div>
+    </GameShell>
   );
 }

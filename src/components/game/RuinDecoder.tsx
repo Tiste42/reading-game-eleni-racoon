@@ -8,6 +8,8 @@ import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { getIcon } from '@/lib/wordIcons';
+import WordCard from '@/components/ui/WordCard';
+import { playSoundEffect } from '@/lib/audio';
 
 interface DecoderWord {
   word: string;
@@ -75,6 +77,7 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
 
   const handleChoice = useCallback((chosen: string) => {
     if (feedback || shouldReveal) return;
+    playSoundEffect('tap');
     if (chosen === current.word) {
       const isLastRound = round >= words.length - 1;
       setFeedback('correct');
@@ -112,7 +115,7 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
       <div className="grid grid-cols-5 gap-1 max-w-xs mx-auto mb-4">
         {words.map((_, i) => (
           <div key={i} className={`aspect-square rounded-lg ${revealed.includes(i) ? 'bg-amber-200' : 'bg-gray-700/40'} flex items-center justify-center text-2xl`}>
-            {revealed.includes(i) ? words[i].icon : ''}
+            {revealed.includes(i) ? <WordCard word={words[i].word} size={28} /> : ''}
           </div>
         ))}
       </div>
@@ -138,7 +141,7 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
                   ? 'bg-green-200 ring-4 ring-green-400'
                   : 'bg-white/90'
               }`}>
-              <span className="text-4xl">{choice.icon}</span>
+              <WordCard word={choice.word} size={48} />
             </motion.button>
           ))}
         </div>

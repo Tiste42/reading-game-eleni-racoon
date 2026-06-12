@@ -8,6 +8,8 @@ import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { getIcon } from '@/lib/wordIcons';
+import { playSoundEffect } from '@/lib/audio';
+import WordCard from '@/components/ui/WordCard';
 
 interface CVCWord {
   word: string;
@@ -82,9 +84,11 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
   const handleChoice = useCallback(
     (chosen: string) => {
       if (feedback || shouldReveal) return;
+      playSoundEffect('tap');
       if (chosen === current.word) {
         const isLastRound = round >= words.length - 1;
         setFeedback('correct');
+        playSoundEffect('correct');
         speakFeedback(isLastRound ? 'complete' : 'correct');
         setDragonMood('happy');
         incrementStreak();
@@ -102,6 +106,7 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
         }, 1200);
       } else {
         setFeedback('wrong');
+        playSoundEffect('wrong');
         recordWrong();
         speakWrongExplanation(chosen, current.word);
         setDragonMood('funny');
@@ -138,7 +143,7 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
           }
           className="text-8xl"
         >
-          {dragonMood === 'happy' ? '🐉' : dragonMood === 'funny' ? '🤪' : '🐲'}
+          {dragonMood === 'happy' ? '😋' : dragonMood === 'funny' ? '😅' : '🐲'}
         </motion.div>
 
         <p className="text-white font-[Nunito] text-sm text-center">
@@ -168,7 +173,7 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
                   ? 'bg-green-200 ring-4 ring-green-400'
                   : 'bg-white/90'
               }`}>
-              <span className="text-4xl">{choice.icon}</span>
+              <WordCard word={choice.word} size={56} />
             </motion.button>
           ))}
         </div>

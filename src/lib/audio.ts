@@ -2,6 +2,10 @@
 
 import { Howl, Howler } from 'howler';
 
+// Bump this whenever pre-generated audio files are regenerated so browsers
+// fetch the new versions instead of stale cached ones.
+export const AUDIO_VERSION = '4-phonemes';
+
 const audioCache = new Map<string, Howl>();
 let audioUnlocked = false;
 
@@ -22,7 +26,7 @@ export function unlockAudio() {
 }
 
 export function getAudio(src: string): Howl {
-  const path = `/audio/${src}`;
+  const path = `/audio/${src}?v=${AUDIO_VERSION}`;
   const cached = audioCache.get(path);
   if (cached) return cached;
 
@@ -207,5 +211,24 @@ export function stopBackgroundMusic(): void {
 
 export function setMusicVolume(volume: number): void {
   currentMusicVolume = volume;
-  if (bgMusic) bgMusic.volume(volume);
+  if (bgMusic) bgMusic.volume(duckCount > 0 ? volume * DUCK_FACTOR : volume);
+}
+
+// --- Music ducking: lower music while Leni speaks so the child hears her clearly ---
+
+const DUCK_FACTOR = 0.12; // duck to 12% of normal — clearly noticeable
+let duckCount = 0;
+
+export function duckMusic(): void {
+  duckCount++;
+  if (bgMusic && duckCount === 1) {
+    bgMusic.fade(bgMusic.volume(), currentMusicVolume * DUCK_FACTOR, 120);
+  }
+}
+
+export function unduckMusic(): void {
+  duckCount = Math.max(0, duckCount - 1);
+  if (bgMusic && duckCount === 0) {
+    bgMusic.fade(bgMusic.volume(), currentMusicVolume, 350);
+  }
 }

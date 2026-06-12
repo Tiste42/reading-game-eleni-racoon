@@ -6,22 +6,22 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { playSoundEffect } from '@/lib/audio';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import WordCard from '@/components/ui/WordCard';
 
 interface RaceWord {
   word: string;
-  icon: string;
-  distractors: { word: string; icon: string }[];
+  distractors: { word: string }[];
 }
 
 const RACE_WORDS: RaceWord[] = [
-  { word: 'sat', icon: getIcon('sat'), distractors: [{ word: 'pin', icon: getIcon('pin') }, { word: 'net', icon: getIcon('net') }] },
-  { word: 'pan', icon: getIcon('pan'), distractors: [{ word: 'sit', icon: getIcon('sit') }, { word: 'let', icon: getIcon('let') }] },
-  { word: 'tip', icon: getIcon('tip'), distractors: [{ word: 'nap', icon: getIcon('nap') }, { word: 'set', icon: getIcon('set') }] },
-  { word: 'pen', icon: getIcon('pen'), distractors: [{ word: 'tap', icon: getIcon('tap') }, { word: 'tin', icon: getIcon('tin') }] },
-  { word: 'pet', icon: getIcon('pet'), distractors: [{ word: 'nip', icon: getIcon('nip') }, { word: 'sip', icon: getIcon('sip') }] },
-  { word: 'ten', icon: getIcon('ten'), distractors: [{ word: 'pat', icon: getIcon('pat') }, { word: 'lip', icon: getIcon('lip') }] },
+  { word: 'sat', distractors: [{ word: 'pin' }, { word: 'net' }] },
+  { word: 'pan', distractors: [{ word: 'sit' }, { word: 'let' }] },
+  { word: 'tip', distractors: [{ word: 'nap' }, { word: 'set' }] },
+  { word: 'pen', distractors: [{ word: 'tap' }, { word: 'tin' }] },
+  { word: 'pet', distractors: [{ word: 'nip' }, { word: 'sip' }] },
+  { word: 'ten', distractors: [{ word: 'pat' }, { word: 'lip' }] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -35,7 +35,6 @@ interface Props {
 
 export default function SailboatRace({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [boatProgress, setBoatProgress] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [words] = useState(() => shuffle(RACE_WORDS).slice(0, 5));
@@ -43,8 +42,13 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
 
   const current = words[round];
 
+  // Boat progress is derived from how many rounds are done, so it shows
+  // sensible per-game progress and resets cleanly with the game state.
+  const answered = round + (feedback === 'correct' ? 1 : 0);
+  const boatProgress = (answered / words.length) * 100;
+
   const choices = useMemo(
-    () => shuffle([{ word: current.word, icon: current.icon }, ...current.distractors]),
+    () => shuffle([{ word: current.word }, ...current.distractors]),
     [current]
   );
 
@@ -76,13 +80,13 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
 
   const handleChoice = useCallback((chosen: string) => {
     if (feedback || shouldReveal) return;
+    playSoundEffect('tap');
     if (chosen === current.word) {
       const isLastRound = round >= words.length - 1;
       setFeedback('correct');
       speakFeedback(isLastRound ? 'complete' : 'correct');
       incrementStreak();
       masterWord(current.word);
-      setBoatProgress((p) => p + 20);
       setTimeout(() => {
         setFeedback(null);
         if (isLastRound) {
@@ -144,7 +148,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
                   ? 'bg-green-200 ring-4 ring-green-400'
                   : 'bg-white/90'
               }`}>
-              <span className="text-4xl">{choice.icon}</span>
+              <WordCard word={choice.word} size={36} />
             </motion.button>
           ))}
         </div>

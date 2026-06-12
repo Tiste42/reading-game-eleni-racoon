@@ -1,29 +1,19 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
+import PressButton from '@/components/ui/PressButton';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
-interface TelescopeWord {
-  word: string;
-  blendText: string;
-  icon: string;
-  distractors: { word: string; icon: string }[];
-}
-
-const TELESCOPE_WORDS: TelescopeWord[] = [
-  { word: 'sat', blendText: 'sss...aaa...t', icon: getIcon('sat'), distractors: [{ word: 'pin', icon: getIcon('pin') }, { word: 'net', icon: getIcon('net') }] },
-  { word: 'pin', blendText: 'p...iii...nnn', icon: getIcon('pin'), distractors: [{ word: 'tap', icon: getIcon('tap') }, { word: 'pet', icon: getIcon('pet') }] },
-  { word: 'net', blendText: 'nnn...eee...t', icon: getIcon('net'), distractors: [{ word: 'sip', icon: getIcon('sip') }, { word: 'pan', icon: getIcon('pan') }] },
-  { word: 'pet', blendText: 'p...eee...t', icon: getIcon('pet'), distractors: [{ word: 'tin', icon: getIcon('tin') }, { word: 'nap', icon: getIcon('nap') }] },
-  { word: 'sip', blendText: 'sss...iii...p', icon: getIcon('sip'), distractors: [{ word: 'ten', icon: getIcon('ten') }, { word: 'let', icon: getIcon('let') }] },
-  { word: 'let', blendText: 'lll...eee...t', icon: getIcon('let'), distractors: [{ word: 'sat', icon: getIcon('sat') }, { word: 'nip', icon: getIcon('nip') }] },
-];
+// Only SATPIN + e, l letters AND words a 3-4 year old knows and can picture.
+const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -34,140 +24,221 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'look' | 'choose' | 'won';
+
 export default function SoundTelescope({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [revealed, setRevealed] = useState(false);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('look');
+  const [revealed, setRevealed] = useState(0); // letters revealed through the telescope
+  const [looking, setLooking] = useState(false);
+  const [choices, setChoices] = useState<string[]>([]);
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(TELESCOPE_WORDS).slice(0, 5));
-  const { completeGame, addCoins, masterWord } = useGameStore();
+  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
+  const { completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
-
-  const choices = useMemo(
-    () => shuffle([{ word: current.word, icon: current.icon }, ...current.distractors]),
-    [current]
-  );
-
-  // Speak the blended sounds instruction but don't read option words
-  useGameSpeech(
-    feedback || !revealed
-      ? null
-      : `Listen to the sounds: ${current.blendText}. What word is that?`,
-    [round, revealed],
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const word = words[round];
+  const letters = word.split('');
+  const isLast = round >= words.length - 1;
 
   useEffect(() => {
-    if (shouldReveal && revealed) {
-      speakReveal(current.word);
-      const timer = setTimeout(() => {
-        setFeedback(null);
-        setRevealed(false);
-        if (round >= words.length - 1) {
-          completeGame(worldId, 'sound-telescope');
-          addCoins(10);
-          setShowCelebration(true);
-          speakFeedback('complete');
-        } else {
-          setRound(r => r + 1);
-        }
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [shouldReveal, revealed, current.word, round, words.length, worldId, completeGame, addCoins]);
+    setPhase('look');
+    setRevealed(0);
+    setLooking(false);
+    setChoices([]);
+    setWrongPick(null);
+  }, [round]);
 
-  const handleLook = useCallback(() => setRevealed(true), []);
+  const { shouldReveal, recordWrong } = useWrongAttempts(`${round}-choose`, 2);
 
-  const handleChoice = useCallback((chosen: string) => {
-    if (feedback || shouldReveal) return;
-    if (chosen === current.word) {
-      const isLastRound = round >= words.length - 1;
-      setFeedback('correct');
-      speakFeedback(isLastRound ? 'complete' : 'correct');
-      masterWord(current.word);
-      setTimeout(() => {
-        setFeedback(null);
-        setRevealed(false);
-        if (isLastRound) {
-          completeGame(worldId, 'sound-telescope');
-          addCoins(10);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      }, 1000);
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'sound-telescope');
+      addCoins(10);
+      setShowCelebration(true);
     } else {
-      setFeedback('wrong');
-      recordWrong();
-      speakWrongExplanation(chosen, current.word, 'blend');
-      setTimeout(() => setFeedback(null), 2000);
+      setRound((r) => r + 1);
     }
-  }, [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  // Sound the word out with the human letter sounds (optionally revealing each
+  // letter as its sound plays). Never the stretched TTS clip.
+  const soundOut = useCallback(
+    async (reveal = false) => {
+      const ls = word.split('');
+      for (let i = 0; i < ls.length; i++) {
+        if (reveal) setRevealed(i + 1);
+        speakPhoneme(ls[i]);
+        if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 560));
+      }
+    },
+    [word],
+  );
+
+  const handleLook = useCallback(() => {
+    if (phase !== 'look' || looking) return;
+    setLooking(true);
+    playSoundEffect('tap');
+    (async () => {
+      await soundOut(true); // reveal the letters one at a time as each sound plays
+      const others = shuffle(WORDS.filter((w) => w !== word)).slice(0, 2);
+      setChoices(shuffle([word, ...others]));
+      setPhase('choose');
+      setLooking(false);
+    })();
+  }, [phase, looking, soundOut, word]);
+
+  // Two wrong picks → model the answer and move on (never a dead end)
+  useEffect(() => {
+    if (shouldReveal && phase === 'choose') {
+      (async () => {
+        recordSoundAttempt(word, false);
+        await speakReveal(word);
+        setPhase('won');
+        await new Promise((r) => setTimeout(r, 1100));
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pickChoice = useCallback(
+    (w: string) => {
+      if (phase !== 'choose') return;
+      if (w === word) {
+        recordSoundAttempt(word, true);
+        incrementStreak();
+        masterWord(word);
+        playSoundEffect('coin');
+        setPhase('won');
+        (async () => {
+          await speakWord(word);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 800));
+          advance();
+        })();
+      } else {
+        recordSoundAttempt(word, false);
+        recordWrong();
+        resetStreak();
+        playSoundEffect('wrong');
+        setWrongPick(w);
+        (async () => {
+          await soundOut();
+          setWrongPick(null);
+        })();
+      }
+    },
+    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-400/90 to-orange-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
+    <GameShell
+      onBack={onComplete}
+      onReplay={phase === 'look' ? undefined : () => soundOut()}
+      round={round}
+      totalRounds={words.length}
+      progressIcon="🔭"
+      bgClassName="from-indigo-500/60 via-purple-400/40 to-amber-200/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center gap-1">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={130} />
+          <p className="text-indigo-900 font-[Fredoka] font-bold text-2xl text-center px-4">
+            {phase === 'look'
+              ? 'Look through the telescope!'
+              : phase === 'won'
+                ? 'You read it!'
+                : 'What word is it?'}
+          </p>
         </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={70} />
-
-        <div className="bg-gray-800/30 rounded-full w-52 h-52 flex items-center justify-center shadow-inner border-4 border-gray-700/30">
-          {!revealed ? (
-            <span className="text-6xl">🔭</span>
-          ) : (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-center">
-              <p className="text-xl font-bold font-[Fredoka] text-white tracking-widest">{current.blendText}</p>
+        {phase === 'look' ? (
+          <div className="flex flex-col items-center gap-5">
+            <motion.div
+              animate={{ rotate: [-4, 4, -4], y: [0, -6, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="text-[7rem] leading-none"
+            >
+              🔭
             </motion.div>
-          )}
-        </div>
 
-        {!revealed ? (
-          <motion.button whileTap={{ scale: 0.9 }} onClick={handleLook}
-            className="game-button bg-blue-500 text-white px-10 py-5 rounded-full shadow-xl text-lg">
-            <span className="text-3xl">🔭</span>
-            <span className="font-[Fredoka]"> Look!</span>
-          </motion.button>
+            {/* Letters appear one at a time as their sounds play */}
+            <div className="flex gap-3 min-h-[80px] items-center">
+              {looking
+                ? letters.map((letter, i) => (
+                    <motion.span
+                      key={i}
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={i < revealed ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                      className="w-[72px] h-[80px] rounded-2xl bg-yellow-300 text-gray-800 text-6xl font-bold font-[Fredoka] lowercase shadow-lg flex items-center justify-center"
+                    >
+                      {letter}
+                    </motion.span>
+                  ))
+                : null}
+            </div>
+
+            {!looking && (
+              <PressButton
+                silent
+                onClick={handleLook}
+                className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka] flex items-center gap-2"
+              >
+                <span className="text-3xl">🔭</span> Look!
+              </PressButton>
+            )}
+          </div>
         ) : (
-          <>
-            <p className="text-white/80 font-[Nunito] text-sm">Blend the sounds! What word is it?</p>
-            <div className="flex gap-4">
-              {choices.map((choice) => (
-                <motion.button key={choice.word} initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-                  disabled={feedback !== null || shouldReveal}
-                  className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                    shouldReveal && choice.word === current.word
-                      ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                      : feedback === 'correct' && choice.word === current.word
-                      ? 'bg-green-200 ring-4 ring-green-400'
-                      : 'bg-white/90'
-                  }`}>
-                  <span className="text-4xl">{choice.icon}</span>
+          <div className="flex flex-col items-center gap-3">
+            {/* The word — big tappable letters, tap to hear each sound again */}
+            <div className="flex justify-center gap-3">
+              {letters.map((letter, i) => (
+                <motion.button
+                  key={i}
+                  onClick={() => speakPhoneme(letter)}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-[80px] h-[88px] rounded-3xl bg-yellow-300 text-gray-800 text-6xl font-bold font-[Fredoka] lowercase shadow-lg press-3d flex items-center justify-center"
+                >
+                  {letter}
                 </motion.button>
               ))}
             </div>
-          </>
-        )}
+            <p className="text-indigo-900/80 font-[Fredoka] text-sm text-center">
+              Tap a letter — or 🔊 Again — to hear it
+            </p>
 
-        <AnimatePresence>
-          {feedback === 'wrong' && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-              className="text-lg text-white font-bold">Listen again and try!</motion.p>
-          )}
-        </AnimatePresence>
+            {/* Big picture choices */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-center gap-4 mt-1"
+            >
+              {choices.map((w) => {
+                const isAnswer = w === word;
+                const revealAnswer = (phase === 'won' || shouldReveal) && isAnswer;
+                return (
+                  <motion.button
+                    key={w}
+                    onClick={() => pickChoice(w)}
+                    disabled={phase === 'won'}
+                    animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                    whileTap={{ scale: 0.92 }}
+                    className={`rounded-3xl p-3 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
+                      revealAnswer ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                    }`}
+                  >
+                    <WordCard word={w} size={120} />
+                  </motion.button>
+                );
+              })}
+            </motion.div>
+          </div>
+        )}
       </div>
 
       <CelebrationOverlay show={showCelebration} message="Eagle eyes!" onComplete={onComplete} />
-    </div>
+    </GameShell>
   );
 }

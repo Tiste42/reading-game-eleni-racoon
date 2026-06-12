@@ -1,31 +1,41 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import { playSoundEffect } from '@/lib/audio';
 
-interface BlendWord {
-  letters: string[];
-  word: string;
-  icon: string;
-  distractors: { word: string; icon: string }[];
+/** Dedicated surfing-Leni artwork; falls back to the wetsuit costume until
+ * the file is added at /images/generated/eleni/eleni-surfing.png */
+function SurfingLeni({ size, done }: { size: number; done: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <EleniCharacter costume="surfer" pose={done ? 'celebrating' : 'excited'} size={size} animate={false} />;
+  }
+  return (
+    <img
+      src="/images/generated/eleni/eleni-surfing.png"
+      width={size}
+      height={size}
+      alt="Leni surfing"
+      draggable={false}
+      className="object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.3)]"
+      style={{ width: size, height: size }}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
-const BLEND_WORDS: BlendWord[] = [
-  { letters: ['s', 'a', 't'], word: 'sat', icon: getIcon('sat'), distractors: [{ word: 'pin', icon: getIcon('pin') }, { word: 'net', icon: getIcon('net') }] },
-  { letters: ['p', 'i', 'n'], word: 'pin', icon: getIcon('pin'), distractors: [{ word: 'sat', icon: getIcon('sat') }, { word: 'tap', icon: getIcon('tap') }] },
-  { letters: ['t', 'a', 'p'], word: 'tap', icon: getIcon('tap'), distractors: [{ word: 'sit', icon: getIcon('sit') }, { word: 'nap', icon: getIcon('nap') }] },
-  { letters: ['s', 'i', 't'], word: 'sit', icon: getIcon('sit'), distractors: [{ word: 'pan', icon: getIcon('pan') }, { word: 'tip', icon: getIcon('tip') }] },
-  { letters: ['n', 'a', 'p'], word: 'nap', icon: getIcon('nap'), distractors: [{ word: 'tip', icon: getIcon('tip') }, { word: 'sat', icon: getIcon('sat') }] },
-  { letters: ['n', 'e', 't'], word: 'net', icon: getIcon('net'), distractors: [{ word: 'pan', icon: getIcon('pan') }, { word: 'lip', icon: getIcon('lip') }] },
-  { letters: ['p', 'e', 't'], word: 'pet', icon: getIcon('pet'), distractors: [{ word: 'let', icon: getIcon('let') }, { word: 'tin', icon: getIcon('tin') }] },
-  { letters: ['l', 'e', 't'], word: 'let', icon: getIcon('let'), distractors: [{ word: 'pen', icon: getIcon('pen') }, { word: 'nip', icon: getIcon('nip') }] },
-];
+// Blending words — only SATPIN + e, l letters AND words a 3-4 year old
+// actually KNOWS and can picture (an ant, a pen, lips...). No "tin"/"pan" —
+// toddlers don't know those words. Every word here has real art.
+const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -36,227 +46,237 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'blend' | 'choose' | 'won';
+
 export default function SurfSlide({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [activeLetterIdx, setActiveLetterIdx] = useState(-1);
-  const [blended, setBlended] = useState(false);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [step, setStep] = useState(0); // letters surfed so far
+  const [phase, setPhase] = useState<Phase>('blend');
+  const [choices, setChoices] = useState<string[]>([]);
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(BLEND_WORDS).slice(0, 6));
-  const { completeGame, addCoins, incrementStreak, resetStreak, masterWord } = useGameStore();
-  const touchAreaRef = useRef<HTMLDivElement>(null);
+  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
+  const { completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
+  const word = words[round];
+  const letters = word.split('');
+  const n = letters.length;
+  const isLast = round >= words.length - 1;
 
-  const [choices, setChoices] = useState<{ word: string; icon: string }[]>([]);
   useEffect(() => {
-    if (blended) {
-      setChoices(shuffle([
-        { word: current.word, icon: current.icon },
-        ...current.distractors,
-      ]));
-    }
-  }, [blended, current]);
+    setStep(0);
+    setPhase('blend');
+    setChoices([]);
+    setWrongPick(null);
+  }, [round]);
 
-  // Don't say the words — child must blend the letters and pick the right picture
-  useGameSpeech(
-    feedback || !blended ? null : 'Blend the sounds together! What word do the letters make?',
-    [round, blended],
+  const { replay } = useGameSpeech(
+    phase === 'blend' ? 'Blend the sounds together! What word do the letters make?' : null,
+    [round, phase],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const { shouldReveal, recordWrong } = useWrongAttempts(`${round}-choose`, 2);
 
-  useEffect(() => {
-    if (shouldReveal && blended) {
-      speakReveal(current.word);
-      const timer = setTimeout(() => {
-        setFeedback(null);
-        setBlended(false);
-        setActiveLetterIdx(-1);
-        if (round >= words.length - 1) {
-          completeGame(worldId, 'surf-slide');
-          addCoins(10);
-          setShowCelebration(true);
-          speakFeedback('complete');
-        } else {
-          setRound(r => r + 1);
-        }
-      }, 2500);
-      return () => clearTimeout(timer);
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'surf-slide');
+      addCoins(10);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
     }
-  }, [shouldReveal, blended, current.word, round, words.length, worldId, completeGame, addCoins]);
+  }, [isLast, worldId, completeGame, addCoins]);
 
-  const handleBlendStart = useCallback(() => {
-    if (blended) return;
-    setActiveLetterIdx(0);
-    let idx = 0;
-    const interval = setInterval(() => {
-      idx++;
-      if (idx >= current.letters.length) {
-        clearInterval(interval);
-        setBlended(true);
-      } else {
-        setActiveLetterIdx(idx);
-      }
-    }, 600);
-    return () => clearInterval(interval);
-  }, [blended, current]);
+  // Sound the word out using the SAME human letter sounds, one after another
+  // (the "blend" cue) — never the stretched TTS clip, which clashes in voice.
+  const soundOut = useCallback(async () => {
+    const ls = word.split('');
+    for (let i = 0; i < ls.length; i++) {
+      speakPhoneme(ls[i]);
+      if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 520));
+    }
+  }, [word]);
 
-  const handleChoice = useCallback(
-    (chosen: string) => {
-      if (feedback || !blended || shouldReveal) return;
-      if (chosen === current.word) {
-        const isLastRound = round >= words.length - 1;
-        setFeedback('correct');
-        speakFeedback(isLastRound ? 'complete' : 'correct');
+  // After the last letter is surfed: move to the choosing step and sound the
+  // whole word out once so she can hear the letters blend together.
+  const startChoose = useCallback(() => {
+    const others = shuffle(WORDS.filter((w) => w !== word)).slice(0, 2);
+    setChoices(shuffle([word, ...others]));
+    setPhase('choose');
+    soundOut();
+  }, [word, soundOut]);
+
+  const surfTo = useCallback(
+    (i: number) => {
+      if (phase !== 'blend' || i !== step) return; // only the next glowing letter responds
+      playSoundEffect('tap');
+      speakPhoneme(letters[i]);
+      const ns = i + 1;
+      setStep(ns);
+      if (ns === n) setTimeout(startChoose, 800);
+    },
+    [phase, step, letters, n, startChoose],
+  );
+
+  // Two wrong picks → model the answer and move on (never a dead end)
+  useEffect(() => {
+    if (shouldReveal && phase === 'choose') {
+      (async () => {
+        recordSoundAttempt(word, false);
+        await speakReveal(word);
+        setPhase('won');
+        await new Promise((r) => setTimeout(r, 1100));
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pickChoice = useCallback(
+    (w: string) => {
+      if (phase !== 'choose') return;
+      if (w === word) {
+        recordSoundAttempt(word, true);
         incrementStreak();
-        masterWord(current.word);
-        setTimeout(() => {
-          setFeedback(null);
-          setBlended(false);
-          setActiveLetterIdx(-1);
-          if (isLastRound) {
-            completeGame(worldId, 'surf-slide');
-            addCoins(10);
-            setShowCelebration(true);
-          } else {
-            setRound((r) => r + 1);
-          }
-        }, 1200);
+        masterWord(word);
+        playSoundEffect('coin');
+        setPhase('won');
+        (async () => {
+          await speakWord(word);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 800));
+          advance();
+        })();
       } else {
-        setFeedback('wrong');
+        recordSoundAttempt(word, false);
         recordWrong();
-        speakWrongExplanation(chosen, current.word, 'blend');
         resetStreak();
-        setTimeout(() => setFeedback(null), 2000);
+        playSoundEffect('wrong');
+        setWrongPick(w);
+        // Re-teach: sound the real word out again (human voice) so she can retry
+        (async () => {
+          await soundOut();
+          setWrongPick(null);
+        })();
       }
     },
-    [feedback, blended, shouldReveal, current, round, words, worldId, completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordWrong]
+    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
   );
 
+  // The 🔊 Again button: replay the instruction while blending, or sound the
+  // word out again (in the human letter-sound voice) while she's choosing.
+  const handleReplay = useCallback(() => {
+    if (phase === 'blend') {
+      replay();
+    } else {
+      soundOut();
+    }
+  }, [phase, replay, soundOut]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-400/90 to-orange-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md"
-        >
-          {'<'}
-        </motion.button>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full ${
-                i < round ? 'bg-white' : i === round ? 'bg-yellow-200' : 'bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter
-          pose={blended ? 'celebrating' : 'excited'}
-          size={70}
-        />
-
-        <AnimatePresence mode="wait">
+    <GameShell
+      onBack={onComplete}
+      onReplay={handleReplay}
+      round={round}
+      totalRounds={words.length}
+      progressIcon="🏄"
+      bgClassName="from-sky-400/70 via-cyan-300/40 to-amber-200/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 py-2">
+        {/* Leni + the prompt */}
+        <div className="flex flex-col items-center gap-1">
           <motion.div
-            key={round}
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -30, opacity: 0 }}
-            className="relative"
+            animate={{ y: [0, -12, 0], rotate: [-3, 3, -3] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <div
-              ref={touchAreaRef}
-              className="flex gap-3 bg-blue-400/40 rounded-3xl px-8 py-6 shadow-inner"
-            >
-              {current.letters.map((letter, i) => (
-                <motion.div
+            <SurfingLeni size={150} done={phase === 'won'} />
+          </motion.div>
+          <p className="text-cyan-800 font-[Fredoka] font-bold text-2xl text-center">
+            {phase === 'blend' ? 'Surf the sounds!' : phase === 'won' ? 'You read it!' : 'Which one is it?'}
+          </p>
+        </div>
+
+        {phase === 'blend' ? (
+          <>
+            {/* Big tappable letters */}
+            <div className="flex justify-center gap-3">
+              {letters.map((letter, i) => {
+                const surfed = i < step;
+                const isNext = i === step;
+                return (
+                  <motion.button
+                    key={i}
+                    onClick={() => surfTo(i)}
+                    disabled={!isNext}
+                    animate={surfed ? { scale: [1, 1.25, 1] } : isNext ? { y: [0, -8, 0] } : { scale: 1 }}
+                    transition={isNext ? { y: { duration: 0.9, repeat: Infinity } } : {}}
+                    whileTap={isNext ? { scale: 0.92 } : {}}
+                    className={`w-[100px] h-[110px] rounded-3xl flex items-center justify-center text-7xl font-bold font-[Fredoka] lowercase shadow-lg press-3d transition-all ${
+                      isNext
+                        ? 'bg-white text-gray-800 ring-4 ring-yellow-300 animate-hint-pulse'
+                        : surfed
+                          ? 'bg-yellow-300 text-gray-800'
+                          : 'bg-white/70 text-gray-500'
+                    }`}
+                  >
+                    {letter}
+                  </motion.button>
+                );
+              })}
+            </div>
+            <p className="text-cyan-800/90 font-[Fredoka] font-semibold text-lg text-center px-6">
+              Tap the glowing letter to hear its sound!
+            </p>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            {/* The word — big tappable letters, tap to hear each sound again */}
+            <div className="flex justify-center gap-3">
+              {letters.map((letter, i) => (
+                <motion.button
                   key={i}
-                  animate={{
-                    scale: i === activeLetterIdx ? 1.3 : 1,
-                    backgroundColor:
-                      i <= activeLetterIdx
-                        ? '#FCD34D'
-                        : 'rgba(255,255,255,0.9)',
-                  }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                  className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-bold font-[Fredoka] text-gray-800 shadow-lg lowercase"
+                  onClick={() => speakPhoneme(letter)}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-[88px] h-[96px] rounded-3xl bg-yellow-300 text-gray-800 text-7xl font-bold font-[Fredoka] lowercase shadow-lg press-3d flex items-center justify-center"
                 >
                   {letter}
-                </motion.div>
+                </motion.button>
               ))}
             </div>
+            <p className="text-cyan-800/80 font-[Fredoka] text-sm text-center">
+              Tap a letter — or 🔊 Again — to hear it
+            </p>
 
-            {activeLetterIdx >= 0 && (
-              <motion.div
-                className="absolute -bottom-2 h-2 bg-yellow-300 rounded-full"
-                initial={{ width: '0%', left: '10%' }}
-                animate={{
-                  width: `${((activeLetterIdx + 1) / current.letters.length) * 80}%`,
-                }}
-                transition={{ duration: 0.3 }}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        {!blended ? (
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={handleBlendStart}
-            className="game-button bg-blue-500 text-white px-10 py-5 rounded-full shadow-xl text-xl"
-          >
-            <span className="text-3xl">🏄</span>
-            <span className="font-[Fredoka]">Blend!</span>
-          </motion.button>
-        ) : (
-          <div className="flex gap-4">
-            {choices.map((choice) => (
-              <motion.button
-                key={choice.word}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleChoice(choice.word)}
-                disabled={feedback !== null || shouldReveal}
-                className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                  shouldReveal && choice.word === current.word
-                    ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                    : feedback === 'correct' && choice.word === current.word
-                    ? 'bg-green-200 ring-4 ring-green-400'
-                    : 'bg-white/90'
-                }`}
-              >
-                <span className="text-4xl">{choice.icon}</span>
-              </motion.button>
-            ))}
+            {/* Picture choices */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-center gap-4 mt-1"
+            >
+              {choices.map((w) => {
+                const isAnswer = w === word;
+                const revealAnswer = (phase === 'won' || shouldReveal) && isAnswer;
+                return (
+                  <motion.button
+                    key={w}
+                    onClick={() => pickChoice(w)}
+                    disabled={phase === 'won'}
+                    animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                    whileTap={{ scale: 0.92 }}
+                    className={`rounded-3xl p-3 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
+                      revealAnswer ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                    }`}
+                  >
+                    <WordCard word={w} size={120} />
+                  </motion.button>
+                );
+              })}
+            </motion.div>
           </div>
         )}
-
-        <AnimatePresence>
-          {feedback === 'wrong' && (
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0, x: [-4, 4, -4, 0] }}
-              exit={{ opacity: 0 }}
-              className="text-xl text-white font-bold"
-            >
-              Try again!
-            </motion.p>
-          )}
-        </AnimatePresence>
       </div>
 
-      <CelebrationOverlay
-        show={showCelebration}
-        message="Amazing blending!"
-        onComplete={onComplete}
-      />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Super surfer!" onComplete={onComplete} />
+    </GameShell>
   );
 }

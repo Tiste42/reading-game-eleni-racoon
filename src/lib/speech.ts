@@ -1,6 +1,7 @@
 'use client';
 
 import { Howl } from 'howler';
+import { duckMusic, unduckMusic, AUDIO_VERSION } from './audio';
 
 // --- Static audio playback via Howler ---
 
@@ -50,9 +51,13 @@ const KNOWN_PHONEMES = new Set([
 
 // Feedback clip IDs mapped by type
 const FEEDBACK_CLIPS: Record<string, string[]> = {
-  correct: ['great-job', 'correct', 'well-done', 'amazing', 'first-try'],
-  wrong: ['try-again', 'keep-trying', 'think-again'],
-  complete: ['you-did-it', 'level-complete', 'amazing'],
+  correct: [
+    'great-job', 'correct', 'well-done', 'amazing', 'awesome-job', 'great-work',
+    'youre-the-best', 'wonderful', 'fantastic', 'way-to-go', 'brilliant',
+    'super-reading', 'you-got-it', 'high-five', 'nice-work', 'yes-perfect',
+  ],
+  wrong: ['try-again', 'keep-trying', 'think-again', 'almost', 'so-close', 'good-try'],
+  complete: ['you-did-it', 'level-complete', 'amazing', 'youre-the-best', 'super-reading'],
 };
 
 // All pre-generated instruction & phrase narration slugs.
@@ -307,6 +312,27 @@ const KNOWN_NARRATION_SLUGS = new Set([
   // --- Wrong/reveal composable templates ---
   'not-quite-the-answer-is',
 
+  // --- World 1 redesign: rhyme corrective-model lines ---
+  'cat-and-hat-rhyme-listen-cat-hat',
+  'bug-and-mug-rhyme-listen-bug-mug',
+  'log-and-dog-rhyme-listen-log-dog',
+  'hen-and-ten-rhyme-listen-hen-ten',
+  'pin-and-bin-rhyme-listen-pin-bin',
+
+  // --- World 1 redesign: syllable beat-count lines ---
+  'cat-has-1-beat', 'dog-has-1-beat', 'sun-has-1-beat',
+  'apple-has-2-beats', 'monkey-has-2-beats', 'rabbit-has-2-beats',
+  'banana-has-3-beats', 'elephant-has-3-beats', 'tomato-has-3-beats',
+  'butterfly-has-3-beats', 'dinosaur-has-3-beats', 'watermelon-has-4-beats',
+
+  // --- World 1 redesign: odd-one-out composable templates ---
+  'two-of-these-start-with',
+  'which-one-doesnt-tap-the-odd-one-out',
+
+  // --- Coverage gap fixes ---
+  'the-word-is-them-which-two-letters-make-the-special-sound-is-it-sh-ch-or-th',
+  '1', '2', '3', '4',
+
   // --- LetterIntro reveal narrations ---
   'the-letter-s-makes-the-sss-sound-like-snake',
   'the-letter-a-makes-the-aah-sound-like-ant',
@@ -321,8 +347,11 @@ const KNOWN_NARRATION_SLUGS = new Set([
 /**
  * Play a static .mp3 file from /public/audio/ via Howler.
  * Cancels any previously playing speech sound.
+ * If the file is missing/broken and fallbackText is given, speaks the
+ * fallback via browser TTS instead of failing silently.
+ * Background music is ducked while speech plays.
  */
-function playStatic(path: string): Promise<void> {
+function playStatic(path: string, fallbackText?: string): Promise<void> {
   const thisGen = ++speakGeneration;
 
   // Stop any current speech
@@ -336,9 +365,10 @@ function playStatic(path: string): Promise<void> {
 
   if (thisGen !== speakGeneration) return Promise.resolve();
 
-  return new Promise((resolve) => {
+  duckMusic();
+  return new Promise<void>((resolve) => {
     const sound = new Howl({
-      src: [`/audio/${path}`],
+      src: [`/audio/${path}?v=${AUDIO_VERSION}`],
       html5: true,
       volume: 0.9,
       onend: () => {
@@ -347,7 +377,12 @@ function playStatic(path: string): Promise<void> {
       },
       onloaderror: () => {
         if (currentSpeechHowl === sound) currentSpeechHowl = null;
-        resolve();
+        console.warn(`[speech] missing audio file: /audio/${path}`);
+        if (fallbackText && thisGen === speakGeneration) {
+          browserSpeak(fallbackText).then(resolve);
+        } else {
+          resolve();
+        }
       },
       onplayerror: () => {
         if (currentSpeechHowl === sound) currentSpeechHowl = null;
@@ -363,13 +398,14 @@ function playStatic(path: string): Promise<void> {
 
     currentSpeechHowl = sound;
     sound.play();
-  });
+  }).finally(() => unduckMusic());
 }
 
 // --- Browser speech fallback for dynamic text ---
 
 function browserSpeak(text: string, rate = 0.85): Promise<void> {
-  return new Promise((resolve) => {
+  duckMusic();
+  return new Promise<void>((resolve) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       resolve();
       return;
@@ -391,7 +427,7 @@ function browserSpeak(text: string, rate = 0.85): Promise<void> {
     utter.onend = () => resolve();
     utter.onerror = () => resolve();
     window.speechSynthesis.speak(utter);
-  });
+  }).finally(() => unduckMusic());
 }
 
 // --- Public API ---
@@ -406,21 +442,24 @@ export async function speak(text: string): Promise<void> {
 
   // Single phoneme letter?
   if (KNOWN_PHONEMES.has(lower)) {
-    return playStatic(`phonemes/${lower}.mp3`);
+    return playStatic(`phonemes/${lower}.mp3`, PHONEME_PRONUNCIATIONS[lower] || text);
   }
 
   // Known word with static file?
   if (KNOWN_WORDS.has(lower)) {
-    return playStatic(`words/${lower}.mp3`);
+    return playStatic(`words/${lower}.mp3`, text);
   }
 
   // Known narration (instruction, phrase, etc.)?
   const slug = textToSlug(lower);
   if (KNOWN_NARRATION_SLUGS.has(slug)) {
-    return playStatic(`narration/inst-${slug}.mp3`);
+    return playStatic(`narration/inst-${slug}.mp3`, text);
   }
 
-  // Longer text — use browser speech as fallback
+  // Longer text — use browser speech as fallback.
+  // Every string that lands here ships robotic browser TTS: log it so
+  // coverage gaps are visible during development.
+  console.warn(`[speech] no pre-generated audio for: "${text}" (slug: ${slug})`);
   const thisGen = ++speakGeneration;
   if (currentSpeechHowl) {
     currentSpeechHowl.stop();
@@ -435,10 +474,10 @@ export async function speak(text: string): Promise<void> {
  */
 export async function speakPhoneme(letter: string): Promise<void> {
   const key = letter.toLowerCase();
-  if (KNOWN_PHONEMES.has(key)) {
-    return playStatic(`phonemes/${key}.mp3`);
-  }
   const pronunciation = PHONEME_PRONUNCIATIONS[key] || letter;
+  if (KNOWN_PHONEMES.has(key)) {
+    return playStatic(`phonemes/${key}.mp3`, pronunciation);
+  }
   return browserSpeak(pronunciation);
 }
 
@@ -448,7 +487,7 @@ export async function speakPhoneme(letter: string): Promise<void> {
 export async function speakWord(word: string): Promise<void> {
   const key = word.toLowerCase().trim();
   if (KNOWN_WORDS.has(key)) {
-    return playStatic(`words/${key}.mp3`);
+    return playStatic(`words/${key}.mp3`, word);
   }
   return browserSpeak(word);
 }
@@ -458,6 +497,30 @@ export async function speakWord(word: string): Promise<void> {
  */
 export async function speakInstruction(gameId: string): Promise<void> {
   return playStatic(`narration/${gameId}-intro.mp3`);
+}
+
+/**
+ * Play a specific narration clip by id (file: narration/{id}.mp3).
+ */
+export async function speakClip(id: string, fallbackText?: string): Promise<void> {
+  return playStatic(`narration/${id}.mp3`, fallbackText);
+}
+
+/**
+ * Play the syllable-segmented pronunciation of a word
+ * (file: narration/syll-{word}.mp3, e.g. "ba... na... na").
+ */
+export async function speakSyllables(word: string): Promise<void> {
+  return playStatic(`narration/syll-${word.toLowerCase()}.mp3`, word);
+}
+
+/**
+ * Play the stretched blend pronunciation of a word
+ * (file: blends/{word}.mp3, e.g. "s...a...t... sat").
+ */
+export async function speakBlend(word: string): Promise<void> {
+  const key = word.toLowerCase().trim();
+  return playStatic(`blends/${key}.mp3`, key.split('').join('... '));
 }
 
 /**

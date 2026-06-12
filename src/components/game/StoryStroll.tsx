@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speak, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import WordCard from '@/components/ui/WordCard';
+import { playSoundEffect } from '@/lib/audio';
 
 interface StorySentence {
   text: string;
-  picture: string;
+  pictureWord: string;
   question: string;
   correct: string;
   options: string[];
@@ -19,56 +21,56 @@ interface StorySentence {
 const SENTENCES: StorySentence[] = [
   {
     text: 'Sam sat on a mat.',
-    picture: '🧑',
+    pictureWord: 'mat',
     question: 'What did Sam sit on?',
     correct: 'a mat',
     options: ['a mat', 'a cat', 'a hat'],
   },
   {
     text: 'The cat is big.',
-    picture: '🐱',
+    pictureWord: 'cat',
     question: 'Is the cat big or small?',
     correct: 'big',
     options: ['big', 'small', 'red'],
   },
   {
     text: 'A bug is on the log.',
-    picture: '🐛',
+    pictureWord: 'bug',
     question: 'Where is the bug?',
     correct: 'on the log',
     options: ['on the log', 'in the cup', 'on the hat'],
   },
   {
     text: 'He got a red hat.',
-    picture: '🎩',
+    pictureWord: 'hat',
     question: 'What color is the hat?',
     correct: 'red',
     options: ['red', 'blue', 'green'],
   },
   {
     text: 'The fish is in the net.',
-    picture: '🐟',
+    pictureWord: 'fish',
     question: 'Where is the fish?',
     correct: 'in the net',
     options: ['in the net', 'on the bed', 'in the cup'],
   },
   {
     text: 'She can see the ship.',
-    picture: '🚢',
+    pictureWord: 'ship',
     question: 'What can she see?',
     correct: 'the ship',
     options: ['the ship', 'the cat', 'the dog'],
   },
   {
     text: 'I have a pet dog.',
-    picture: '🐶',
+    pictureWord: 'dog',
     question: 'What pet do I have?',
     correct: 'a dog',
     options: ['a dog', 'a cat', 'a fish'],
   },
   {
     text: 'The cup is hot.',
-    picture: '☕',
+    pictureWord: 'cup',
     question: 'Is the cup hot or cold?',
     correct: 'hot',
     options: ['hot', 'cold', 'big'],
@@ -94,6 +96,10 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
 
   const current = sentences[round];
   const stableOptions = useMemo(() => current.options, [current]);
+
+  // Track the answer-feedback timeout so a mid-timeout unmount can't leak a setState
+  const answerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (answerTimer.current) clearTimeout(answerTimer.current); }, []);
 
   // Phase 1: Don't read the sentence — just say "Read the sentence!"
   useGameSpeech(
@@ -131,10 +137,11 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
     (answer: string) => {
       if (feedback || shouldReveal) return;
       if (answer === current.correct) {
+        playSoundEffect('correct');
         const isLastRound = round >= sentences.length - 1;
         setFeedback('correct');
         speakFeedback(isLastRound ? 'complete' : 'correct');
-        setTimeout(() => {
+        answerTimer.current = setTimeout(() => {
           setFeedback(null);
           setShowQuestion(false);
           if (isLastRound) {
@@ -146,10 +153,11 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
           }
         }, 1200);
       } else {
+        playSoundEffect('wrong');
         setFeedback('wrong');
         recordWrong();
         speakWrongExplanation(answer, current.correct);
-        setTimeout(() => setFeedback(null), 2000);
+        answerTimer.current = setTimeout(() => setFeedback(null), 2000);
       }
     },
     [feedback, shouldReveal, current, round, sentences, worldId, completeGame, addCoins, recordWrong]
@@ -174,8 +182,8 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
           <motion.div key={round} initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
             exit={{ y: -40, opacity: 0 }}
             className="bg-amber-50 border-4 border-amber-700 rounded-2xl px-6 py-8 shadow-2xl max-w-sm w-full">
-            <div className="text-center mb-4">
-              <span className="text-6xl">{current.picture}</span>
+            <div className="flex justify-center mb-4">
+              <WordCard word={current.pictureWord} size={72} />
             </div>
             <p className="text-2xl font-bold font-[Fredoka] text-gray-800 text-center leading-relaxed">
               {current.text}

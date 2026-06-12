@@ -6,23 +6,23 @@ import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
+import { playSoundEffect } from '@/lib/audio';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import WordCard from '@/components/ui/WordCard';
 
 interface PuzzlePiece {
   word: string;
-  icon: string;
   distractors: string[];
 }
 
 // Show a picture, child must READ the word options and pick the right one
 const PIECES: PuzzlePiece[] = [
-  { word: 'sat', icon: getIcon('sat'), distractors: ['pin', 'net'] },
-  { word: 'pet', icon: getIcon('pet'), distractors: ['tap', 'sip'] },
-  { word: 'ten', icon: getIcon('ten'), distractors: ['pan', 'tip'] },
-  { word: 'nap', icon: getIcon('nap'), distractors: ['let', 'set'] },
-  { word: 'lip', icon: getIcon('lip'), distractors: ['pen', 'tin'] },
-  { word: 'pen', icon: getIcon('pen'), distractors: ['nip', 'pat'] },
+  { word: 'sat', distractors: ['pin', 'net'] },
+  { word: 'pet', distractors: ['tap', 'sip'] },
+  { word: 'ten', distractors: ['pan', 'tip'] },
+  { word: 'nap', distractors: ['let', 'set'] },
+  { word: 'lip', distractors: ['pen', 'tin'] },
+  { word: 'pen', distractors: ['nip', 'pat'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -39,9 +39,11 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
   const [solved, setSolved] = useState<number[]>([]);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  // Shuffle the puzzle order once per session so it isn't always the same.
+  const [pieces] = useState(() => shuffle(PIECES));
   const { completeGame, addCoins, masterWord } = useGameStore();
 
-  const current = PIECES[round];
+  const current = pieces[round];
 
   // Shuffle word options (correct word + distractors as text)
   const wordChoices = useMemo(
@@ -63,7 +65,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
       const timer = setTimeout(() => {
         setFeedback(null);
         setSolved(s => [...s, round]);
-        if (round >= PIECES.length - 1) {
+        if (round >= pieces.length - 1) {
           completeGame(worldId, 'plaza-puzzle');
           addCoins(10);
           setShowCelebration(true);
@@ -74,12 +76,13 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [shouldReveal, current.word, round, worldId, completeGame, addCoins]);
+  }, [shouldReveal, current.word, round, pieces.length, worldId, completeGame, addCoins]);
 
   const handleChoice = useCallback((chosen: string) => {
     if (feedback || shouldReveal) return;
+    playSoundEffect('tap');
     if (chosen === current.word) {
-      const isLastRound = round >= PIECES.length - 1;
+      const isLastRound = round >= pieces.length - 1;
       setFeedback('correct');
       speakFeedback(isLastRound ? 'complete' : 'correct');
       masterWord(current.word);
@@ -100,7 +103,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
       speakWrongExplanation(chosen, current.word);
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, shouldReveal, current, round, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  }, [feedback, shouldReveal, current, round, pieces.length, worldId, completeGame, addCoins, masterWord, recordWrong]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-400/90 to-orange-300/90 px-4 py-6 flex flex-col">
@@ -108,17 +111,17 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
         <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
           className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
         <div className="bg-white/80 rounded-full px-4 py-2 shadow">
-          <span className="font-[Fredoka] text-amber-600">{solved.length}/{PIECES.length}</span>
+          <span className="font-[Fredoka] text-amber-600">{solved.length}/{pieces.length}</span>
         </div>
       </div>
 
       {/* Puzzle grid showing progress */}
       <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto mb-6">
-        {PIECES.map((piece, i) => (
+        {pieces.map((piece, i) => (
           <div key={i} className={`aspect-square rounded-xl ${
             solved.includes(i) ? 'bg-amber-200' : 'bg-white/20 border-2 border-dashed border-white/40'
-          } flex items-center justify-center text-3xl`}>
-            {solved.includes(i) ? piece.icon : ''}
+          } flex items-center justify-center`}>
+            {solved.includes(i) ? <WordCard word={piece.word} size={48} /> : ''}
           </div>
         ))}
       </div>
@@ -130,7 +133,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
         <AnimatePresence mode="wait">
           <motion.div key={round} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
             className="bg-white/90 rounded-2xl px-10 py-6 shadow-xl flex flex-col items-center gap-2">
-            <span className="text-6xl">{current.icon}</span>
+            <WordCard word={current.word} size={72} />
             <p className="text-sm text-gray-400 font-[Nunito]">Which word is this?</p>
           </motion.div>
         </AnimatePresence>

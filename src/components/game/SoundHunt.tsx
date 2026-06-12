@@ -1,61 +1,75 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speak, speakPhoneme, speakFeedback, speakWrongExplanation, speakReveal, stopSpeaking } from '@/lib/speech';
-import { useWrongAttempts } from '@/lib/useGameSpeech';
+import { speak, speakPhoneme, speakFeedback, speakReveal } from '@/lib/speech';
+import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
 interface HuntRound {
   targetSound: string;
-  items: { word: string; icon: string; startsWithTarget: boolean }[];
+  items: { word: string; startsWithTarget: boolean }[];
 }
 
 const ROUNDS: HuntRound[] = [
   { targetSound: 's', items: [
-    { word: 'sun', icon: '☀️', startsWithTarget: true },
-    { word: 'snake', icon: '🐍', startsWithTarget: true },
-    { word: 'dog', icon: '🐶', startsWithTarget: false },
-    { word: 'sock', icon: '🧦', startsWithTarget: true },
-    { word: 'cat', icon: '🐱', startsWithTarget: false },
-    { word: 'hat', icon: '🎩', startsWithTarget: false },
+    { word: 'sun', startsWithTarget: true },
+    { word: 'snake', startsWithTarget: true },
+    { word: 'dog', startsWithTarget: false },
+    { word: 'sock', startsWithTarget: true },
+    { word: 'cat', startsWithTarget: false },
+    { word: 'hat', startsWithTarget: false },
   ]},
   { targetSound: 'b', items: [
-    { word: 'ball', icon: '🏀', startsWithTarget: true },
-    { word: 'bird', icon: '🐦', startsWithTarget: true },
-    { word: 'fish', icon: '🐟', startsWithTarget: false },
-    { word: 'bus', icon: '🚌', startsWithTarget: true },
-    { word: 'pen', icon: '🖊️', startsWithTarget: false },
-    { word: 'cup', icon: '☕', startsWithTarget: false },
+    { word: 'ball', startsWithTarget: true },
+    { word: 'bird', startsWithTarget: true },
+    { word: 'fish', startsWithTarget: false },
+    { word: 'bus', startsWithTarget: true },
+    { word: 'pen', startsWithTarget: false },
+    { word: 'cup', startsWithTarget: false },
   ]},
   { targetSound: 'm', items: [
-    { word: 'moon', icon: '🌙', startsWithTarget: true },
-    { word: 'mouse', icon: '🐭', startsWithTarget: true },
-    { word: 'tree', icon: '🌳', startsWithTarget: false },
-    { word: 'milk', icon: '🥛', startsWithTarget: true },
-    { word: 'bed', icon: '🛏️', startsWithTarget: false },
-    { word: 'van', icon: '🚐', startsWithTarget: false },
+    { word: 'moon', startsWithTarget: true },
+    { word: 'mouse', startsWithTarget: true },
+    { word: 'tree', startsWithTarget: false },
+    { word: 'milk', startsWithTarget: true },
+    { word: 'bed', startsWithTarget: false },
+    { word: 'van', startsWithTarget: false },
   ]},
   { targetSound: 't', items: [
-    { word: 'tiger', icon: '🐯', startsWithTarget: true },
-    { word: 'tent', icon: '⛺', startsWithTarget: true },
-    { word: 'rain', icon: '🌧️', startsWithTarget: false },
-    { word: 'top', icon: '🪀', startsWithTarget: true },
-    { word: 'leg', icon: '🦵', startsWithTarget: false },
-    { word: 'egg', icon: '🥚', startsWithTarget: false },
+    { word: 'tiger', startsWithTarget: true },
+    { word: 'tent', startsWithTarget: true },
+    { word: 'rain', startsWithTarget: false },
+    { word: 'top', startsWithTarget: true },
+    { word: 'leg', startsWithTarget: false },
+    { word: 'egg', startsWithTarget: false },
   ]},
   { targetSound: 'p', items: [
-    { word: 'pig', icon: '🐷', startsWithTarget: true },
-    { word: 'pen', icon: '🖊️', startsWithTarget: true },
-    { word: 'dog', icon: '🐶', startsWithTarget: false },
-    { word: 'pot', icon: '🍲', startsWithTarget: true },
-    { word: 'net', icon: '🥅', startsWithTarget: false },
-    { word: 'hat', icon: '🎩', startsWithTarget: false },
+    { word: 'pig', startsWithTarget: true },
+    { word: 'pen', startsWithTarget: true },
+    { word: 'dog', startsWithTarget: false },
+    { word: 'pot', startsWithTarget: true },
+    { word: 'net', startsWithTarget: false },
+    { word: 'hat', startsWithTarget: false },
   ]},
 ];
+
+// Scattered scene slots: % positions with playful rotation/scale variety
+const SLOTS = [
+  { left: 4, top: 4, rot: -8, scale: 1.0 },
+  { left: 62, top: 2, rot: 7, scale: 1.1 },
+  { left: 32, top: 26, rot: -4, scale: 0.95 },
+  { left: 68, top: 44, rot: 9, scale: 1.05 },
+  { left: 6, top: 50, rot: 5, scale: 1.08 },
+  { left: 38, top: 66, rot: -7, scale: 1.0 },
+];
+
+const HINT_DELAY_MS = 7000;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -68,109 +82,64 @@ interface Props {
 
 export default function SoundHunt({ worldId, onComplete }: Props) {
   const [roundIdx, setRoundIdx] = useState(0);
-  const [found, setFound] = useState<Set<string>>(new Set());
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
-  const [wrongWord, setWrongWord] = useState<string | null>(null);
+  const [found, setFound] = useState<string[]>([]);
+  const [wrongShake, setWrongShake] = useState<string | null>(null);
+  const [hintWord, setHintWord] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [rounds] = useState(() =>
-    shuffle(ROUNDS).slice(0, 4).map(r => ({ ...r, items: shuffle(r.items) }))
+    shuffle(ROUNDS).slice(0, 4).map((r) => ({ ...r, items: shuffle(r.items) })),
   );
-  const { completeGame, addCoins, incrementStreak, resetStreak } = useGameStore();
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[roundIdx];
-  const targetCount = current.items.filter((i) => i.startsWithTarget).length;
+  const targetItems = current.items.filter((i) => i.startsWithTarget);
+  const targetCount = targetItems.length;
+  const roundDone = found.length >= targetCount;
 
-  // Custom speech: generic prompt → phoneme sound → option words
-  const [activeOption, setActiveOption] = useState(-1);
-  const runIdRef = useRef(0);
+  const { activeOption, replay } = useComposedSpeech(
+    [
+      { say: 'Tap everything that starts with this sound!' },
+      { pause: 200 },
+      { phoneme: current.targetSound },
+      { pause: 400 },
+      { options: current.items.map((i) => i.word) },
+    ],
+    [roundIdx],
+  );
 
+  const { shouldReveal, recordWrong } = useWrongAttempts(roundIdx, 3);
+
+  // Idle hint: after a quiet stretch, make one remaining target sparkle
   useEffect(() => {
-    const thisRun = ++runIdRef.current;
-    setActiveOption(-1);
+    if (roundDone) return;
+    setHintWord(null);
+    const timer = setTimeout(() => {
+      const remaining = targetItems.find((i) => !found.includes(i.word));
+      if (remaining) setHintWord(remaining.word);
+    }, HINT_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [found, roundIdx, roundDone]);
 
-    const run = async () => {
-      if (thisRun !== runIdRef.current) return;
-      await speak('Tap everything that starts with this sound!');
-      if (thisRun !== runIdRef.current) return;
-      await new Promise(r => setTimeout(r, 200));
-      if (thisRun !== runIdRef.current) return;
-      await speakPhoneme(current.targetSound);
-      if (thisRun !== runIdRef.current) return;
-      await new Promise(r => setTimeout(r, 400));
-
-      const items = current.items;
-      for (let i = 0; i < items.length; i++) {
-        if (thisRun !== runIdRef.current) return;
-        setActiveOption(i);
-        await speak(items[i].word);
-        if (thisRun !== runIdRef.current) return;
-        await new Promise(r => setTimeout(r, 350));
-      }
-      if (thisRun !== runIdRef.current) return;
-      setActiveOption(-1);
-    };
-
-    const timer = setTimeout(run, 500);
-    return () => {
-      clearTimeout(timer);
-      runIdRef.current++;
-      stopSpeaking();
-    };
-  }, [roundIdx]);
-  const doneSpeaking = true;
-
-  const handleReplay = useCallback(() => {
-    const thisRun = ++runIdRef.current;
-    setActiveOption(-1);
-    stopSpeaking();
-    const run = async () => {
-      if (thisRun !== runIdRef.current) return;
-      await speak('Tap everything that starts with this sound!');
-      if (thisRun !== runIdRef.current) return;
-      await new Promise(r => setTimeout(r, 200));
-      if (thisRun !== runIdRef.current) return;
-      await speakPhoneme(current.targetSound);
-      if (thisRun !== runIdRef.current) return;
-      await new Promise(r => setTimeout(r, 400));
-      const items = current.items;
-      for (let i = 0; i < items.length; i++) {
-        if (thisRun !== runIdRef.current) return;
-        setActiveOption(i);
-        await speak(items[i].word);
-        if (thisRun !== runIdRef.current) return;
-        await new Promise(r => setTimeout(r, 350));
-      }
-      if (thisRun !== runIdRef.current) return;
-      setActiveOption(-1);
-    };
-    run();
-  }, [current]);
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(roundIdx);
-
-  const correctItems = current.items.filter(i => i.startsWithTarget);
-  const firstUnfound = correctItems.find(i => !found.has(i.word));
-
+  // Too many wrong taps: reveal one target outright
   useEffect(() => {
-    if (shouldReveal && firstUnfound) {
-      let cancelled = false;
-      const run = async () => {
-        await speakReveal(firstUnfound.word);
-        if (cancelled) return;
-        await new Promise(r => setTimeout(r, 500));
-        if (cancelled) return;
-        const next = new Set(found);
-        next.add(firstUnfound.word);
-        setFound(next);
-        setFeedback(null);
-      };
-      run();
-      return () => { cancelled = true; };
+    if (shouldReveal && !roundDone) {
+      const remaining = targetItems.find((i) => !found.includes(i.word));
+      if (remaining) {
+        let cancelled = false;
+        (async () => {
+          await speakReveal(remaining.word);
+          if (cancelled) return;
+          setFound((f) => (f.includes(remaining.word) ? f : [...f, remaining.word]));
+        })();
+        return () => { cancelled = true; };
+      }
     }
-  }, [shouldReveal, firstUnfound, found]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, roundDone]);
 
   useEffect(() => {
-    if (found.size >= targetCount && found.size > 0) {
+    if (roundDone && found.length > 0) {
       const timer = setTimeout(() => {
         if (roundIdx >= rounds.length - 1) {
           completeGame(worldId, 'sound-hunt');
@@ -178,102 +147,128 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
           setShowCelebration(true);
         } else {
           setRoundIdx((r) => r + 1);
-          setFound(new Set());
+          setFound([]);
         }
-      }, 600);
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [found, targetCount, roundIdx, rounds, worldId, completeGame, addCoins]);
+  }, [roundDone, found, roundIdx, rounds.length, worldId, completeGame, addCoins]);
 
   const handleTap = useCallback(
     (item: HuntRound['items'][0]) => {
-      if (feedback || found.has(item.word) || !doneSpeaking || shouldReveal) return;
+      if (found.includes(item.word) || roundDone) return;
+
       if (item.startsWithTarget) {
-        const next = new Set(found);
-        next.add(item.word);
-        setFound(next);
-        setFeedback('correct');
-        const isGameDone = next.size >= targetCount && roundIdx >= rounds.length - 1;
+        recordSoundAttempt(current.targetSound, true);
         incrementStreak();
-        (async () => {
-          await speakFeedback(isGameDone ? 'complete' : 'correct');
-          await new Promise(r => setTimeout(r, 400));
-          setFeedback(null);
-        })();
+        playSoundEffect('coin');
+        setFound((f) => [...f, item.word]);
+        setHintWord(null);
+        const willBeDone = found.length + 1 >= targetCount;
+        const isGameDone = willBeDone && roundIdx >= rounds.length - 1;
+        speakFeedback(isGameDone ? 'complete' : 'correct');
       } else {
-        setFeedback('wrong');
-        setWrongWord(item.word);
+        recordSoundAttempt(current.targetSound, false);
         recordWrong();
-        speakWrongExplanation(item.word, current.targetSound, 'starts-with');
         resetStreak();
-        setTimeout(() => { setFeedback(null); setWrongWord(null); }, 2000);
+        playSoundEffect('wrong');
+        setWrongShake(item.word);
+        (async () => {
+          await speak(item.word);
+          await speakFeedback('wrong');
+          setWrongShake(null);
+        })();
       }
     },
-    [feedback, found, targetCount, roundIdx, rounds, doneSpeaking, shouldReveal, current, worldId, completeGame, addCoins, incrementStreak, resetStreak, recordWrong]
+    [found, roundDone, targetCount, roundIdx, rounds.length, current, recordWrong, resetStreak, incrementStreak, recordSoundAttempt],
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-500/75 to-orange-400/75 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-
-          <ReplayButton onReplay={handleReplay} />
-
-        </div>
-        <div className="bg-white/80 rounded-full px-4 py-2 shadow">
-          <span className="font-[Fredoka] text-pink-600 text-lg">{found.size}/{targetCount}</span>
-        </div>
-      </div>
-
-      <div className="text-center mb-4">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={70} />
-        <div className="bg-white/90 rounded-2xl px-6 py-3 shadow-lg inline-block mt-2">
-          <span className="text-lg font-[Nunito] text-gray-600">Find things that start with </span>
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={roundIdx}
+      totalRounds={rounds.length}
+      progressIcon="🔍"
+      bgClassName="from-pink-500/75 to-orange-400/75"
+    >
+      {/* Header: target + basket counter */}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <button
+          onClick={() => speakPhoneme(current.targetSound)}
+          className="bg-white/90 rounded-2xl px-4 py-2 shadow-lg press-3d flex items-center gap-2"
+        >
+          <span className="text-base font-[Nunito] text-gray-600">Find</span>
           <span className="text-3xl font-bold font-[Fredoka] text-pink-600 lowercase">{current.targetSound}</span>
-        </div>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center">
-        <div className="grid grid-cols-3 gap-3 max-w-md w-full">
-          {current.items.map((item, index) => {
-            const isFound = found.has(item.word);
-            const isBeingSpoken = activeOption === index;
-            const revealThis = shouldReveal && item.startsWithTarget && !isFound;
-
-            return (
-              <motion.button
-                key={item.word}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleTap(item)}
-                disabled={isFound || feedback !== null || !doneSpeaking || shouldReveal}
-                className={`aspect-square rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition-all ${
-                  isFound ? 'bg-green-200 ring-4 ring-green-400 scale-95' :
-                  revealThis ? 'bg-green-200 ring-4 ring-green-400 animate-pulse' :
-                  isBeingSpoken ? 'bg-white ring-4 ring-blue-400 scale-105' :
-                  'bg-white/90'
-                }`}
-              >
-                <span className="text-5xl">{item.icon}</span>
-                {isFound && <span className="text-green-600 font-bold text-xs lowercase">{item.word}</span>}
-              </motion.button>
+          <span>🔊</span>
+        </button>
+        <div className="bg-white/80 rounded-2xl px-3 py-1.5 shadow flex items-center gap-1">
+          <span className="text-2xl">🧺</span>
+          {Array.from({ length: targetCount }).map((_, i) => {
+            const foundWord = found[i];
+            return foundWord ? (
+              <motion.span key={i} initial={{ scale: 2, y: -16 }} animate={{ scale: 1, y: 0 }}>
+                <WordCard word={foundWord} size={28} />
+              </motion.span>
+            ) : (
+              <span key={i} className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300" />
             );
           })}
         </div>
       </div>
 
-      <AnimatePresence>
-        {feedback === 'wrong' && wrongWord && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-            className="text-center text-white font-bold text-lg mb-4">
-            No, {wrongWord} starts with &quot;{wrongWord[0]}&quot;, not &quot;{current.targetSound}&quot;!
-          </motion.p>
-        )}
-      </AnimatePresence>
+      {/* Scattered scene */}
+      <div className="flex-1 relative max-w-md w-full mx-auto min-h-[440px] my-1">
+        <div className="absolute inset-0 bg-white/25 backdrop-blur-[2px] rounded-3xl border-4 border-white/40 shadow-inner" />
+        <AnimatePresence mode="wait">
+          <motion.div key={roundIdx} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {current.items.map((item, index) => {
+              const slot = SLOTS[index % SLOTS.length];
+              const isFound = found.includes(item.word);
+              const isBeingSpoken = activeOption === index;
+              const hintThis = hintWord === item.word;
+
+              return (
+                <motion.button
+                  key={item.word + index}
+                  onClick={() => handleTap(item)}
+                  disabled={isFound}
+                  initial={{ scale: 0, rotate: slot.rot }}
+                  animate={
+                    isFound
+                      ? { scale: 0, opacity: 0, y: -40 }
+                      : wrongShake === item.word
+                        ? { x: [-8, 8, -8, 0], scale: slot.scale }
+                        : {
+                            scale: isBeingSpoken ? slot.scale * 1.15 : slot.scale,
+                            rotate: [slot.rot, slot.rot + 3, slot.rot],
+                          }
+                  }
+                  transition={
+                    isFound
+                      ? { duration: 0.45 }
+                      : { rotate: { duration: 2.6 + index * 0.3, repeat: Infinity, ease: 'easeInOut' }, scale: { delay: index * 0.07, type: 'spring' } }
+                  }
+                  className={`absolute w-[104px] h-[104px] rounded-full bg-white/95 shadow-xl flex items-center justify-center ${
+                    isBeingSpoken ? 'ring-4 ring-blue-400 z-10' : ''
+                  } ${hintThis ? 'animate-hint-pulse ring-4 ring-yellow-300 z-10' : ''}`}
+                  style={{ left: `${slot.left}%`, top: `${slot.top}%` }}
+                >
+                  <WordCard word={item.word} size={70} />
+                  {isFound && <span className="absolute text-3xl">✨</span>}
+                </motion.button>
+              );
+            })}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Eleni peeks from the corner */}
+        <div className="absolute -bottom-4 -right-3 pointer-events-none">
+          <EleniCharacter pose={roundDone ? 'celebrating' : 'standing'} size={132} />
+        </div>
+      </div>
 
       <CelebrationOverlay show={showCelebration} message="Great hunting!" onComplete={onComplete} />
-    </div>
+    </GameShell>
   );
 }

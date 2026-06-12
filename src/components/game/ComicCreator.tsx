@@ -7,11 +7,12 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import WordCard from '@/components/ui/WordCard';
+import { playSoundEffect } from '@/lib/audio';
 
 interface ComicPanel {
   sentence: string;
-  icon: string;
+  word: string;
   distractors: string[];
 }
 
@@ -21,19 +22,19 @@ interface ComicStory {
 
 const STORIES: ComicStory[] = [
   { panels: [
-    { sentence: 'The cat sat on a mat.', icon: getIcon('cat'), distractors: [getIcon('dog'), getIcon('bug')] },
-    { sentence: 'A dog ran to the cat.', icon: getIcon('dog'), distractors: [getIcon('van'), getIcon('cup')] },
-    { sentence: 'The cat and dog had a nap.', icon: getIcon('nap'), distractors: [getIcon('hot'), getIcon('ship')] },
+    { sentence: 'The cat sat on a mat.', word: 'cat', distractors: ['dog', 'bug'] },
+    { sentence: 'A dog ran to the cat.', word: 'dog', distractors: ['van', 'cup'] },
+    { sentence: 'The cat and dog had a nap.', word: 'nap', distractors: ['hot', 'ship'] },
   ]},
   { panels: [
-    { sentence: 'A bug sat on a log.', icon: getIcon('bug'), distractors: [getIcon('cat'), getIcon('jet')] },
-    { sentence: 'A big fish jumped up!', icon: getIcon('fish'), distractors: [getIcon('hat'), getIcon('log')] },
-    { sentence: 'The bug fell in the pond.', icon: '💦', distractors: [getIcon('bed'), getIcon('pot')] },
+    { sentence: 'A bug sat on a log.', word: 'bug', distractors: ['cat', 'jet'] },
+    { sentence: 'A big fish jumped up!', word: 'fish', distractors: ['hat', 'log'] },
+    { sentence: 'The bug fell in the pot.', word: 'pot', distractors: ['bed', 'fin'] },
   ]},
   { panels: [
-    { sentence: 'He got a red hat.', icon: getIcon('hat'), distractors: [getIcon('net'), getIcon('hen')] },
-    { sentence: 'The hat was too big!', icon: '😄', distractors: [getIcon('bug'), getIcon('cut')] },
-    { sentence: 'He gave it to his dog.', icon: getIcon('dog'), distractors: [getIcon('fin'), getIcon('red')] },
+    { sentence: 'He got a red hat.', word: 'hat', distractors: ['net', 'hen'] },
+    { sentence: 'The hat was too big!', word: 'hat', distractors: ['bug', 'cut'] },
+    { sentence: 'He gave it to his dog.', word: 'dog', distractors: ['fin', 'red'] },
   ]},
 ];
 
@@ -65,13 +66,14 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
 
   // Shuffle picture choices for current panel
   const pictureChoices = useMemo(
-    () => shuffle([panel.icon, ...panel.distractors]),
+    () => shuffle([panel.word, ...panel.distractors]),
     [panel]
   );
 
   const handleChoice = useCallback((chosen: string) => {
     if (feedback) return;
-    if (chosen === panel.icon) {
+    playSoundEffect('tap');
+    if (chosen === panel.word) {
       const next = [...revealed, panelIdx];
       setRevealed(next);
       setFeedback('correct');
@@ -90,7 +92,7 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
     } else {
       setFeedback('wrong');
       recordWrong();
-      speakWrongExplanation(chosen, panel.icon);
+      speakWrongExplanation(chosen, panel.word);
       setTimeout(() => setFeedback(null), 2000);
     }
   }, [feedback, panel, panelIdx, revealed, story, worldId, completeGame, addCoins, recordWrong]);
@@ -114,7 +116,7 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
             revealed.includes(i) ? 'bg-white' : i === panelIdx ? 'bg-yellow-100 ring-2 ring-yellow-400' : 'bg-gray-300'
           }`}>
             {revealed.includes(i) ? (
-              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-5xl">{p.icon}</motion.span>
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><WordCard word={p.word} size={56} /></motion.div>
             ) : (
               <span className="text-2xl text-gray-500">?</span>
             )}
@@ -138,15 +140,15 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
 
         {/* Picture choices */}
         <div className="flex gap-4">
-          {pictureChoices.map((icon) => (
-            <motion.button key={icon} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(icon)}
+          {pictureChoices.map((choiceWord) => (
+            <motion.button key={choiceWord} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choiceWord)}
               disabled={feedback !== null}
               className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                feedback === 'correct' && icon === panel.icon
+                feedback === 'correct' && choiceWord === panel.word
                   ? 'bg-green-200 ring-4 ring-green-400'
                   : 'bg-white/90'
               }`}>
-              <span className="text-4xl">{icon}</span>
+              <WordCard word={choiceWord} size={48} />
             </motion.button>
           ))}
         </div>

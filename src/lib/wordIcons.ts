@@ -116,7 +116,8 @@ const WORD_ICONS: Record<string, string> = {
   egg: '🥚',
   lemon: '🍋',
   tent: '⛺',
-  insect: '🐜',
+  insect: '🪲',  // beetle (ant gets 🐜)
+  ant: '🐜',
   igloo: '🏔️',  // snowy mountain (NOT 🏠 generic house)
   lion: '🦁',
   sun: '☀️',
@@ -131,7 +132,7 @@ const WORD_ICONS: Record<string, string> = {
   mouse: '🐭',
   milk: '🥛',
   tree: '🌳',
-  top: '🔝',
+  top: '🪀',   // spinning toy (NOT 🔝 — abstract symbol with text)
   leg: '🦵',
   rain: '🌧️',
   star: '⭐',

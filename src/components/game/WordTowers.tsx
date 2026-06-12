@@ -8,6 +8,8 @@ import ReplayButton from '@/components/ui/ReplayButton';
 import { useGameStore } from '@/lib/store';
 import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
+import WordCard from '@/components/ui/WordCard';
 
 interface WordFamily {
   pattern: string;
@@ -122,9 +124,11 @@ export default function WordTowers({ worldId, onComplete }: Props) {
   const handleChoice = useCallback(
     (chosen: string) => {
       if (feedback || !doneSpeaking || shouldReveal) return;
+      playSoundEffect('tap');
       if (chosen === currentWord.word) {
         const isLastRound = placedCount + 1 >= wordsPerFamily && familyIdx >= families.length - 1;
         setFeedback('correct');
+        playSoundEffect('correct');
         speakFeedback(isLastRound ? 'complete' : 'correct');
         masterWord(chosen);
         setTimeout(() => {
@@ -148,6 +152,7 @@ export default function WordTowers({ worldId, onComplete }: Props) {
         }, 1000);
       } else {
         setFeedback('wrong');
+        playSoundEffect('wrong');
         recordWrong();
         speakWrongExplanation(chosen, currentWord.word);
         setTimeout(() => setFeedback(null), 2000);
@@ -191,7 +196,7 @@ export default function WordTowers({ worldId, onComplete }: Props) {
             >
               {i < placedCount ? (
                 <>
-                  <span className="mr-2">{family.words[i].icon}</span>
+                  <WordCard word={family.words[i].word} size={28} className="mr-2" />
                   {family.words[i].word}
                 </>
               ) : i === placedCount ? '?' : ''}
@@ -220,7 +225,7 @@ export default function WordTowers({ worldId, onComplete }: Props) {
                   : 'bg-white/90'
               }`}
             >
-              <span className="text-3xl">{choice.icon}</span>
+              <WordCard word={choice.word} size={40} />
               <span className="text-sm font-bold font-[Fredoka] lowercase text-gray-700">{choice.word}</span>
             </motion.button>
           ))}
