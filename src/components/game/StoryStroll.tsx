@@ -1,80 +1,33 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import { useGameStore } from '@/lib/store';
-import { speakFeedback, speak, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
+import PressButton from '@/components/ui/PressButton';
+import { useGameStore } from '@/lib/store';
+import { speak, speakFeedback } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 
 interface StorySentence {
   text: string;
   pictureWord: string;
-  question: string;
+  question: string; // recorded
   correct: string;
-  options: string[];
+  options: string[]; // all recorded (words or inst phrases)
 }
 
 const SENTENCES: StorySentence[] = [
-  {
-    text: 'Sam sat on a mat.',
-    pictureWord: 'mat',
-    question: 'What did Sam sit on?',
-    correct: 'a mat',
-    options: ['a mat', 'a cat', 'a hat'],
-  },
-  {
-    text: 'The cat is big.',
-    pictureWord: 'cat',
-    question: 'Is the cat big or small?',
-    correct: 'big',
-    options: ['big', 'small', 'red'],
-  },
-  {
-    text: 'A bug is on the log.',
-    pictureWord: 'bug',
-    question: 'Where is the bug?',
-    correct: 'on the log',
-    options: ['on the log', 'in the cup', 'on the hat'],
-  },
-  {
-    text: 'He got a red hat.',
-    pictureWord: 'hat',
-    question: 'What color is the hat?',
-    correct: 'red',
-    options: ['red', 'blue', 'green'],
-  },
-  {
-    text: 'The fish is in the net.',
-    pictureWord: 'fish',
-    question: 'Where is the fish?',
-    correct: 'in the net',
-    options: ['in the net', 'on the bed', 'in the cup'],
-  },
-  {
-    text: 'She can see the ship.',
-    pictureWord: 'ship',
-    question: 'What can she see?',
-    correct: 'the ship',
-    options: ['the ship', 'the cat', 'the dog'],
-  },
-  {
-    text: 'I have a pet dog.',
-    pictureWord: 'dog',
-    question: 'What pet do I have?',
-    correct: 'a dog',
-    options: ['a dog', 'a cat', 'a fish'],
-  },
-  {
-    text: 'The cup is hot.',
-    pictureWord: 'cup',
-    question: 'Is the cup hot or cold?',
-    correct: 'hot',
-    options: ['hot', 'cold', 'big'],
-  },
+  { text: 'Sam sat on a mat.', pictureWord: 'mat', question: 'What did Sam sit on?', correct: 'a mat', options: ['a mat', 'a cat', 'a hat'] },
+  { text: 'The cat is big.', pictureWord: 'cat', question: 'Is the cat big or small?', correct: 'big', options: ['big', 'small', 'red'] },
+  { text: 'A bug is on the log.', pictureWord: 'bug', question: 'Where is the bug?', correct: 'on the log', options: ['on the log', 'in the cup', 'on the hat'] },
+  { text: 'He got a red hat.', pictureWord: 'hat', question: 'What color is the hat?', correct: 'red', options: ['red', 'blue', 'green'] },
+  { text: 'The fish is in the net.', pictureWord: 'fish', question: 'Where is the fish?', correct: 'in the net', options: ['in the net', 'on the bed', 'in the cup'] },
+  { text: 'She can see the ship.', pictureWord: 'ship', question: 'What can she see?', correct: 'the ship', options: ['the ship', 'the cat', 'the dog'] },
+  { text: 'I have a pet dog.', pictureWord: 'dog', question: 'What pet do I have?', correct: 'a dog', options: ['a dog', 'a cat', 'a fish'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -86,144 +39,155 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'read' | 'answer' | 'won';
+
 export default function StoryStroll({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [showQuestion, setShowQuestion] = useState(false);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('read');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
+  const [choices, setChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [sentences] = useState(() => shuffle(SENTENCES).slice(0, 6));
-  const { completeGame, addCoins } = useGameStore();
+  const [rounds] = useState(() => shuffle(SENTENCES).slice(0, 6));
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const current = sentences[round];
-  const stableOptions = useMemo(() => current.options, [current]);
-
-  // Track the answer-feedback timeout so a mid-timeout unmount can't leak a setState
-  const answerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (answerTimer.current) clearTimeout(answerTimer.current); }, []);
-
-  // Phase 1: Don't read the sentence — just say "Read the sentence!"
-  useGameSpeech(
-    feedback || showQuestion ? null : 'Read the sentence!',
-    [round],
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const current = rounds[round];
+  const isLast = round >= rounds.length - 1;
 
   useEffect(() => {
-    if (!shouldReveal) return;
-    speakReveal(current.correct);
-    const timer = setTimeout(() => {
-      setShowQuestion(false);
-      if (round >= sentences.length - 1) {
-        completeGame(worldId, 'story-stroll');
-        addCoins(12);
-        setShowCelebration(true);
-        speakFeedback('complete');
-      } else {
-        setRound((r) => r + 1);
-      }
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [shouldReveal, current, round, sentences, worldId, completeGame, addCoins]);
+    setPhase('read');
+    setWrongPick(null);
+    setChoices(shuffle([...current.options]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
 
-  // Phase 2: Child taps "I read it!" → show question + speak it
-  const handleReadIt = useCallback(() => {
-    setShowQuestion(true);
-    // Speak the question so child knows what to answer
+  const { replay } = useGameSpeech(
+    phase === 'read' ? 'Read the sentence!' : phase === 'answer' ? current.question : null,
+    [round, phase],
+  );
+
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
+
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'story-stroll');
+      addCoins(12);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
+    }
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  useEffect(() => {
+    if (shouldReveal && phase === 'answer') {
+      (async () => {
+        recordSoundAttempt('sentences', false);
+        await speak(current.correct);
+        setPhase('won');
+        await new Promise((r) => setTimeout(r, 1100));
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const startAnswer = useCallback(() => {
+    playSoundEffect('tap');
+    setPhase('answer');
     speak(current.question);
   }, [current.question]);
 
-  const handleAnswer = useCallback(
-    (answer: string) => {
-      if (feedback || shouldReveal) return;
-      if (answer === current.correct) {
-        playSoundEffect('correct');
-        const isLastRound = round >= sentences.length - 1;
-        setFeedback('correct');
-        speakFeedback(isLastRound ? 'complete' : 'correct');
-        answerTimer.current = setTimeout(() => {
-          setFeedback(null);
-          setShowQuestion(false);
-          if (isLastRound) {
-            completeGame(worldId, 'story-stroll');
-            addCoins(12);
-            setShowCelebration(true);
-          } else {
-            setRound((r) => r + 1);
-          }
-        }, 1200);
+  const pick = useCallback(
+    (opt: string) => {
+      if (phase !== 'answer') return;
+      if (opt === current.correct) {
+        recordSoundAttempt('sentences', true);
+        incrementStreak();
+        playSoundEffect('coin');
+        setPhase('won');
+        (async () => {
+          await speak(opt);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 700));
+          advance();
+        })();
       } else {
-        playSoundEffect('wrong');
-        setFeedback('wrong');
+        recordSoundAttempt('sentences', false);
         recordWrong();
-        speakWrongExplanation(answer, current.correct);
-        answerTimer.current = setTimeout(() => setFeedback(null), 2000);
+        resetStreak();
+        playSoundEffect('wrong');
+        setWrongPick(opt);
+        (async () => {
+          await speak(current.question); // re-ask
+          setWrongPick(null);
+        })();
       }
     },
-    [feedback, shouldReveal, current, round, sentences, worldId, completeGame, addCoins, recordWrong]
+    [phase, current, isLast, advance, incrementStreak, resetStreak, recordWrong, recordSoundAttempt],
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-400/90 to-green-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-        <div className="flex gap-1">
-          {sentences.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🛶"
+      bgClassName="from-cyan-300/60 to-green-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={118} />
+          <p className="text-cyan-900 font-[Fredoka] font-bold text-2xl text-center px-3">
+            {phase === 'read' ? 'Read the sign!' : phase === 'answer' ? 'Now answer the question!' : 'Great reading!'}
+          </p>
         </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={80} />
-
-        <AnimatePresence mode="wait">
-          <motion.div key={round} initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -40, opacity: 0 }}
-            className="bg-amber-50 border-4 border-amber-700 rounded-2xl px-6 py-8 shadow-2xl max-w-sm w-full">
-            <div className="flex justify-center mb-4">
-              <WordCard word={current.pictureWord} size={72} />
-            </div>
-            <p className="text-2xl font-bold font-[Fredoka] text-gray-800 text-center leading-relaxed">
-              {current.text}
-            </p>
-          </motion.div>
-        </AnimatePresence>
-
-        {!showQuestion ? (
-          <motion.button whileTap={{ scale: 0.9 }} onClick={handleReadIt}
-            className="game-button bg-white/90 text-cyan-600 px-10 py-5 rounded-full shadow-xl text-lg">
-            <span className="font-[Fredoka]">I read it!</span>
-          </motion.button>
-        ) : (
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm">
-            <p className="text-white font-[Nunito] text-center mb-3 text-lg">{current.question}</p>
-            <div className="flex flex-col gap-3">
-              {stableOptions.map((opt) => (
-                <motion.button key={opt} whileTap={{ scale: 0.95 }} onClick={() => handleAnswer(opt)}
-                  disabled={feedback !== null || shouldReveal}
-                  className={`w-full py-4 px-6 rounded-2xl text-lg font-bold font-[Fredoka] shadow-md transition-all ${
-                    shouldReveal && opt === current.correct
-                      ? 'bg-green-300 text-green-800 ring-4 ring-green-400 scale-105'
-                      : feedback === 'correct' && opt === current.correct
-                        ? 'bg-green-300 text-green-800'
-                        : 'bg-white/90 text-gray-700'
-                  }`}>{opt}</motion.button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        <AnimatePresence>
-          {feedback === 'wrong' && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-              className="text-lg text-white font-bold">Read again and try!</motion.p>
+        {/* The river sign with the sentence + picture revealed on win */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="bg-amber-50 border-8 border-amber-700 rounded-3xl px-7 py-6 shadow-xl max-w-lg">
+            <span className="text-4xl font-bold font-[Fredoka] text-gray-800 leading-snug">{current.text}</span>
+          </div>
+          {phase === 'won' && (
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-2 shadow-xl">
+              <WordCard word={current.pictureWord} size={104} />
+            </motion.div>
           )}
-        </AnimatePresence>
+        </div>
+
+        {/* Read-it gate, then the answer options */}
+        {phase === 'read' ? (
+          <PressButton
+            silent
+            onClick={startAnswer}
+            className="bg-gradient-to-br from-cyan-500 to-green-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka]"
+          >
+            ✋ I read it!
+          </PressButton>
+        ) : (
+          <div className="flex gap-3 flex-wrap justify-center">
+            {choices.map((opt) => {
+              const highlight = (phase === 'won' || shouldReveal) && opt === current.correct;
+              return (
+                <motion.button
+                  key={`${round}-${opt}`}
+                  onClick={() => pick(opt)}
+                  disabled={phase !== 'answer'}
+                  animate={wrongPick === opt ? { x: [-8, 8, -8, 8, 0] } : {}}
+                  whileTap={{ scale: 0.92 }}
+                  className={`px-6 py-5 rounded-3xl shadow-xl bg-white press-3d transition-all ${
+                    highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                  }`}
+                >
+                  <span className="text-3xl font-bold font-[Fredoka] text-gray-800 lowercase">{opt}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <CelebrationOverlay show={showCelebration} message="You can read stories!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Story explorer!" onComplete={onComplete} />
+    </GameShell>
   );
 }

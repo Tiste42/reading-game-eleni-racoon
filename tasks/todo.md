@@ -25,10 +25,11 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - [x] Sound-out truncation fix: soundOut must AWAIT each speakPhoneme (fixed timers cut the 1-1.5s human recordings off — "sounds don't blend")
 - [x] W2 fully rebuilt: LetterIntro (hear REAL phoneme → pick letter), SoundSafari (sound → pick picture), LetterMatch (letter↔picture pairs), SoundSort (two-basket sort), LetterTrace (picture → first letter). All drive-tested, diagnostics recording.
 - [x] W3 fully rebuilt: SailboatRace (read sail word w/ tappable letters → sail to 🏝️ island w/ picture), PlazaPuzzle (big picture → read 3 words, mosaic fills). Drive-tested.
-- [ ] RETROFIT remaining games onto big-simple template:
-      W4: potion-lab, word-towers, knights-doors, dragon-feed, garden-grow
-      W5: heart-word-map, digraph-discovery, ruin-decoder, treasure-memory, souk-sentences
-      W6: story-stroll, comic-creator, manatee-rescue, beach-detective, postcard-writer
+- [x] W4 rebuilt: PotionLab (build + word-chain swap), WordTowers (family pick + tower stacks), KnightsDoors (big doors open to reveal art), DragonFeed + GardenGrow (read word w/ tappable letters → pick picture). All drive-tested.
+- [x] W5 rebuilt: HeartWordMap (regular letters sound, heart letters ❤️), DigraphDiscovery (?? slot + sh/ch/th teams), RuinDecoder (digraph-as-one-stone sound-out), TreasureMemory (4 pairs, big cards), SoukSentences (read sign → I-read-it gate → answer). Drive-tested.
+- [x] W6 rebuilt: StoryStroll/BeachDetective/ManateeRescue (read → I-read-it gate → spoken question → answer; never auto-reads her sentence), ComicCreator (comic strip fills), PostcardWriter (fill-the-blank + stamps). Drive-tested.
+- NOTE: W4-6 done solo in main loop — subagents died on session limit (resets 1:30am).
+- [ ] NEXT SESSION IDEAS: coin shop/dress-up, PWA service worker, W2 shaky-sound prioritization, per-game word art for remaining abstract words
 - [ ] NEXT: coin shop/dress-up, PWA service worker
 
 ## Phase 1 — Fix the sounds (the #1 reported problem)

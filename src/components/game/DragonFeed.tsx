@@ -1,33 +1,33 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
-import { playSoundEffect } from '@/lib/audio';
+import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
+import { useGameStore } from '@/lib/store';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
 interface CVCWord {
   word: string;
-  icon: string;
-  distractors: { word: string; icon: string }[];
+  distractors: string[];
 }
 
+// All words picturable (in ITEM_ART) — same word family so she must READ
 const CVC_WORDS: CVCWord[] = [
-  { word: 'cat', icon: getIcon('cat'), distractors: [{ word: 'hat', icon: getIcon('hat') }, { word: 'bat', icon: getIcon('bat') }] },
-  { word: 'dog', icon: getIcon('dog'), distractors: [{ word: 'log', icon: getIcon('log') }, { word: 'fog', icon: getIcon('fog') }] },
-  { word: 'bug', icon: getIcon('bug'), distractors: [{ word: 'rug', icon: getIcon('rug') }, { word: 'mug', icon: getIcon('mug') }] },
-  { word: 'hen', icon: getIcon('hen'), distractors: [{ word: 'pen', icon: getIcon('pen') }, { word: 'ten', icon: getIcon('ten') }] },
-  { word: 'cup', icon: getIcon('cup'), distractors: [{ word: 'pup', icon: getIcon('pup') }, { word: 'cut', icon: getIcon('cut') }] },
-  { word: 'pot', icon: getIcon('pot'), distractors: [{ word: 'hot', icon: getIcon('hot') }, { word: 'dot', icon: getIcon('dot') }] },
-  { word: 'bed', icon: getIcon('bed'), distractors: [{ word: 'red', icon: getIcon('red') }, { word: 'fed', icon: getIcon('fed') }] },
-  { word: 'van', icon: getIcon('van'), distractors: [{ word: 'man', icon: getIcon('man') }, { word: 'fan', icon: getIcon('fan') }] },
-  { word: 'fin', icon: getIcon('fin'), distractors: [{ word: 'bin', icon: getIcon('bin') }, { word: 'win', icon: getIcon('win') }] },
-  { word: 'jet', icon: getIcon('jet'), distractors: [{ word: 'net', icon: getIcon('net') }, { word: 'wet', icon: getIcon('wet') }] },
+  { word: 'cat', distractors: ['hat', 'bat'] },
+  { word: 'dog', distractors: ['log', 'fog'] },
+  { word: 'bug', distractors: ['rug', 'mug'] },
+  { word: 'hen', distractors: ['pen', 'ten'] },
+  { word: 'cup', distractors: ['pup', 'cut'] },
+  { word: 'pot', distractors: ['hot', 'dot'] },
+  { word: 'bed', distractors: ['red', 'fed'] },
+  { word: 'van', distractors: ['man', 'fan'] },
+  { word: 'fin', distractors: ['bin', 'win'] },
+  { word: 'jet', distractors: ['net', 'wet'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -39,147 +39,171 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'read' | 'won';
+
 export default function DragonFeed({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
-  const [dragonMood, setDragonMood] = useState<'hungry' | 'happy' | 'funny'>('hungry');
+  const [phase, setPhase] = useState<Phase>('read');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
+  const [mood, setMood] = useState<'hungry' | 'happy' | 'oops'>('hungry');
+  const [choices, setChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(CVC_WORDS).slice(0, 8));
-  const { completeGame, addCoins, masterWord, incrementStreak, resetStreak } = useGameStore();
+  const [rounds] = useState(() => shuffle(CVC_WORDS).slice(0, 6));
+  const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
-
-  const choices = useMemo(
-    () => shuffle([{ word: current.word, icon: current.icon }, ...current.distractors]),
-    [current]
-  );
-
-  // Don't say the word — child must READ it and match to picture
-  useGameSpeech(
-    feedback ? null : 'Read the word! Feed the dragon the right picture!',
-    [round],
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const current = rounds[round];
+  const word = current.word;
+  const letters = word.split('');
+  const isLast = round >= rounds.length - 1;
 
   useEffect(() => {
-    if (shouldReveal) {
-      speakReveal(current.word);
-      const timer = setTimeout(() => {
-        setFeedback(null);
-        setDragonMood('hungry');
-        if (round >= words.length - 1) {
-          completeGame(worldId, 'dragon-feed');
-          addCoins(10);
-          setShowCelebration(true);
-          speakFeedback('complete');
-        } else {
-          setRound(r => r + 1);
-        }
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [shouldReveal, current.word, round, words.length, worldId, completeGame, addCoins]);
+    setPhase('read');
+    setMood('hungry');
+    setWrongPick(null);
+    setChoices(shuffle([rounds[round].word, ...rounds[round].distractors]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
 
-  const handleChoice = useCallback(
-    (chosen: string) => {
-      if (feedback || shouldReveal) return;
-      playSoundEffect('tap');
-      if (chosen === current.word) {
-        const isLastRound = round >= words.length - 1;
-        setFeedback('correct');
-        playSoundEffect('correct');
-        speakFeedback(isLastRound ? 'complete' : 'correct');
-        setDragonMood('happy');
+  const { replay } = useGameSpeech(
+    phase === 'read' ? 'Read the word! Feed the dragon the right picture!' : null,
+    [round, phase],
+  );
+
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
+
+  // Help: sound the target word out with the human letter sounds (awaited)
+  const soundOut = useCallback(async () => {
+    for (let i = 0; i < letters.length; i++) {
+      await speakPhoneme(letters[i]);
+      if (i < letters.length - 1) await new Promise((r) => setTimeout(r, 120));
+    }
+  }, [letters]);
+
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'dragon-feed');
+      addCoins(10);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
+    }
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  useEffect(() => {
+    if (shouldReveal && phase === 'read') {
+      (async () => {
+        recordSoundAttempt(word, false);
+        await speakReveal(word);
+        setPhase('won');
+        setMood('happy');
+        await new Promise((r) => setTimeout(r, 1100));
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pick = useCallback(
+    (w: string) => {
+      if (phase !== 'read') return;
+      if (w === word) {
+        recordSoundAttempt(word, true);
         incrementStreak();
-        masterWord(current.word);
-        setTimeout(() => {
-          setFeedback(null);
-          setDragonMood('hungry');
-          if (isLastRound) {
-            completeGame(worldId, 'dragon-feed');
-            addCoins(10);
-            setShowCelebration(true);
-          } else {
-            setRound((r) => r + 1);
-          }
-        }, 1200);
+        masterWord(word);
+        playSoundEffect('coin');
+        setPhase('won');
+        setMood('happy');
+        (async () => {
+          await speakWord(word);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 700));
+          advance();
+        })();
       } else {
-        setFeedback('wrong');
-        playSoundEffect('wrong');
+        recordSoundAttempt(word, false);
         recordWrong();
-        speakWrongExplanation(chosen, current.word);
-        setDragonMood('funny');
         resetStreak();
-        setTimeout(() => {
-          setFeedback(null);
-          setDragonMood('hungry');
-        }, 2000);
+        playSoundEffect('wrong');
+        setWrongPick(w);
+        setMood('oops');
+        (async () => {
+          await soundOut();
+          setWrongPick(null);
+          setMood('hungry');
+        })();
       }
     },
-    [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordWrong]
+    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-500/90 to-teal-400/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🐲"
+      bgClassName="from-emerald-400/60 to-teal-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Dragon + Leni */}
+        <div className="flex flex-col items-center">
+          <div className="flex items-end justify-center gap-2">
+            <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={110} />
+            <motion.span
+              animate={mood === 'happy' ? { y: [0, -16, 0], rotate: [0, -8, 8, 0] } : { y: [0, -5, 0] }}
+              transition={{ duration: mood === 'happy' ? 0.5 : 1.8, repeat: Infinity }}
+              className="text-8xl"
+            >
+              {mood === 'happy' ? '😋' : mood === 'oops' ? '😅' : '🐲'}
+            </motion.span>
+          </div>
+          <p className="text-emerald-900 font-[Fredoka] font-bold text-2xl text-center">
+            {phase === 'won' ? 'Yum! Thank you!' : 'Read the word — feed the dragon!'}
+          </p>
         </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <motion.div
-          animate={
-            dragonMood === 'happy'
-              ? { scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }
-              : dragonMood === 'funny'
-              ? { x: [-5, 5, -5, 5, 0] }
-              : {}
-          }
-          className="text-8xl"
-        >
-          {dragonMood === 'happy' ? '😋' : dragonMood === 'funny' ? '😅' : '🐲'}
-        </motion.div>
+        {/* The word — big, letters tappable for help */}
+        <div className="flex flex-col items-center gap-1">
+          <div className="bg-white rounded-3xl px-5 py-4 shadow-xl flex gap-2">
+            {letters.map((letter, i) => (
+              <motion.button
+                key={`${round}-${i}`}
+                onClick={() => speakPhoneme(letter)}
+                whileTap={{ scale: 0.9 }}
+                className="w-[84px] h-[92px] rounded-2xl bg-emerald-100 text-gray-800 text-6xl font-bold font-[Fredoka] lowercase shadow press-3d flex items-center justify-center"
+              >
+                {letter}
+              </motion.button>
+            ))}
+          </div>
+          <p className="text-emerald-900/70 font-[Fredoka] text-sm">Tap a letter to hear its sound</p>
+        </div>
 
-        <p className="text-white font-[Nunito] text-sm text-center">
-          {dragonMood === 'hungry'
-            ? 'Read the word and feed the dragon!'
-            : dragonMood === 'happy'
-            ? 'Yum!'
-            : 'Not that one!'}
-        </p>
-
-        <AnimatePresence mode="wait">
-          <motion.div key={round} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-            className="bg-white/90 rounded-2xl px-10 py-5 shadow-xl">
-            <span className="text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.word}</span>
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="flex gap-4">
-          {choices.map((choice) => (
-            <motion.button key={choice.word} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-              whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-              disabled={feedback !== null || shouldReveal}
-              className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                shouldReveal && choice.word === current.word
-                  ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                  : feedback === 'correct' && choice.word === current.word
-                  ? 'bg-green-200 ring-4 ring-green-400'
-                  : 'bg-white/90'
-              }`}>
-              <WordCard word={choice.word} size={56} />
-            </motion.button>
-          ))}
+        {/* Picture choices */}
+        <div className="flex justify-center gap-4">
+          {choices.map((w) => {
+            const isAnswer = w === word;
+            const highlight = (phase === 'won' || shouldReveal) && isAnswer;
+            return (
+              <motion.button
+                key={`${round}-${w}`}
+                onClick={() => pick(w)}
+                disabled={phase !== 'read'}
+                animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                whileTap={{ scale: 0.92 }}
+                className={`rounded-3xl p-3 shadow-xl bg-white press-3d transition-all ${
+                  highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                }`}
+              >
+                <WordCard word={w} size={110} />
+              </motion.button>
+            );
+          })}
         </div>
       </div>
 
       <CelebrationOverlay show={showCelebration} message="Dragon is full!" onComplete={onComplete} />
-    </div>
+    </GameShell>
   );
 }

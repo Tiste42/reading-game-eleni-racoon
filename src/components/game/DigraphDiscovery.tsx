@@ -4,192 +4,194 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import ReplayButton from '@/components/ui/ReplayButton';
+import GameShell from '@/components/ui/GameShell';
+import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
+import { ITEM_ART } from '@/lib/itemArt';
 
-interface DigraphWord {
-  word: string;
-  icon: string;
-  digraph: 'sh' | 'ch' | 'th';
-}
+type Digraph = 'sh' | 'ch' | 'th';
 
-const DIGRAPH_WORDS: DigraphWord[] = [
-  { word: 'ship', icon: '\uD83D\uDEA2', digraph: 'sh' },
-  { word: 'shop', icon: '\uD83C\uDFEA', digraph: 'sh' },
-  { word: 'shin', icon: '\uD83E\uDDB5', digraph: 'sh' },
-  { word: 'shed', icon: '\uD83C\uDFE0', digraph: 'sh' },
-  { word: 'chip', icon: '\uD83C\uDF5F', digraph: 'ch' },
-  { word: 'chop', icon: '\uD83E\uDE93', digraph: 'ch' },
-  { word: 'chin', icon: '\uD83D\uDE42', digraph: 'ch' },
-  { word: 'chat', icon: '\uD83D\uDCAC', digraph: 'ch' },
-  { word: 'thin', icon: '\uD83E\uDEF0', digraph: 'th' },
-  { word: 'this', icon: '\uD83D\uDC49', digraph: 'th' },
-  { word: 'that', icon: '\uD83D\uDC48', digraph: 'th' },
-  { word: 'them', icon: '\uD83D\uDC65', digraph: 'th' },
+// Per-word "The word is X. Which two letters..." lines are recorded for all
+const DIGRAPH_WORDS: Array<{ word: string; digraph: Digraph }> = [
+  { word: 'ship', digraph: 'sh' },
+  { word: 'shop', digraph: 'sh' },
+  { word: 'shed', digraph: 'sh' },
+  { word: 'chip', digraph: 'ch' },
+  { word: 'chop', digraph: 'ch' },
+  { word: 'chat', digraph: 'ch' },
+  { word: 'thin', digraph: 'th' },
+  { word: 'this', digraph: 'th' },
+  { word: 'that', digraph: 'th' },
 ];
+
+const OPTIONS: Digraph[] = ['sh', 'ch', 'th'];
+
+const DIGRAPH_STYLE: Record<Digraph, string> = {
+  sh: 'bg-sky-100 text-sky-800 ring-sky-300',
+  ch: 'bg-emerald-100 text-emerald-800 ring-emerald-300',
+  th: 'bg-violet-100 text-violet-800 ring-violet-300',
+};
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
 }
-
-const DIGRAPH_COLORS: Record<string, string> = {
-  sh: 'bg-blue-400',
-  ch: 'bg-green-400',
-  th: 'bg-purple-400',
-};
-
-const OPTIONS = ['sh', 'ch', 'th'] as const;
 
 interface Props {
   worldId: number;
   onComplete: () => void;
 }
 
+type Phase = 'pick' | 'won';
+
 export default function DigraphDiscovery({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('pick');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(DIGRAPH_WORDS).slice(0, 9));
-  const { completeGame, addCoins, masterPhoneme, masterWord } = useGameStore();
+  const [rounds] = useState(() => shuffle(DIGRAPH_WORDS).slice(0, 6));
+  const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
-
-  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
-    `The word is ${current.word}. Which two letters make the special sound? Is it sh, ch, or th?`,
-    ['sh', 'ch', 'th'],
-    [round]
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const current = rounds[round];
+  const { word, digraph } = current;
+  const rest = word.slice(2);
+  const isLast = round >= rounds.length - 1;
 
   useEffect(() => {
-    if (!shouldReveal) return;
-    speakReveal(current.digraph);
-    const timer = setTimeout(() => {
-      masterPhoneme(current.digraph);
-      masterWord(current.word);
-      if (round >= words.length - 1) {
-        completeGame(worldId, 'digraph-discovery');
-        addCoins(8);
-        setShowCelebration(true);
-        speakFeedback('complete');
-      } else {
-        setRound((r) => r + 1);
-      }
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [shouldReveal, current, round, words, worldId, completeGame, addCoins, masterPhoneme, masterWord]);
+    setPhase('pick');
+    setWrongPick(null);
+  }, [round]);
 
-  const handleChoice = useCallback(
-    (chosen: string) => {
-      if (feedback || !doneSpeaking || shouldReveal) return;
-      if (chosen === current.digraph) {
-        const isLastRound = round >= words.length - 1;
-        setFeedback('correct');
-        speakFeedback(isLastRound ? 'complete' : 'correct');
-        masterPhoneme(current.digraph);
-        masterWord(current.word);
-        setTimeout(() => {
-          setFeedback(null);
-          if (isLastRound) {
-            completeGame(worldId, 'digraph-discovery');
-            addCoins(8);
-            setShowCelebration(true);
-          } else {
-            setRound((r) => r + 1);
-          }
-        }, 1000);
+  // Recorded line: "The word is ship. Which two letters make the special sound? ..."
+  const { replay } = useGameSpeech(
+    phase === 'pick'
+      ? `The word is ${word}. Which two letters make the special sound? Is it sh, ch, or th?`
+      : null,
+    [round, phase],
+  );
+
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
+
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'digraph-discovery');
+      addCoins(10);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
+    }
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  const celebrate = useCallback(async () => {
+    setPhase('won');
+    await speakPhoneme(digraph); // the two letters' ONE sound
+    await speakWord(word);
+    await speakFeedback(isLast ? 'complete' : 'correct');
+    await new Promise((r) => setTimeout(r, 800));
+    advance();
+  }, [digraph, word, isLast, advance]);
+
+  useEffect(() => {
+    if (shouldReveal && phase === 'pick') {
+      (async () => {
+        recordSoundAttempt(digraph, false);
+        await speakReveal(digraph);
+        await celebrate();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pick = useCallback(
+    (d: Digraph) => {
+      if (phase !== 'pick') return;
+      if (d === digraph) {
+        recordSoundAttempt(digraph, true);
+        incrementStreak();
+        masterWord(word);
+        playSoundEffect('coin');
+        celebrate();
       } else {
-        setFeedback('wrong');
+        recordSoundAttempt(digraph, false);
         recordWrong();
-        speakWrongExplanation(chosen, current.digraph);
-        setTimeout(() => setFeedback(null), 2000);
+        resetStreak();
+        playSoundEffect('wrong');
+        setWrongPick(d);
+        // Re-teach: play the sound she picked, so she hears it's not in the word
+        (async () => {
+          await speakPhoneme(d);
+          await speakWord(word);
+          setWrongPick(null);
+        })();
       }
     },
-    [feedback, doneSpeaking, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterPhoneme, masterWord, recordWrong]
+    [phase, digraph, word, celebrate, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt],
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-400/90 to-amber-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">
-          {'<'}
-        </motion.button>
-
-          <ReplayButton onReplay={replay} />
-
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🔮"
+      bgClassName="from-red-300/60 to-amber-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={120} />
+          <p className="text-red-900 font-[Fredoka] font-bold text-2xl text-center px-3">
+            Two letters, one special sound — which team starts it?
+          </p>
         </div>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
-        </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={80} />
-
-        <p className="text-white font-[Nunito] text-center">
-          Which two letters start this word?
-        </p>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={round}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.5, opacity: 0 }}
-            className="bg-white/90 rounded-2xl px-8 py-6 shadow-xl text-center"
-          >
-            <span className="text-6xl block mb-2">{current.icon}</span>
-            <span className="text-3xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.word}</span>
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="flex gap-4">
-          {OPTIONS.map((dg, i) => (
-            <motion.button
-              key={dg}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => handleChoice(dg)}
-              disabled={feedback !== null || !doneSpeaking || shouldReveal}
-              className={`w-24 h-20 rounded-2xl shadow-lg flex items-center justify-center text-2xl font-bold font-[Fredoka] lowercase text-white transition-all ${
-                shouldReveal && dg === current.digraph
-                  ? 'ring-4 ring-yellow-300 scale-105'
-                  : feedback === 'correct' && dg === current.digraph
-                    ? 'ring-4 ring-yellow-300'
-                    : activeOption === i
-                      ? 'ring-4 ring-blue-400 scale-105'
-                      : ''
-              } ${DIGRAPH_COLORS[dg]}`}
+        {/* The word, digraph slot highlighted */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="bg-white rounded-3xl px-6 py-5 shadow-xl flex items-center gap-1">
+            <span
+              className={`rounded-2xl px-3 py-1 text-7xl font-bold font-[Fredoka] lowercase transition-colors ${
+                phase === 'won' ? DIGRAPH_STYLE[digraph] + ' ring-4' : 'bg-amber-100 text-amber-300 border-4 border-dashed border-amber-300'
+              }`}
             >
-              {dg}
-            </motion.button>
-          ))}
+              {phase === 'won' ? digraph : '??'}
+            </span>
+            <span className="text-7xl font-bold font-[Fredoka] text-gray-800 lowercase">{rest}</span>
+          </div>
+          <AnimatePresence>
+            {phase === 'won' && ITEM_ART.has(word) && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-2 shadow-xl">
+                <WordCard word={word} size={110} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <AnimatePresence>
-          {feedback === 'correct' && (
-            <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ opacity: 0 }}
-              className="text-xl text-yellow-300 font-bold">
-              {current.digraph} makes a special sound!
-            </motion.p>
-          )}
-          {feedback === 'wrong' && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1, x: [-4, 4, -4, 0] }} exit={{ opacity: 0 }}
-              className="text-lg text-white font-bold">
-              Try a different pair!
-            </motion.p>
-          )}
-        </AnimatePresence>
+        {/* The digraph teams */}
+        <div className="flex gap-4">
+          {OPTIONS.map((d) => {
+            const highlight = (phase === 'won' || shouldReveal) && d === digraph;
+            return (
+              <motion.button
+                key={`${round}-${d}`}
+                onClick={() => pick(d)}
+                disabled={phase !== 'pick'}
+                animate={wrongPick === d ? { x: [-8, 8, -8, 8, 0] } : {}}
+                whileTap={{ scale: 0.92 }}
+                className={`w-[110px] h-[110px] rounded-3xl shadow-xl press-3d flex items-center justify-center text-6xl font-bold font-[Fredoka] lowercase ring-2 transition-all ${DIGRAPH_STYLE[d]} ${
+                  highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                }`}
+              >
+                {d}
+              </motion.button>
+            );
+          })}
+        </div>
       </div>
 
-      <CelebrationOverlay show={showCelebration} message="Digraph expert!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Sound detective!" onComplete={onComplete} />
+    </GameShell>
   );
 }

@@ -1,36 +1,34 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
+import GameShell from '@/components/ui/GameShell';
 import { useGameStore } from '@/lib/store';
-import { speakFeedback } from '@/lib/speech';
+import { speakPhoneme, speakWord, speakFeedback, speakClip } from '@/lib/speech';
 import { useGameSpeech } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
 interface HeartWord {
   word: string;
-  regularLetters: number[];
-  heartLetters: number[];
-  hint: string;
+  heartLetters: number[]; // indexes learned "by heart"; the rest are decodable
 }
 
+// Per-word "The heart word is X" lines are recorded for all of these
 const HEART_WORDS: HeartWord[] = [
-  { word: 'the', regularLetters: [2], heartLetters: [0, 1], hint: '"th" makes a special sound together!' },
-  { word: 'was', regularLetters: [2], heartLetters: [0, 1], hint: '"wa" sounds like "wuh" here!' },
-  { word: 'said', regularLetters: [0, 3], heartLetters: [1, 2], hint: '"ai" says "eh" in this word!' },
-  { word: 'is', regularLetters: [0, 1], heartLetters: [], hint: 'You can sound this one out!' },
-  { word: 'to', regularLetters: [0], heartLetters: [1], hint: 'The "o" makes an "oo" sound here!' },
-  { word: 'he', regularLetters: [0], heartLetters: [1], hint: 'The "e" says its name here!' },
-  { word: 'she', regularLetters: [], heartLetters: [0, 1, 2], hint: '"sh" and "e" both have special sounds!' },
-  { word: 'we', regularLetters: [0], heartLetters: [1], hint: 'The "e" says its name here!' },
-  { word: 'you', regularLetters: [], heartLetters: [0, 1, 2], hint: 'This whole word is special!' },
-  { word: 'are', regularLetters: [], heartLetters: [0, 1, 2], hint: 'This word is tricky - learn it by heart!' },
-  { word: 'have', regularLetters: [0], heartLetters: [1, 2, 3], hint: 'The "a" is short and the "e" is silent!' },
-  { word: 'do', regularLetters: [0], heartLetters: [1], hint: 'The "o" makes an "oo" sound!' },
-  { word: 'no', regularLetters: [0], heartLetters: [1], hint: 'The "o" says its name!' },
-  { word: 'go', regularLetters: [0], heartLetters: [1], hint: 'The "o" says its name!' },
-  { word: 'my', regularLetters: [0], heartLetters: [1], hint: 'The "y" says "eye" here!' },
+  { word: 'the', heartLetters: [0, 1] },
+  { word: 'was', heartLetters: [0, 1] },
+  { word: 'said', heartLetters: [1, 2] },
+  { word: 'is', heartLetters: [] },
+  { word: 'to', heartLetters: [1] },
+  { word: 'he', heartLetters: [1] },
+  { word: 'she', heartLetters: [0, 1, 2] },
+  { word: 'we', heartLetters: [1] },
+  { word: 'you', heartLetters: [0, 1, 2] },
+  { word: 'go', heartLetters: [1] },
+  { word: 'no', heartLetters: [1] },
+  { word: 'my', heartLetters: [1] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -44,154 +42,132 @@ interface Props {
 
 export default function HeartWordMap({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [tappedAll, setTappedAll] = useState(false);
-  const [showHint, setShowHint] = useState(false);
+  const [tapped, setTapped] = useState<number[]>([]);
+  const [done, setDone] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [tappedLetters, setTappedLetters] = useState<Set<number>>(new Set());
-  const [words] = useState(() => shuffle(HEART_WORDS).slice(0, 8));
-  const { completeGame, addCoins, masterWord } = useGameStore();
+  const [rounds] = useState(() => shuffle(HEART_WORDS).slice(0, 6));
+  const { completeGame, addCoins, masterWord, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
+  const current = rounds[round];
+  const letters = current.word.split('');
+  const isLast = round >= rounds.length - 1;
 
-  useGameSpeech(
-    tappedAll ? null : `The heart word is ${current.word}. Tap each letter to learn it!`,
-    [round]
+  useEffect(() => {
+    setTapped([]);
+    setDone(false);
+  }, [round]);
+
+  // Recorded line: "The heart word is the. Tap each letter to learn it!"
+  const { replay } = useGameSpeech(
+    done ? null : `The heart word is ${current.word}. Tap each letter to learn it!`,
+    [round, done],
   );
 
-  const handleTapLetter = useCallback(
-    (idx: number) => {
-      if (tappedAll) return;
-      const next = new Set(tappedLetters);
-      next.add(idx);
-      setTappedLetters(next);
-      if (next.size === current.word.length) {
-        setTappedAll(true);
-        setShowHint(true);
-        speakFeedback('correct');
-      }
-    },
-    [tappedAll, tappedLetters, current]
-  );
-
-  const handleNext = useCallback(() => {
+  const finishWord = useCallback(() => {
+    setDone(true);
+    playSoundEffect('coin');
     masterWord(current.word);
-    if (round >= words.length - 1) {
-      completeGame(worldId, 'heart-word-map');
-      addCoins(8);
-      setShowCelebration(true);
-      speakFeedback('complete');
-    } else {
-      setRound((r) => r + 1);
-      setTappedAll(false);
-      setShowHint(false);
-      setTappedLetters(new Set());
-    }
-  }, [round, words, current, worldId, completeGame, addCoins, masterWord]);
+    recordSoundAttempt(current.word, true);
+    (async () => {
+      await speakWord(current.word);
+      await speakClip('heart-word', 'This word is special. We learn it by heart!');
+      await speakFeedback(isLast ? 'complete' : 'correct');
+      await new Promise((r) => setTimeout(r, 700));
+      if (isLast) {
+        completeGame(worldId, 'heart-word-map');
+        addCoins(10);
+        setShowCelebration(true);
+      } else {
+        setRound((r) => r + 1);
+      }
+    })();
+  }, [current.word, isLast, worldId, completeGame, addCoins, masterWord, recordSoundAttempt]);
+
+  const tapLetter = useCallback(
+    (i: number) => {
+      if (done || tapped.includes(i)) return;
+      const isHeart = current.heartLetters.includes(i);
+      playSoundEffect('tap');
+      if (isHeart) {
+        // Learned "by heart" — no letter sound, the heart pops instead
+        playSoundEffect('coin');
+      } else {
+        speakPhoneme(letters[i]);
+      }
+      const next = [...tapped, i];
+      setTapped(next);
+      if (next.length === letters.length) setTimeout(finishWord, 600);
+    },
+    [done, tapped, current.heartLetters, letters, finishWord],
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-400/90 to-amber-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md"
-        >
-          {'<'}
-        </motion.button>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full ${
-                i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center gap-8">
-        <EleniCharacter pose={tappedAll ? 'celebrating' : 'waving'} size={80} />
-
-        <p className="text-white font-[Nunito] text-center text-sm">
-          Tap each letter to learn it!
-        </p>
-
-        {/* Word tiles */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={round}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.5, opacity: 0 }}
-            className="flex gap-3"
-          >
-            {current.word.split('').map((letter, i) => {
-              const isHeart = current.heartLetters.includes(i);
-              const isRegular = current.regularLetters.includes(i);
-              const tapped = tappedLetters.has(i);
-              return (
-                <motion.button
-                  key={i}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => handleTapLetter(i)}
-                  animate={
-                    tapped
-                      ? { scale: [1, 1.2, 1], transition: { duration: 0.3 } }
-                      : {}
-                  }
-                  className={`w-20 h-24 rounded-2xl flex flex-col items-center justify-center text-4xl font-bold font-[Fredoka] lowercase shadow-lg transition-colors ${
-                    tapped
-                      ? isHeart
-                        ? 'bg-pink-200 ring-4 ring-pink-400'
-                        : 'bg-green-200 ring-4 ring-green-400'
-                      : 'bg-white/90'
-                  }`}
-                >
-                  {letter}
-                  {tapped && (
-                    <span className="text-sm mt-1">
-                      {isHeart ? '\u2764\uFE0F' : '\u2705'}
-                    </span>
-                  )}
-                </motion.button>
-              );
-            })}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Legend */}
-        <div className="flex gap-6 text-sm text-white/80">
-          <span>{'\u2705'} = sounds normal</span>
-          <span>{'\u2764\uFE0F'} = learn by heart</span>
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="💖"
+      bgClassName="from-rose-300/60 to-amber-200/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={done ? 'celebrating' : 'excited'} size={130} />
+          <p className="text-rose-900 font-[Fredoka] font-bold text-2xl text-center px-3">
+            {done ? 'You learned a heart word!' : 'Tap each letter of the heart word!'}
+          </p>
         </div>
 
-        {/* Hint */}
-        <AnimatePresence>
-          {showHint && (
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="bg-white/90 rounded-2xl p-5 max-w-sm text-center shadow-lg"
-            >
-              <p className="text-gray-700 font-[Nunito] mb-3">{current.hint}</p>
+        {/* The word — big tappable letters; heart letters get hearts */}
+        <div className="flex gap-3">
+          {letters.map((letter, i) => {
+            const isHeart = current.heartLetters.includes(i);
+            const isTapped = tapped.includes(i);
+            return (
               <motion.button
+                key={`${round}-${i}`}
+                onClick={() => tapLetter(i)}
+                disabled={done || isTapped}
+                animate={isTapped ? { scale: [1, 1.2, 1] } : { scale: 1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={handleNext}
-                className="game-button bg-pink-500 text-white px-8 py-4 rounded-full shadow-lg text-lg"
+                className={`relative w-[104px] h-[116px] rounded-3xl shadow-xl press-3d flex items-center justify-center text-7xl font-bold font-[Fredoka] lowercase transition-colors ${
+                  isTapped
+                    ? isHeart
+                      ? 'bg-rose-200 text-rose-700 ring-4 ring-rose-300'
+                      : 'bg-emerald-200 text-emerald-800 ring-4 ring-emerald-300'
+                    : 'bg-white text-gray-800 animate-hint-pulse'
+                }`}
               >
-                <span className="font-[Fredoka]">Next Word!</span>
+                {letter}
+                <AnimatePresence>
+                  {isTapped && isHeart && (
+                    <motion.span
+                      initial={{ scale: 0, y: 0 }}
+                      animate={{ scale: [0, 1.6, 1], y: -8 }}
+                      className="absolute -top-5 text-3xl"
+                    >
+                      ❤️
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            );
+          })}
+        </div>
+
+        {/* Legend — visual, no reading needed */}
+        <div className="flex gap-5 bg-white/60 rounded-2xl px-5 py-2 shadow-inner">
+          <span className="flex items-center gap-1.5 font-[Fredoka] text-emerald-800 text-lg">
+            <span className="w-5 h-5 rounded bg-emerald-300 inline-block" /> sounds
+          </span>
+          <span className="flex items-center gap-1.5 font-[Fredoka] text-rose-700 text-lg">
+            ❤️ by heart
+          </span>
+        </div>
       </div>
 
-      <CelebrationOverlay
-        show={showCelebration}
-        message="Heart words mastered!"
-        onComplete={onComplete}
-      />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Heart word hero!" onComplete={onComplete} />
+    </GameShell>
   );
 }

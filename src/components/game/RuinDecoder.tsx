@@ -1,29 +1,24 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
+import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
+import { useGameStore } from '@/lib/store';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 
-interface DecoderWord {
-  word: string;
-  icon: string;
-  distractors: { word: string; icon: string }[];
-}
-
-const DECODER_WORDS: DecoderWord[] = [
-  { word: 'ship', icon: getIcon('ship'), distractors: [{ word: 'chip', icon: getIcon('chip') }, { word: 'thin', icon: getIcon('thin') }] },
-  { word: 'chat', icon: getIcon('chat'), distractors: [{ word: 'shop', icon: getIcon('shop') }, { word: 'that', icon: getIcon('that') }] },
-  { word: 'thin', icon: getIcon('thin'), distractors: [{ word: 'chin', icon: getIcon('chin') }, { word: 'shin', icon: getIcon('shin') }] },
-  { word: 'chop', icon: getIcon('chop'), distractors: [{ word: 'shop', icon: getIcon('shop') }, { word: 'ship', icon: getIcon('ship') }] },
-  { word: 'shed', icon: getIcon('shed'), distractors: [{ word: 'them', icon: getIcon('them') }, { word: 'chip', icon: getIcon('chip') }] },
-  { word: 'this', icon: getIcon('this'), distractors: [{ word: 'shin', icon: getIcon('shin') }, { word: 'chat', icon: getIcon('chat') }] },
+// Digraph-aware letter units (sh/ch tapped as ONE tile = one sound).
+// All targets and distractors have real art.
+const DECODER_ROUNDS: Array<{ word: string; units: string[]; distractors: string[] }> = [
+  { word: 'ship', units: ['sh', 'i', 'p'], distractors: ['chip', 'shed'] },
+  { word: 'chip', units: ['ch', 'i', 'p'], distractors: ['ship', 'chop'] },
+  { word: 'shop', units: ['sh', 'o', 'p'], distractors: ['chop', 'shed'] },
+  { word: 'chop', units: ['ch', 'o', 'p'], distractors: ['shop', 'chip'] },
+  { word: 'shed', units: ['sh', 'e', 'd'], distractors: ['ship', 'bed'] },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -35,119 +30,168 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'read' | 'won';
+
 export default function RuinDecoder({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [revealed, setRevealed] = useState<number[]>([]);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('read');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
+  const [choices, setChoices] = useState<string[]>([]);
+  const [decoded, setDecoded] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(DECODER_WORDS).slice(0, 5));
-  const { completeGame, addCoins, masterWord } = useGameStore();
+  const [rounds] = useState(() => shuffle(DECODER_ROUNDS));
+  const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
-  const choices = useMemo(
-    () => shuffle([{ word: current.word, icon: current.icon }, ...current.distractors]),
-    [current]
-  );
-
-  // Don't say the word — child must decode it
-  useGameSpeech(
-    feedback ? null : 'Read the ancient word! Which picture matches?',
-    [round],
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const current = rounds[round];
+  const { word, units } = current;
+  const isLast = round >= rounds.length - 1;
 
   useEffect(() => {
-    if (!shouldReveal) return;
-    speakReveal(current.word);
-    const timer = setTimeout(() => {
-      masterWord(current.word);
-      setRevealed((r) => [...r, round]);
-      if (round >= words.length - 1) {
-        completeGame(worldId, 'ruin-decoder');
-        addCoins(10);
-        setShowCelebration(true);
-        speakFeedback('complete');
-      } else {
-        setRound((r) => r + 1);
-      }
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord]);
+    setPhase('read');
+    setWrongPick(null);
+    setChoices(shuffle([rounds[round].word, ...rounds[round].distractors]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
 
-  const handleChoice = useCallback((chosen: string) => {
-    if (feedback || shouldReveal) return;
-    playSoundEffect('tap');
-    if (chosen === current.word) {
-      const isLastRound = round >= words.length - 1;
-      setFeedback('correct');
-      speakFeedback(isLastRound ? 'complete' : 'correct');
-      masterWord(current.word);
-      setRevealed((r) => [...r, round]);
-      setTimeout(() => {
-        setFeedback(null);
-        if (isLastRound) {
-          completeGame(worldId, 'ruin-decoder');
-          addCoins(10);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      }, 1000);
-    } else {
-      setFeedback('wrong');
-      recordWrong();
-      speakWrongExplanation(chosen, current.word);
-      setTimeout(() => setFeedback(null), 2000);
+  const { replay } = useGameSpeech(
+    phase === 'read' ? 'Read the ancient word! Which picture matches?' : null,
+    [round, phase],
+  );
+
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
+
+  // Sound out using the digraph UNITS (sh = one sound)
+  const soundOut = useCallback(async () => {
+    for (let i = 0; i < units.length; i++) {
+      await speakPhoneme(units[i]);
+      if (i < units.length - 1) await new Promise((r) => setTimeout(r, 120));
     }
-  }, [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  }, [units]);
+
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'ruin-decoder');
+      addCoins(10);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
+    }
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  useEffect(() => {
+    if (shouldReveal && phase === 'read') {
+      (async () => {
+        recordSoundAttempt(word, false);
+        await speakReveal(word);
+        setPhase('won');
+        setDecoded((d) => [...d, word]);
+        await new Promise((r) => setTimeout(r, 1100));
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pick = useCallback(
+    (w: string) => {
+      if (phase !== 'read') return;
+      if (w === word) {
+        recordSoundAttempt(word, true);
+        incrementStreak();
+        masterWord(word);
+        playSoundEffect('coin');
+        setPhase('won');
+        setDecoded((d) => [...d, word]);
+        (async () => {
+          await speakWord(word);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 700));
+          advance();
+        })();
+      } else {
+        recordSoundAttempt(word, false);
+        recordWrong();
+        resetStreak();
+        playSoundEffect('wrong');
+        setWrongPick(w);
+        (async () => {
+          await soundOut();
+          setWrongPick(null);
+        })();
+      }
+    },
+    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-400/90 to-amber-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-        <div className="bg-white/80 rounded-full px-4 py-2 shadow">
-          <span className="font-[Fredoka] text-red-600">{revealed.length}/{words.length}</span>
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🏺"
+      bgClassName="from-amber-400/60 to-red-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter costume="explorer" pose={phase === 'won' ? 'celebrating' : 'excited'} size={120} animate={false} />
+          <p className="text-amber-900 font-[Fredoka] font-bold text-2xl text-center px-3">
+            Read the ancient word!
+          </p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-5 gap-1 max-w-xs mx-auto mb-4">
-        {words.map((_, i) => (
-          <div key={i} className={`aspect-square rounded-lg ${revealed.includes(i) ? 'bg-amber-200' : 'bg-gray-700/40'} flex items-center justify-center text-2xl`}>
-            {revealed.includes(i) ? <WordCard word={words[i].word} size={28} /> : ''}
+        {/* Stone tablet with the word — digraph is ONE tile */}
+        <div className="flex flex-col items-center gap-1">
+          <div className="bg-stone-200 border-8 border-stone-400 rounded-3xl px-5 py-4 shadow-xl flex gap-2">
+            {units.map((u, i) => (
+              <motion.button
+                key={`${round}-${i}`}
+                onClick={() => speakPhoneme(u)}
+                whileTap={{ scale: 0.9 }}
+                className={`h-[96px] rounded-2xl text-6xl font-bold font-[Fredoka] lowercase shadow press-3d flex items-center justify-center ${
+                  u.length === 2 ? 'bg-violet-200 text-violet-800 px-4' : 'bg-stone-50 text-gray-800 w-[80px]'
+                }`}
+              >
+                {u}
+              </motion.button>
+            ))}
           </div>
-        ))}
-      </div>
+          <p className="text-amber-900/70 font-[Fredoka] text-sm">Tap the stones to hear their sounds</p>
+        </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={70} />
+        {/* Picture choices */}
+        <div className="flex justify-center gap-4">
+          {choices.map((w) => {
+            const highlight = (phase === 'won' || shouldReveal) && w === word;
+            return (
+              <motion.button
+                key={`${round}-${w}`}
+                onClick={() => pick(w)}
+                disabled={phase !== 'read'}
+                animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                whileTap={{ scale: 0.92 }}
+                className={`rounded-3xl p-3 shadow-xl bg-white press-3d transition-all ${
+                  highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                }`}
+              >
+                <WordCard word={w} size={104} />
+              </motion.button>
+            );
+          })}
+        </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div key={round} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-            className="bg-amber-100 border-4 border-amber-700 rounded-2xl px-10 py-6 shadow-xl">
-            <span className="text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.word}</span>
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="flex gap-4">
-          {choices.map((choice) => (
-            <motion.button key={choice.word} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-              disabled={feedback !== null || shouldReveal}
-              className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                shouldReveal && choice.word === current.word
-                  ? 'bg-green-200 ring-4 ring-green-400 scale-105'
-                  : feedback === 'correct' && choice.word === current.word
-                  ? 'bg-green-200 ring-4 ring-green-400'
-                  : 'bg-white/90'
-              }`}>
-              <WordCard word={choice.word} size={48} />
-            </motion.button>
+        {/* Decoded treasures */}
+        <div className="flex gap-2 bg-white/50 rounded-2xl px-4 py-1.5 shadow-inner min-h-[44px] items-center">
+          {rounds.map((r, i) => (
+            <span key={i} className={`text-3xl ${i < decoded.length ? '' : 'opacity-25 grayscale'}`}>
+              🏺
+            </span>
           ))}
         </div>
       </div>
 
-      <CelebrationOverlay show={showCelebration} message="Ancient words decoded!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Ruins decoded!" onComplete={onComplete} />
+    </GameShell>
   );
 }

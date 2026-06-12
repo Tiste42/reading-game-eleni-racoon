@@ -1,32 +1,34 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
-import { playSoundEffect } from '@/lib/audio';
+import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
+import { useGameStore } from '@/lib/store';
+import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
 interface GardenWord {
   word: string;
-  icon: string;
-  distractors: { word: string; icon: string }[];
+  distractors: string[];
 }
 
+// All picturable words; distractors look similar so she must READ
 const GARDEN_WORDS: GardenWord[] = [
-  { word: 'pan', icon: getIcon('pan'), distractors: [{ word: 'pen', icon: getIcon('pen') }, { word: 'pin', icon: getIcon('pin') }] },
-  { word: 'bug', icon: getIcon('bug'), distractors: [{ word: 'mug', icon: getIcon('mug') }, { word: 'rug', icon: getIcon('rug') }] },
-  { word: 'hot', icon: getIcon('hot'), distractors: [{ word: 'pot', icon: getIcon('pot') }, { word: 'dot', icon: getIcon('dot') }] },
-  { word: 'jet', icon: getIcon('jet'), distractors: [{ word: 'wet', icon: getIcon('wet') }, { word: 'net', icon: getIcon('net') }] },
-  { word: 'rat', icon: getIcon('rat'), distractors: [{ word: 'hat', icon: getIcon('hat') }, { word: 'bat', icon: getIcon('bat') }] },
-  { word: 'fin', icon: getIcon('fin'), distractors: [{ word: 'bin', icon: getIcon('bin') }, { word: 'win', icon: getIcon('win') }] },
-  { word: 'hug', icon: getIcon('hug'), distractors: [{ word: 'mug', icon: getIcon('mug') }, { word: 'bug', icon: getIcon('bug') }] },
-  { word: 'red', icon: getIcon('red'), distractors: [{ word: 'bed', icon: getIcon('bed') }, { word: 'fed', icon: getIcon('fed') }] },
+  { word: 'pan', distractors: ['pen', 'pin'] },
+  { word: 'bug', distractors: ['mug', 'rug'] },
+  { word: 'hot', distractors: ['pot', 'dot'] },
+  { word: 'jet', distractors: ['wet', 'net'] },
+  { word: 'rat', distractors: ['hat', 'bat'] },
+  { word: 'fin', distractors: ['bin', 'win'] },
+  { word: 'hug', distractors: ['mug', 'bug'] },
+  { word: 'red', distractors: ['bed', 'fed'] },
 ];
+
+const FLOWERS = ['🌻', '🌷', '🌼', '🌸', '🌺', '🪻'];
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -37,125 +39,174 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'read' | 'won';
+
 export default function GardenGrow({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [grown, setGrown] = useState<string[]>([]);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('read');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
+  const [choices, setChoices] = useState<string[]>([]);
+  const [grown, setGrown] = useState<number>(0);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(GARDEN_WORDS).slice(0, 8));
-  const { completeGame, addCoins, masterWord } = useGameStore();
+  const [rounds] = useState(() => shuffle(GARDEN_WORDS).slice(0, 6));
+  const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
-
-  const choices = useMemo(
-    () => shuffle([{ word: current.word, icon: current.icon }, ...current.distractors]),
-    [current]
-  );
-
-  // Don't say the word — child must READ the seed packet
-  useGameSpeech(
-    feedback ? null : 'Read the seed! Which picture matches?',
-    [round],
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const word = rounds[round].word;
+  const letters = word.split('');
+  const isLast = round >= rounds.length - 1;
 
   useEffect(() => {
-    if (shouldReveal) {
-      speakReveal(current.word);
-      const timer = setTimeout(() => {
-        setFeedback(null);
-        setGrown(g => [...g, current.word]);
-        if (round >= words.length - 1) {
-          completeGame(worldId, 'garden-grow');
-          addCoins(10);
-          setShowCelebration(true);
-          speakFeedback('complete');
-        } else {
-          setRound(r => r + 1);
-        }
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [shouldReveal, current.word, round, words.length, worldId, completeGame, addCoins]);
+    setPhase('read');
+    setWrongPick(null);
+    setChoices(shuffle([rounds[round].word, ...rounds[round].distractors]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
 
-  const handleChoice = useCallback((chosen: string) => {
-    if (feedback || shouldReveal) return;
-    playSoundEffect('tap');
-    if (chosen === current.word) {
-      const isLastRound = round >= words.length - 1;
-      setFeedback('correct');
-      playSoundEffect('correct');
-      speakFeedback(isLastRound ? 'complete' : 'correct');
-      masterWord(current.word);
-      setGrown((g) => [...g, current.word]);
-      setTimeout(() => {
-        setFeedback(null);
-        if (isLastRound) {
-          completeGame(worldId, 'garden-grow');
-          addCoins(10);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      }, 1000);
-    } else {
-      setFeedback('wrong');
-      playSoundEffect('wrong');
-      recordWrong();
-      speakWrongExplanation(chosen, current.word);
-      setTimeout(() => setFeedback(null), 2000);
+  const { replay } = useGameSpeech(
+    phase === 'read' ? 'Read the seed! Which picture matches?' : null,
+    [round, phase],
+  );
+
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
+
+  const soundOut = useCallback(async () => {
+    for (let i = 0; i < letters.length; i++) {
+      await speakPhoneme(letters[i]);
+      if (i < letters.length - 1) await new Promise((r) => setTimeout(r, 120));
     }
-  }, [feedback, shouldReveal, current, round, words, worldId, completeGame, addCoins, masterWord, recordWrong]);
+  }, [letters]);
+
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'garden-grow');
+      addCoins(10);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
+    }
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  useEffect(() => {
+    if (shouldReveal && phase === 'read') {
+      (async () => {
+        recordSoundAttempt(word, false);
+        await speakReveal(word);
+        setPhase('won');
+        setGrown((g) => g + 1);
+        await new Promise((r) => setTimeout(r, 1100));
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const pick = useCallback(
+    (w: string) => {
+      if (phase !== 'read') return;
+      if (w === word) {
+        recordSoundAttempt(word, true);
+        incrementStreak();
+        masterWord(word);
+        playSoundEffect('coin');
+        setPhase('won');
+        setGrown((g) => g + 1);
+        (async () => {
+          await speakWord(word);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 700));
+          advance();
+        })();
+      } else {
+        recordSoundAttempt(word, false);
+        recordWrong();
+        resetStreak();
+        playSoundEffect('wrong');
+        setWrongPick(w);
+        (async () => {
+          await soundOut();
+          setWrongPick(null);
+        })();
+      }
+    },
+    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-500/90 to-teal-400/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-        <div className="bg-white/80 rounded-full px-4 py-2 shadow">
-          <span className="font-[Fredoka] text-emerald-600">{grown.length}/{words.length}</span>
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🌻"
+      bgClassName="from-lime-300/60 to-emerald-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={120} />
+          <p className="text-emerald-900 font-[Fredoka] font-bold text-2xl text-center">
+            {phase === 'won' ? 'It grew!' : 'Read the seed — pick its picture!'}
+          </p>
         </div>
-      </div>
 
-      <div className="bg-amber-800/30 rounded-2xl p-3 flex flex-wrap gap-2 justify-center mb-4 min-h-[80px]">
-        {grown.map((grownWord, i) => (
-          <motion.div key={i} initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }}>
-            <WordCard word={grownWord} size={48} />
-          </motion.div>
-        ))}
-        {grown.length === 0 && <p className="text-white/50 font-[Nunito] text-sm self-center">Your garden is empty!</p>}
-      </div>
+        {/* Seed packet with the word (letters tappable for help) */}
+        <div className="flex flex-col items-center gap-1">
+          <div className="bg-amber-100 border-4 border-amber-300 rounded-3xl px-5 py-4 shadow-xl flex flex-col items-center gap-1">
+            <span className="text-2xl">🌱</span>
+            <div className="flex gap-2">
+              {letters.map((letter, i) => (
+                <motion.button
+                  key={`${round}-${i}`}
+                  onClick={() => speakPhoneme(letter)}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-[80px] h-[88px] rounded-2xl bg-white text-gray-800 text-6xl font-bold font-[Fredoka] lowercase shadow press-3d flex items-center justify-center"
+                >
+                  {letter}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+          <p className="text-emerald-900/70 font-[Fredoka] text-sm">Tap a letter to hear its sound</p>
+        </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={70} />
+        {/* Picture choices */}
+        <div className="flex justify-center gap-4">
+          {choices.map((w) => {
+            const isAnswer = w === word;
+            const highlight = (phase === 'won' || shouldReveal) && isAnswer;
+            return (
+              <motion.button
+                key={`${round}-${w}`}
+                onClick={() => pick(w)}
+                disabled={phase !== 'read'}
+                animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                whileTap={{ scale: 0.92 }}
+                className={`rounded-3xl p-3 shadow-xl bg-white press-3d transition-all ${
+                  highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                }`}
+              >
+                <WordCard word={w} size={104} />
+              </motion.button>
+            );
+          })}
+        </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div key={round} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-            className="bg-white/90 rounded-2xl px-10 py-6 shadow-xl text-center">
-            <p className="text-sm font-[Nunito] text-gray-500 mb-1">Read the seed packet:</p>
-            <span className="text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">{current.word}</span>
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="flex gap-4">
-          {choices.map((choice) => (
-            <motion.button key={choice.word} whileTap={{ scale: 0.9 }} onClick={() => handleChoice(choice.word)}
-              disabled={feedback !== null || shouldReveal}
-              className={`w-24 h-24 rounded-2xl shadow-lg flex items-center justify-center transition-all ${
-                shouldReveal && choice.word === current.word
-                  ? 'bg-green-200 ring-4 ring-green-400 animate-pulse'
-                  : feedback === 'correct' && choice.word === current.word
-                  ? 'bg-green-200 ring-4 ring-green-400'
-                  : 'bg-white/90'
-              }`}>
-              <WordCard word={choice.word} size={56} />
-            </motion.button>
+        {/* The garden grows across rounds */}
+        <div className="flex gap-2 items-end bg-gradient-to-t from-lime-200/80 to-transparent rounded-2xl px-5 pt-1 pb-2 min-h-[64px]">
+          {rounds.map((_, i) => (
+            <motion.span
+              key={i}
+              initial={false}
+              animate={i < grown ? { scale: [0, 1.4, 1], opacity: 1 } : { scale: 1, opacity: 0.25 }}
+              className="text-4xl"
+            >
+              {i < grown ? FLOWERS[i % FLOWERS.length] : '🌱'}
+            </motion.span>
           ))}
         </div>
       </div>
 
-      <CelebrationOverlay show={showCelebration} message="Garden is full!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Beautiful garden!" onComplete={onComplete} />
+    </GameShell>
   );
 }

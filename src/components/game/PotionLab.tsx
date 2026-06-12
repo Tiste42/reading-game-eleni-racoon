@@ -1,48 +1,29 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import { useGameStore } from '@/lib/store';
-import { speakFeedback, speakWrongExplanation } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
-import { getIcon } from '@/lib/wordIcons';
-import { playSoundEffect } from '@/lib/audio';
+import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
+import { useGameStore } from '@/lib/store';
+import { speakPhoneme, speakWord, speakFeedback } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { playSoundEffect } from '@/lib/audio';
 
-interface PotionWord {
-  letters: string[];
-  word: string;
-  icon: string;
-  swap?: { index: number; from: string; to: string; newWord: string; newIcon: string };
+interface PotionRound {
+  word: string; // build lines recorded for these
+  swapTo: string; // change first letter -> new word (word chaining!)
+  swapDistractor: string;
 }
 
-const POTION_WORDS: PotionWord[] = [
-  {
-    letters: ['c', 'a', 't'], word: 'cat', icon: getIcon('cat'),
-    swap: { index: 0, from: 'c', to: 'h', newWord: 'hat', newIcon: getIcon('hat') },
-  },
-  {
-    letters: ['p', 'i', 'n'], word: 'pin', icon: getIcon('pin'),
-    swap: { index: 0, from: 'p', to: 'b', newWord: 'bin', newIcon: getIcon('bin') },
-  },
-  {
-    letters: ['h', 'o', 't'], word: 'hot', icon: getIcon('hot'),
-    swap: { index: 0, from: 'h', to: 'p', newWord: 'pot', newIcon: getIcon('pot') },
-  },
-  {
-    letters: ['b', 'a', 't'], word: 'bat', icon: getIcon('bat'),
-    swap: { index: 0, from: 'b', to: 'm', newWord: 'mat', newIcon: getIcon('mat') },
-  },
-  {
-    letters: ['d', 'o', 'g'], word: 'dog', icon: getIcon('dog'),
-    swap: { index: 0, from: 'd', to: 'l', newWord: 'log', newIcon: getIcon('log') },
-  },
-  {
-    letters: ['c', 'u', 'p'], word: 'cup', icon: getIcon('cup'),
-    swap: { index: 0, from: 'c', to: 'p', newWord: 'pup', newIcon: getIcon('pup') },
-  },
+const POTION_ROUNDS: PotionRound[] = [
+  { word: 'cat', swapTo: 'hat', swapDistractor: 's' },
+  { word: 'pin', swapTo: 'bin', swapDistractor: 'm' },
+  { word: 'hot', swapTo: 'pot', swapDistractor: 'l' },
+  { word: 'bat', swapTo: 'mat', swapDistractor: 'f' },
+  { word: 'dog', swapTo: 'log', swapDistractor: 'n' },
+  { word: 'cup', swapTo: 'pup', swapDistractor: 't' },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -54,206 +35,232 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'build' | 'swap' | 'won';
+
 export default function PotionLab({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [phase, setPhase] = useState<'build' | 'swap' | 'done'>('build');
-  const [placed, setPlaced] = useState<string[]>([]);
-  const [swapped, setSwapped] = useState(false);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('build');
+  const [placed, setPlaced] = useState(0);
+  const [wrongTile, setWrongTile] = useState<string | null>(null);
+  const [bank, setBank] = useState<string[]>([]);
+  const [swapChoices, setSwapChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(POTION_WORDS).slice(0, 5));
-  const { completeGame, addCoins, masterWord } = useGameStore();
+  const [rounds] = useState(() => shuffle(POTION_ROUNDS).slice(0, 5));
+  const { completeGame, addCoins, masterWord, recordSoundAttempt } = useGameStore();
 
-  const current = words[round];
-  const trayLetters = useMemo(() => shuffle([...current.letters]), [current]);
+  const current = rounds[round];
+  const letters = current.word.split('');
+  const newLetter = current.swapTo[0];
+  const isLast = round >= rounds.length - 1;
 
-  const { recordWrong } = useWrongAttempts(round);
+  useEffect(() => {
+    setPhase('build');
+    setPlaced(0);
+    setWrongTile(null);
+    let s = shuffle(letters);
+    if (s.join('') === current.word) s = [...s].reverse();
+    setBank(s);
+    setSwapChoices(shuffle([newLetter, current.swapDistractor]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
 
-  useGameSpeech(
-    `Put the letters ${current.letters.join(', ')} into the cauldron to make ${current.word}!`,
-    [round]
-  );
+  // Recorded line: "Put the letters c, a, t into the cauldron to make cat!"
+  const instruction = `Put the letters ${letters.join(', ')} into the cauldron to make ${current.word}!`;
+  const { replay } = useGameSpeech(phase === 'build' ? instruction : null, [round, phase]);
 
-  const advanceRound = useCallback(() => {
-    if (round >= words.length - 1) {
+  const soundOut = useCallback(async (w: string) => {
+    const ls = w.split('');
+    for (let i = 0; i < ls.length; i++) {
+      await speakPhoneme(ls[i]);
+      if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 120));
+    }
+  }, []);
+
+  const finishRound = useCallback(() => {
+    if (isLast) {
       completeGame(worldId, 'potion-lab');
-      addCoins(10);
+      addCoins(12);
       setShowCelebration(true);
-      speakFeedback('complete');
     } else {
       setRound((r) => r + 1);
-      setPhase('build');
-      setPlaced([]);
-      setSwapped(false);
-      setFeedback(null);
     }
-  }, [round, words, worldId, completeGame, addCoins]);
+  }, [isLast, worldId, completeGame, addCoins]);
 
-  const handlePlaceLetter = useCallback(
-    (letter: string) => {
+  // Build phase: tap letters in order (MarketBuilder pattern)
+  const tapBankLetter = useCallback(
+    (letter: string, idx: number) => {
       if (phase !== 'build') return;
-      playSoundEffect('tap');
-      const expected = current.letters[placed.length];
-      if (letter === expected) {
-        const next = [...placed, letter];
-        setPlaced(next);
-        if (next.length === current.letters.length) {
-          playSoundEffect('correct');
-          speakFeedback('correct');
-          masterWord(current.word);
-          if (current.swap) {
-            setTimeout(() => setPhase('swap'), 800);
-          } else {
-            setTimeout(() => advanceRound(), 800);
-          }
+      const needed = letters[placed];
+      if (letter === needed) {
+        playSoundEffect('tap');
+        recordSoundAttempt(letter, true);
+        const np = placed + 1;
+        setPlaced(np);
+        if (np === letters.length) {
+          (async () => {
+            await speakPhoneme(letter); // last sound plays fully...
+            await new Promise((r) => setTimeout(r, 150));
+            playSoundEffect('celebrate'); // potion bubbles!
+            masterWord(current.word);
+            await speakWord(current.word); // ...then Leni says the word
+            setPhase('swap');
+          })();
+        } else {
+          speakPhoneme(letter);
         }
       } else {
-        setFeedback('wrong');
         playSoundEffect('wrong');
-        recordWrong();
-        const builtSoFar = [...placed, letter].join('');
-        speakWrongExplanation(builtSoFar, current.word, 'blend');
-        setTimeout(() => setFeedback(null), 2000);
+        speakPhoneme(needed);
+        recordSoundAttempt(needed, false);
+        setWrongTile(`bank-${idx}`);
+        setTimeout(() => setWrongTile(null), 500);
       }
     },
-    [phase, placed, current, masterWord, advanceRound, recordWrong]
+    [phase, letters, placed, current.word, masterWord, recordSoundAttempt],
   );
 
-  const handleSwap = useCallback(() => {
-    if (!current.swap || swapped) return;
-    playSoundEffect('celebrate');
-    setSwapped(true);
-    const newLetters = [...current.letters];
-    newLetters[current.swap.index] = current.swap.to;
-    setPlaced(newLetters);
-    masterWord(current.swap.newWord);
-    setTimeout(() => advanceRound(), 1200);
-  }, [current, swapped, masterWord, advanceRound]);
+  // Swap phase: first letter popped out — pick the new letter to make a NEW word
+  const tapSwapLetter = useCallback(
+    (letter: string) => {
+      if (phase !== 'swap') return;
+      if (letter === newLetter) {
+        playSoundEffect('coin');
+        recordSoundAttempt(letter, true);
+        masterWord(current.swapTo);
+        setPhase('won');
+        (async () => {
+          await soundOut(current.swapTo);
+          await speakWord(current.swapTo);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 800));
+          finishRound();
+        })();
+      } else {
+        playSoundEffect('wrong');
+        recordSoundAttempt(newLetter, false);
+        setWrongTile(`swap-${letter}`);
+        (async () => {
+          await speakPhoneme(newLetter); // hint: the sound we need
+          setWrongTile(null);
+        })();
+      }
+    },
+    [phase, newLetter, current.swapTo, isLast, finishRound, masterWord, recordSoundAttempt, soundOut],
+  );
 
-  const displayWord = swapped && current.swap ? current.swap.newWord : current.word;
+  const isUsed = (letter: string) => letters.slice(0, placed).includes(letter);
+  const displayWord = phase === 'won' ? current.swapTo : current.word;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-500/90 to-teal-400/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md"
-        >
-          {'<'}
-        </motion.button>
-        <div className="flex gap-1">
-          {words.map((_, i) => (
-            <div
-              key={i}
-              className={`w-3 h-3 rounded-full ${
-                i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={placed.length === current.letters.length ? 'celebrating' : 'excited'} size={80} />
-
-        <div className="bg-gray-800/20 rounded-[2rem] px-8 py-6 min-w-[280px]">
-          <p className="text-center text-white/70 text-sm font-[Nunito] mb-3">
-            {phase === 'build' ? 'Tap letters into the cauldron!' : 'Swap a letter!'}
+    <GameShell
+      onBack={onComplete}
+      onReplay={phase === 'build' ? replay : undefined}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🧪"
+      bgClassName="from-violet-400/60 to-emerald-300/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={114} />
+          <p className="text-violet-900 font-[Fredoka] font-bold text-2xl text-center px-3">
+            {phase === 'build'
+              ? `Make the word ${current.word}!`
+              : phase === 'swap'
+                ? 'Magic! Swap the first letter — what new word can we make?'
+                : `${current.swapTo}! A brand new word!`}
           </p>
-          <div className="flex gap-3 justify-center">
-            {current.letters.map((_, i) => {
-              const isSwappedTile = swapped && current.swap && i === current.swap.index;
+        </div>
+
+        {/* Cauldron with letter slots */}
+        <div className="flex flex-col items-center">
+          <div className="flex gap-3 mb-1">
+            {letters.map((letter, i) => {
+              const filled = i < placed;
+              const isNext = i === placed && phase === 'build';
+              const isSwapSlot = i === 0 && phase === 'swap';
+              const shown = phase === 'won' && i === 0 ? newLetter : letter;
               return (
-                <motion.div
+                <div
                   key={i}
-                  layout
-                  // Pop + flash the changed tile so the "magic change" is visible.
-                  animate={isSwappedTile ? { scale: [1, 1.4, 1] } : { scale: 1 }}
-                  transition={isSwappedTile ? { duration: 0.5 } : undefined}
-                  className={`w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-bold font-[Fredoka] lowercase shadow-lg ${
-                    placed[i]
-                      ? isSwappedTile
-                        ? 'bg-yellow-300 ring-4 ring-fuchsia-400'
-                        : 'bg-white'
-                      : 'bg-white/20 border-2 border-dashed border-white/40'
+                  className={`w-[84px] h-[92px] rounded-2xl flex items-center justify-center text-6xl font-bold font-[Fredoka] lowercase shadow-inner transition-colors ${
+                    isSwapSlot
+                      ? 'bg-violet-200 border-4 border-dashed border-violet-500 animate-hint-pulse'
+                      : filled || phase !== 'build'
+                        ? 'bg-emerald-200 text-gray-800'
+                        : isNext
+                          ? 'bg-white/60 border-4 border-dashed border-white'
+                          : 'bg-white/30 border-4 border-dashed border-white/50'
                   }`}
                 >
-                  {placed[i] || ''}
-                </motion.div>
+                  {(filled || phase === 'won' || (phase === 'swap' && i > 0)) && !isSwapSlot && (
+                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>{shown}</motion.span>
+                  )}
+                  {isSwapSlot && <span className="text-4xl">✨</span>}
+                </div>
               );
             })}
           </div>
-          {placed.length === current.letters.length && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="flex flex-col items-center mt-4"
-            >
-              <WordCard word={displayWord} size={64} />
-              <p className="text-2xl font-bold font-[Fredoka] text-white lowercase mt-1">
-                {displayWord}
-              </p>
-            </motion.div>
-          )}
+          <motion.span
+            animate={phase !== 'build' ? { scale: [1, 1.15, 1] } : {}}
+            transition={{ duration: 0.8, repeat: phase !== 'build' ? Infinity : 0 }}
+            className="text-8xl"
+          >
+            🧪
+          </motion.span>
+          <AnimatePresence>
+            {phase === 'won' && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-2 shadow-xl -mt-2">
+                <WordCard word={current.swapTo} size={110} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {phase === 'build' && placed.length < current.letters.length && (
-          <div className="flex gap-3">
-            {trayLetters.map((letter, i) => {
-              const alreadyPlaced = placed.filter((p) => p === letter).length;
-              const available = current.letters.filter((l) => l === letter).length;
-              const disabled = alreadyPlaced >= available;
+        {/* Letter bank (build) or swap choices */}
+        <div className="flex gap-4 min-h-[110px] items-center">
+          {phase === 'build' &&
+            bank.map((letter, idx) => {
+              const used = isUsed(letter);
+              const isNeeded = letter === letters[placed];
               return (
                 <motion.button
-                  key={`${letter}-${i}`}
-                  whileTap={{ scale: 0.85 }}
-                  onClick={() => handlePlaceLetter(letter)}
-                  disabled={disabled}
-                  className={`w-20 h-20 rounded-2xl text-4xl font-bold font-[Fredoka] lowercase shadow-lg ${
-                    disabled ? 'bg-white/20 text-white/30' : 'bg-white/90 text-gray-800'
+                  key={idx}
+                  onClick={() => tapBankLetter(letter, idx)}
+                  disabled={used}
+                  animate={
+                    wrongTile === `bank-${idx}`
+                      ? { x: [-8, 8, -8, 8, 0] }
+                      : used
+                        ? { scale: 0, opacity: 0 }
+                        : { scale: 1, opacity: 1 }
+                  }
+                  whileTap={{ scale: 0.9 }}
+                  className={`w-[100px] h-[108px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
+                    isNeeded ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
                   }`}
                 >
                   {letter}
                 </motion.button>
               );
             })}
-          </div>
-        )}
-
-        {phase === 'swap' && !swapped && current.swap && (
-          <motion.button
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={handleSwap}
-            className="game-button bg-yellow-400 text-gray-800 px-8 py-5 rounded-full shadow-xl text-lg"
-          >
-            <span className="font-[Fredoka]">
-              Swap {current.swap.from} for {current.swap.to}!
-            </span>
-          </motion.button>
-        )}
-
-        <AnimatePresence>
-          {feedback === 'wrong' && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, x: [-4, 4, -4, 0] }}
-              exit={{ opacity: 0 }}
-              className="text-lg text-white/80 font-bold"
-            >
-              Not quite - try another letter!
-            </motion.p>
-          )}
-        </AnimatePresence>
+          {phase === 'swap' &&
+            swapChoices.map((letter) => (
+              <motion.button
+                key={letter}
+                onClick={() => tapSwapLetter(letter)}
+                animate={wrongTile === `swap-${letter}` ? { x: [-8, 8, -8, 8, 0] } : {}}
+                whileTap={{ scale: 0.9 }}
+                className="w-[100px] h-[108px] rounded-3xl bg-violet-100 shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-violet-800 lowercase press-3d ring-2 ring-violet-300"
+              >
+                {letter}
+              </motion.button>
+            ))}
+        </div>
       </div>
 
-      <CelebrationOverlay
-        show={showCelebration}
-        message="Amazing potions!"
-        onComplete={onComplete}
-      />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Master potion maker!" onComplete={onComplete} />
+    </GameShell>
   );
 }

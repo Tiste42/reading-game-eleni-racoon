@@ -1,50 +1,81 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
-import { useGameStore } from '@/lib/store';
-import { speakFeedback, speak, speakWrongExplanation, speakReveal } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
+import PressButton from '@/components/ui/PressButton';
+import { useGameStore } from '@/lib/store';
+import { speak, speakFeedback } from '@/lib/speech';
+import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 
 interface ClueOption {
-  label: string;
+  label: string; // recorded audio exists for every label
   icon: string;
-  // When set, render the generated word picture instead of the emoji
-  word?: string;
+  word?: string; // when set, show generated art instead of the emoji
 }
 
 interface ClueRound {
-  passage: string;
-  question: string;
+  passage: string; // SHE reads this
+  question: string; // recorded
   correct: string;
   options: ClueOption[];
 }
 
 const CLUE_ROUNDS: ClueRound[] = [
-  { passage: 'The shell is red. It is big. It is on the sand.',
+  {
+    passage: 'The shell is red. It is big. It is on the sand.',
     question: 'What color is the shell?',
     correct: 'red',
-    options: [{ label: 'red', icon: '🔴' }, { label: 'blue', icon: '🔵' }, { label: 'green', icon: '🟢' }] },
-  { passage: 'A crab has a hat. The hat is blue. The crab is happy.',
+    options: [
+      { label: 'red', icon: '🔴' },
+      { label: 'blue', icon: '🔵' },
+      { label: 'green', icon: '🟢' },
+    ],
+  },
+  {
+    passage: 'A crab has a hat. The hat is blue. The crab is happy.',
     question: 'What color is the hat?',
     correct: 'blue',
-    options: [{ label: 'red', icon: '🔴' }, { label: 'blue', icon: '🔵' }, { label: 'yellow', icon: '🟡' }] },
-  { passage: 'The fish is in the net. The net is big. A man has the net.',
+    options: [
+      { label: 'red', icon: '🔴' },
+      { label: 'blue', icon: '🔵' },
+      { label: 'yellow', icon: '🟡' },
+    ],
+  },
+  {
+    passage: 'The fish is in the net. The net is big. A man has the net.',
     question: 'Who has the net?',
     correct: 'a man',
-    options: [{ label: 'a dog', icon: '🐶', word: 'dog' }, { label: 'a man', icon: '👨', word: 'man' }, { label: 'a cat', icon: '🐱', word: 'cat' }] },
-  { passage: 'She has a pet dog. The dog can run fast. The dog is on the sand.',
+    options: [
+      { label: 'a dog', icon: '🐶', word: 'dog' },
+      { label: 'a man', icon: '👨', word: 'man' },
+      { label: 'a cat', icon: '🐱', word: 'cat' },
+    ],
+  },
+  {
+    passage: 'She has a pet dog. The dog can run fast. The dog is on the sand.',
     question: 'Where is the dog?',
     correct: 'on the sand',
-    options: [{ label: 'in the van', icon: '🚐', word: 'van' }, { label: 'on the bed', icon: '🛏️', word: 'bed' }, { label: 'on the sand', icon: '🏖️' }] },
-  { passage: 'I can see a big ship. The ship is on the sea. It has a red flag.',
+    options: [
+      { label: 'in the van', icon: '🚐', word: 'van' },
+      { label: 'on the bed', icon: '🛏️', word: 'bed' },
+      { label: 'on the sand', icon: '🏖️' },
+    ],
+  },
+  {
+    passage: 'I can see a big ship. The ship is on the sea. It has a red flag.',
     question: 'What does the ship have?',
     correct: 'a red flag',
-    options: [{ label: 'a blue hat', icon: '🎩', word: 'hat' }, { label: 'a red flag', icon: '🚩' }, { label: 'a big net', icon: '🥅', word: 'net' }] },
+    options: [
+      { label: 'a blue hat', icon: '🎩', word: 'hat' },
+      { label: 'a red flag', icon: '🚩' },
+      { label: 'a big net', icon: '🥅', word: 'net' },
+    ],
+  },
 ];
 
 function shuffle<T>(arr: T[]): T[] {
@@ -56,125 +87,153 @@ interface Props {
   onComplete: () => void;
 }
 
+type Phase = 'read' | 'answer' | 'won';
+
 export default function BeachDetective({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [showQuestion, setShowQuestion] = useState(false);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [phase, setPhase] = useState<Phase>('read');
+  const [wrongPick, setWrongPick] = useState<string | null>(null);
+  const [choices, setChoices] = useState<ClueOption[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(CLUE_ROUNDS).slice(0, 4));
-  const { completeGame, addCoins } = useGameStore();
+  const [rounds] = useState(() => shuffle(CLUE_ROUNDS));
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
-
-  // Phase 1: Don't read the passage — just say direction
-  useGameSpeech(
-    feedback || showQuestion ? null : 'Read the clue!',
-    [round],
-  );
-
-  const { shouldReveal, recordWrong } = useWrongAttempts(round);
+  const isLast = round >= rounds.length - 1;
 
   useEffect(() => {
-    if (!shouldReveal) return;
-    speakReveal(current.correct);
-    const timer = setTimeout(() => {
-      setShowQuestion(false);
-      if (round >= rounds.length - 1) {
-        completeGame(worldId, 'beach-detective');
-        addCoins(12);
-        setShowCelebration(true);
-        speakFeedback('complete');
-      } else {
-        setRound((r) => r + 1);
-      }
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [shouldReveal, current, round, rounds, worldId, completeGame, addCoins]);
+    setPhase('read');
+    setWrongPick(null);
+    setChoices(shuffle([...current.options]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round]);
 
-  // Phase 2: Child taps "I read it!" → show question + speak it
-  const handleReadIt = useCallback(() => {
-    setShowQuestion(true);
+  const { replay } = useGameSpeech(
+    phase === 'read' ? 'Read the clue!' : phase === 'answer' ? current.question : null,
+    [round, phase],
+  );
+
+  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
+
+  const advance = useCallback(() => {
+    if (isLast) {
+      completeGame(worldId, 'beach-detective');
+      addCoins(12);
+      setShowCelebration(true);
+    } else {
+      setRound((r) => r + 1);
+    }
+  }, [isLast, worldId, completeGame, addCoins]);
+
+  useEffect(() => {
+    if (shouldReveal && phase === 'answer') {
+      (async () => {
+        recordSoundAttempt('sentences', false);
+        await speak(current.correct);
+        setPhase('won');
+        await new Promise((r) => setTimeout(r, 1100));
+        advance();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldReveal, phase]);
+
+  const startAnswer = useCallback(() => {
+    playSoundEffect('tap');
+    setPhase('answer');
     speak(current.question);
   }, [current.question]);
 
-  const handleAnswer = useCallback((answer: string) => {
-    if (feedback || shouldReveal) return;
-    playSoundEffect('tap');
-    if (answer === current.correct) {
-      const isLastRound = round >= rounds.length - 1;
-      setFeedback('correct');
-      speakFeedback(isLastRound ? 'complete' : 'correct');
-      setTimeout(() => {
-        setFeedback(null);
-        setShowQuestion(false);
-        if (isLastRound) {
-          completeGame(worldId, 'beach-detective');
-          addCoins(12);
-          setShowCelebration(true);
-        } else {
-          setRound((r) => r + 1);
-        }
-      }, 1200);
-    } else {
-      setFeedback('wrong');
-      recordWrong();
-      speakWrongExplanation(answer, current.correct);
-      setTimeout(() => setFeedback(null), 2000);
-    }
-  }, [feedback, shouldReveal, current, round, rounds, worldId, completeGame, addCoins, recordWrong]);
+  const pick = useCallback(
+    (label: string) => {
+      if (phase !== 'answer') return;
+      if (label === current.correct) {
+        recordSoundAttempt('sentences', true);
+        incrementStreak();
+        playSoundEffect('coin');
+        setPhase('won');
+        (async () => {
+          await speak(label);
+          await speakFeedback(isLast ? 'complete' : 'correct');
+          await new Promise((r) => setTimeout(r, 700));
+          advance();
+        })();
+      } else {
+        recordSoundAttempt('sentences', false);
+        recordWrong();
+        resetStreak();
+        playSoundEffect('wrong');
+        setWrongPick(label);
+        (async () => {
+          await speak(current.question); // re-ask so she re-checks the clue
+          setWrongPick(null);
+        })();
+      }
+    },
+    [phase, current, isLast, advance, incrementStreak, resetStreak, recordWrong, recordSoundAttempt],
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-400/90 to-green-300/90 px-4 py-6 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <motion.button whileTap={{ scale: 0.9 }} onClick={onComplete}
-          className="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center text-2xl shadow-md">{'<'}</motion.button>
-        <div className="flex gap-1">
-          {rounds.map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i < round ? 'bg-white' : i === round ? 'bg-yellow-300' : 'bg-white/30'}`} />
-          ))}
+    <GameShell
+      onBack={onComplete}
+      onReplay={replay}
+      round={round}
+      totalRounds={rounds.length}
+      progressIcon="🔎"
+      bgClassName="from-cyan-300/60 to-amber-200/50"
+    >
+      <div className="flex-1 flex flex-col items-center justify-between py-2">
+        {/* Leni detective + prompt */}
+        <div className="flex flex-col items-center">
+          <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={116} />
+          <p className="text-cyan-900 font-[Fredoka] font-bold text-2xl text-center px-3">
+            {phase === 'read' ? '🔎 Read the clue, detective!' : phase === 'answer' ? 'Solve the mystery!' : 'Case closed!'}
+          </p>
         </div>
-      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <EleniCharacter pose={feedback === 'correct' ? 'celebrating' : 'excited'} size={70} />
-        <span className="text-4xl">🔎</span>
+        {/* The clue card */}
+        <div className="bg-amber-50 border-4 border-amber-300 rounded-3xl px-7 py-6 shadow-xl max-w-lg">
+          <span className="text-3xl font-bold font-[Fredoka] text-gray-800 leading-relaxed">{current.passage}</span>
+        </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div key={round} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -30, opacity: 0 }}
-            className="bg-amber-50 border-4 border-amber-700 rounded-2xl px-6 py-5 shadow-xl max-w-sm w-full">
-            <p className="text-lg font-bold font-[Fredoka] text-gray-800 leading-relaxed text-center">{current.passage}</p>
-          </motion.div>
-        </AnimatePresence>
-
-        {!showQuestion ? (
-          <motion.button whileTap={{ scale: 0.9 }} onClick={handleReadIt}
-            className="game-button bg-white/90 text-cyan-600 px-10 py-5 rounded-full shadow-xl text-lg">
-            <span className="font-[Fredoka]">I read it!</span>
-          </motion.button>
+        {/* Read gate, then options */}
+        {phase === 'read' ? (
+          <PressButton
+            silent
+            onClick={startAnswer}
+            className="bg-gradient-to-br from-cyan-500 to-amber-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka]"
+          >
+            ✋ I read it!
+          </PressButton>
         ) : (
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm">
-            <p className="text-white font-[Nunito] text-center mb-3 text-lg">{current.question}</p>
-            <div className="flex flex-col gap-3">
-              {current.options.map((opt) => (
-                <motion.button key={opt.label} whileTap={{ scale: 0.95 }} onClick={() => handleAnswer(opt.label)}
-                  disabled={feedback !== null || shouldReveal}
-                  className={`w-full py-4 px-6 rounded-2xl text-lg font-bold font-[Fredoka] shadow-md flex items-center gap-3 transition-all ${
-                    shouldReveal && opt.label === current.correct
-                      ? 'bg-green-300 text-green-800 ring-4 ring-green-400 scale-105'
-                      : feedback === 'correct' && opt.label === current.correct
-                        ? 'bg-green-300 text-green-800'
-                        : 'bg-white/90 text-gray-700'
-                  }`}>
-                  {opt.word ? <WordCard word={opt.word} size={28} /> : <span className="text-2xl">{opt.icon}</span>} {opt.label}
+          <div className="flex gap-3 flex-wrap justify-center">
+            {choices.map((opt) => {
+              const highlight = (phase === 'won' || shouldReveal) && opt.label === current.correct;
+              return (
+                <motion.button
+                  key={`${round}-${opt.label}`}
+                  onClick={() => pick(opt.label)}
+                  disabled={phase !== 'answer'}
+                  animate={wrongPick === opt.label ? { x: [-8, 8, -8, 8, 0] } : {}}
+                  whileTap={{ scale: 0.92 }}
+                  className={`px-5 py-4 rounded-3xl shadow-xl bg-white press-3d flex flex-col items-center gap-1 transition-all min-w-[130px] ${
+                    highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
+                  }`}
+                >
+                  {opt.word ? (
+                    <WordCard word={opt.word} size={72} />
+                  ) : (
+                    <span className="text-5xl">{opt.icon}</span>
+                  )}
+                  <span className="text-xl font-bold font-[Fredoka] text-gray-800 lowercase">{opt.label}</span>
                 </motion.button>
-              ))}
-            </div>
-          </motion.div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      <CelebrationOverlay show={showCelebration} message="Mystery solved!" onComplete={onComplete} />
-    </div>
+      <CelebrationOverlay show={showCelebration} message="Super sleuth!" onComplete={onComplete} />
+    </GameShell>
   );
 }
