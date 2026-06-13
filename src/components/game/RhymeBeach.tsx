@@ -7,7 +7,7 @@ import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
-import { speak, speakClip, speakFeedback } from '@/lib/speech';
+import { speak, speakClip, speakWord, speakFeedback } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 
@@ -119,8 +119,23 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
         resetStreak();
         playSoundEffect('wrong');
         // Scaffold down: the wrong piñata falls off its rope, fewer choices remain
-        setFallen((f) => [...f, word]);
-        speakClip('rhyme-hint', 'Listen! Rhyming words sound the same at the end!');
+        const newFallen = [...fallen, word];
+        setFallen(newFallen);
+        // Re-say the words she's comparing — the target, then the piñatas still
+        // hanging — so "listen and say again" actually gives her something to hear.
+        // On the LAST miss only the answer is left and the model effect takes
+        // over (it speaks the rhyme pair), so don't double-talk over it.
+        const remaining = current.choices.filter((c) => !newFallen.includes(c));
+        if (remaining.length > 1) {
+          (async () => {
+            await speakClip('rhyme-hint', 'Listen! Rhyming words sound the same at the end!');
+            await speakWord(current.target);
+            for (const w of remaining) {
+              await speakWord(w);
+            }
+            await speak(`What rhymes with ${current.target}?`);
+          })();
+        }
       }
     },
     [phase, fallen, current, isLastRound, advance, recordWrong, resetStreak, incrementStreak, recordSoundAttempt],
