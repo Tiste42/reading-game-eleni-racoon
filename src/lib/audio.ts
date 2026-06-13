@@ -30,9 +30,12 @@ export function getAudio(src: string): Howl {
   const cached = audioCache.get(path);
   if (cached) return cached;
 
+  // WebAudio (html5:false): iOS ignores volume changes on HTML5 audio
+  // elements and caps how many can exist — WebAudio has neither problem.
   const sound = new Howl({
     src: [path],
-    html5: true,
+    format: ['mp3'],
+    html5: false,
     preload: true,
     volume: 0.8,
     onloaderror: (_id, err) => {
@@ -175,9 +178,12 @@ export function startBackgroundMusic(track = 'menu'): void {
   }
 
   currentTrack = track;
+  // WebAudio: on iOS, HTML5 audio volume is READ-ONLY (hardware buttons only),
+  // which silently broke the music slider and speech ducking on iPhones.
   bgMusic = new Howl({
     src: [`/audio/music/${track}.mp3`],
-    html5: true,
+    format: ['mp3'],
+    html5: false,
     loop: true,
     volume: currentMusicVolume,
     onloaderror: () => {
