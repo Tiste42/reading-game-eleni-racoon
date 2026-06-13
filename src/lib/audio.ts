@@ -185,7 +185,7 @@ export function startBackgroundMusic(track = 'menu'): void {
     format: ['mp3'],
     html5: false,
     loop: true,
-    volume: currentMusicVolume,
+    volume: musicTarget(),
     onloaderror: () => {
       console.warn(`Background music not found: /audio/music/${track}.mp3`);
       bgMusic = null;
@@ -215,19 +215,29 @@ export function stopBackgroundMusic(): void {
   }
 }
 
-export function setMusicVolume(volume: number): void {
-  currentMusicVolume = volume;
-  if (bgMusic) {
-    // Cancel any in-flight duck/fade so the slider change applies immediately.
-    bgMusic.fade(bgMusic.volume(), duckCount > 0 ? volume * DUCK_FACTOR : volume, 80);
-  }
-}
-
-// --- Music ducking: lower music while Leni speaks so the child hears her clearly ---
+// The music tracks are mastered ~3dB hotter than the voice clips (measured),
+// so the music channel gets a constant trim — "30%" on the slider should FEEL
+// like 30% next to Leni's voice.
+const MUSIC_TRIM = 0.55;
 
 // Music should be MUCH quieter than speech — drop it to ~5% while Leni talks.
 const DUCK_FACTOR = 0.05;
 let duckCount = 0;
+
+/** The single source of truth for what the music should play at right now. */
+function musicTarget(): number {
+  return currentMusicVolume * MUSIC_TRIM * (duckCount > 0 ? DUCK_FACTOR : 1);
+}
+
+export function setMusicVolume(volume: number): void {
+  currentMusicVolume = volume;
+  if (bgMusic) {
+    // Cancel any in-flight duck/fade so the slider change applies immediately.
+    bgMusic.fade(bgMusic.volume(), musicTarget(), 80);
+  }
+}
+
+// --- Music ducking: lower music while Leni speaks so the child hears her clearly ---
 
 let unduckTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -238,7 +248,7 @@ export function duckMusic(): void {
     unduckTimer = null;
   }
   if (bgMusic && duckCount === 1) {
-    bgMusic.fade(bgMusic.volume(), currentMusicVolume * DUCK_FACTOR, 120);
+    bgMusic.fade(bgMusic.volume(), musicTarget(), 120);
   }
 }
 
@@ -251,7 +261,7 @@ export function unduckMusic(): void {
   unduckTimer = setTimeout(() => {
     unduckTimer = null;
     if (bgMusic && duckCount === 0) {
-      bgMusic.fade(bgMusic.volume(), currentMusicVolume, 400);
+      bgMusic.fade(bgMusic.volume(), musicTarget(), 400);
     }
   }, 450);
 }
