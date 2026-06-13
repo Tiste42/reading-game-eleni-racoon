@@ -24,9 +24,9 @@ const RESCUE_ROUNDS: RescueRound[] = [
     spokenLine: 'The manatee needs help! The big net is on the fin. What should we do?',
     correct: 'Remove the net',
     options: [
-      { label: 'Remove the net', icon: '🥅' },
-      { label: 'Add more net', icon: '❌' },
-      { label: 'Swim away', icon: '🏄' },
+      { label: 'Remove the net', icon: '✂️' },
+      { label: 'Add more net', icon: '🪢' },
+      { label: 'Swim away', icon: '🏊' },
     ],
   },
   {
@@ -44,9 +44,9 @@ const RESCUE_ROUNDS: RescueRound[] = [
     spokenLine: 'The manatee needs help! The cup fell in the pond. What should we do?',
     correct: 'Pick it up',
     options: [
-      { label: 'Leave it', icon: '❌' },
-      { label: 'Push it deeper', icon: '❌' },
-      { label: 'Pick it up', icon: '☕' },
+      { label: 'Leave it', icon: '🙈' },
+      { label: 'Push it deeper', icon: '👇' },
+      { label: 'Pick it up', icon: '🤲' },
     ],
   },
   {
@@ -55,8 +55,8 @@ const RESCUE_ROUNDS: RescueRound[] = [
     correct: 'Put it in the bin',
     options: [
       { label: 'Put it in the bin', icon: '🗑️' },
-      { label: 'Kick it', icon: '❌' },
-      { label: 'Hide it', icon: '❌' },
+      { label: 'Kick it', icon: '🦵' },
+      { label: 'Hide it', icon: '🫣' },
     ],
   },
   {
@@ -64,9 +64,9 @@ const RESCUE_ROUNDS: RescueRound[] = [
     spokenLine: 'The manatee needs help! The fish is in a net. How do we help?',
     correct: 'Free the fish',
     options: [
-      { label: 'Cook it', icon: '❌' },
+      { label: 'Cook it', icon: '🍳' },
       { label: 'Free the fish', icon: '🐟' },
-      { label: 'Watch it', icon: '❌' },
+      { label: 'Watch it', icon: '👀' },
     ],
   },
 ];
@@ -172,7 +172,7 @@ export default function ManateeRescue({ worldId, onComplete }: Props) {
       onReplay={replay}
       round={round}
       totalRounds={rounds.length}
-      progressIcon="🦭"
+      progressIcon="🌊"
       bgClassName="from-cyan-300/60 to-blue-300/50"
     >
       <div className="flex-1 flex flex-col items-center justify-between py-2">
@@ -180,13 +180,16 @@ export default function ManateeRescue({ worldId, onComplete }: Props) {
         <div className="flex flex-col items-center">
           <div className="flex items-end gap-1">
             <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={110} />
-            <motion.span
+            <motion.img
+              src="/images/generated/items/manatee.png"
+              alt="manatee"
+              width={120}
+              height={120}
+              draggable={false}
               animate={phase === 'won' ? { y: [0, -14, 0], rotate: [0, 10, -10, 0] } : { y: [0, -4, 0] }}
               transition={{ duration: phase === 'won' ? 0.6 : 2.2, repeat: Infinity }}
-              className="text-7xl"
-            >
-              🦭
-            </motion.span>
+              className="w-28 h-28 object-contain select-none"
+            />
           </div>
           <p className="text-cyan-900 font-[Fredoka] font-bold text-2xl text-center px-3">
             {phase === 'won' ? 'You saved the manatee!' : 'The manatee needs help!'}
