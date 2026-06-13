@@ -9,6 +9,57 @@ export const AUDIO_VERSION = '4-phonemes';
 const audioCache = new Map<string, Howl>();
 let audioUnlocked = false;
 
+let playbackSessionReady = false;
+let silentKeepAlive: HTMLAudioElement | null = null;
+
+/**
+ * THE iPhone-silence fix. iOS routes WebAudio through the "ambient" audio
+ * session, which the physical mute/silent switch SILENCES. The app used to
+ * have an HTML5 <audio> element (the background music) that forced a
+ * playback session, so everything was audible; once all audio moved to
+ * WebAudio, a phone on silent killed ALL sound (speech, music, effects).
+ *
+ * Restore audibility two independent ways (must run inside a user gesture):
+ *  1) navigator.audioSession = 'playback' — iOS 16.4+, ignores the mute switch
+ *  2) a silent looping <audio> element — version-independent session holder
+ */
+export function enablePlaybackAudio(): void {
+  if (playbackSessionReady) return;
+  playbackSessionReady = true;
+
+  try {
+    const navAny = navigator as unknown as { audioSession?: { type: string } };
+    if (navAny.audioSession) navAny.audioSession.type = 'playback';
+  } catch {
+    /* API not supported on this device — the keep-alive below covers it */
+  }
+
+  try {
+    silentKeepAlive = new Audio(`/audio/silence.mp3?v=${AUDIO_VERSION}`);
+    silentKeepAlive.loop = true;
+    silentKeepAlive.setAttribute('playsinline', '');
+    void silentKeepAlive.play().catch(() => {});
+  } catch {
+    /* ignore — best effort */
+  }
+}
+
+// Self-installing: the very first user gesture ANYWHERE wakes the audio context
+// and switches iOS into the playback session, no matter which page we land on.
+if (typeof document !== 'undefined') {
+  const kick = () => {
+    if (Howler.ctx && Howler.ctx.state === 'suspended') Howler.ctx.resume();
+    enablePlaybackAudio();
+    audioUnlocked = true;
+    document.removeEventListener('touchstart', kick);
+    document.removeEventListener('pointerdown', kick);
+    document.removeEventListener('click', kick);
+  };
+  document.addEventListener('touchstart', kick, { once: true });
+  document.addEventListener('pointerdown', kick, { once: true });
+  document.addEventListener('click', kick, { once: true });
+}
+
 export function unlockAudio() {
   if (audioUnlocked) return;
 
@@ -16,6 +67,7 @@ export function unlockAudio() {
     if (Howler.ctx && Howler.ctx.state === 'suspended') {
       Howler.ctx.resume();
     }
+    enablePlaybackAudio();
     audioUnlocked = true;
     document.removeEventListener('touchstart', unlock);
     document.removeEventListener('click', unlock);
