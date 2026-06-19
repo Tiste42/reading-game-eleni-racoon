@@ -42,6 +42,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('build');
   const [placed, setPlaced] = useState(0);
   const [wrongTile, setWrongTile] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(false);
   const [bank, setBank] = useState<string[]>([]);
   const [swapChoices, setSwapChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -64,8 +65,17 @@ export default function PotionLab({ worldId, onComplete }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
-  // Recorded line: "Put the letters c, a, t into the cauldron to make cat!"
-  const instruction = `Put the letters ${letters.join(', ')} into the cauldron to make ${current.word}!`;
+  // Hint glow stays off so she sounds the word out herself. It only turns on
+  // after a wrong tap, or after ~5s stuck on the same letter (never trapped).
+  useEffect(() => {
+    if (phase !== 'build') return;
+    setShowHint(false);
+    const t = setTimeout(() => setShowHint(true), 5000);
+    return () => clearTimeout(t);
+  }, [placed, round, phase]);
+
+  // Recorded line tells her to sound the word out, not just tap what glows.
+  const instruction = `Sound out ${current.word}. Say each sound, then put its letter in the cauldron!`;
   const { replay } = useGameSpeech(phase === 'build' ? instruction : null, [round, phase]);
 
   const soundOut = useCallback(async (w: string) => {
@@ -112,6 +122,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
         playSoundEffect('wrong');
         speakPhoneme(needed);
         recordSoundAttempt(needed, false);
+        setShowHint(true);
         setWrongTile(`bank-${idx}`);
         setTimeout(() => setWrongTile(null), 500);
       }
@@ -166,7 +177,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
           <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={114} />
           <p className="text-violet-900 font-[Fredoka] font-bold text-2xl text-center px-3">
             {phase === 'build'
-              ? `Make the word ${current.word}!`
+              ? 'Sound it out!'
               : phase === 'swap'
                 ? 'Magic! Swap the first letter — what new word can we make?'
                 : `${current.swapTo}! A brand new word!`}
@@ -238,7 +249,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
                   }
                   whileTap={{ scale: 0.9 }}
                   className={`w-[100px] h-[108px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
-                    isNeeded ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
+                    isNeeded && showHint ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
                   }`}
                 >
                   {letter}

@@ -27,6 +27,7 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [placed, setPlaced] = useState(0);
   const [wrongTile, setWrongTile] = useState<number | null>(null);
+  const [showHint, setShowHint] = useState(false);
   const [done, setDone] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [words] = useState(() => shuffle(WORDS).slice(0, 6));
@@ -47,7 +48,16 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
-  const instruction = `Build the word ${word}! Tap the letters in order!`;
+  // Hint glow stays off so she sounds the word out herself. It only turns on
+  // after a wrong tap, or after ~5s stuck on the same letter (never trapped).
+  useEffect(() => {
+    if (done) return;
+    setShowHint(false);
+    const t = setTimeout(() => setShowHint(true), 5000);
+    return () => clearTimeout(t);
+  }, [placed, round, done]);
+
+  const instruction = `Sound out ${word}. Say each sound, then find its letter!`;
   const { replay } = useGameSpeech(done ? null : instruction, [round, done]);
 
   // Called after the LAST letter's sound has fully played. Leni then says the
@@ -94,6 +104,7 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
         playSoundEffect('wrong');
         speakPhoneme(needed);
         recordSoundAttempt(needed, false);
+        setShowHint(true);
         setWrongTile(bankIdx);
         setTimeout(() => setWrongTile(null), 500);
       }
@@ -125,7 +136,7 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
           >
             <WordCard word={word} size={180} />
           </motion.div>
-          <p className="text-amber-800 font-[Fredoka] font-bold text-2xl mt-2">Build the word!</p>
+          <p className="text-amber-800 font-[Fredoka] font-bold text-2xl mt-2">Sound it out!</p>
         </div>
 
         {/* Slots being filled */}
@@ -173,7 +184,7 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
                 }
                 whileTap={{ scale: 0.9 }}
                 className={`w-[104px] h-[104px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
-                  isNeeded ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
+                  isNeeded && showHint ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
                 }`}
               >
                 {letter}
