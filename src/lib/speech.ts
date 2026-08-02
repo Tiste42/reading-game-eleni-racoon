@@ -3,6 +3,7 @@
 import { Howl, Howler } from 'howler';
 import { duckMusic, unduckMusic, AUDIO_VERSION } from './audio';
 import { useGameStore } from './store';
+import { CONTENT_AUDIO_WORDS, CONTENT_NARRATION_SLUGS } from '@/content/registry';
 
 // The parent "Voice Volume" slider — applied to every spoken clip.
 function voiceVolume(): number {
@@ -27,6 +28,7 @@ function textToSlug(text: string): string {
 
 // All words that have pre-generated static files
 const KNOWN_WORDS = new Set([
+  ...CONTENT_AUDIO_WORDS,
   // CVC words (Worlds 2-4)
   'sat', 'sit', 'pat', 'tap', 'tip', 'pit', 'pin', 'pan', 'nap', 'nip',
   'tan', 'tin', 'sip', 'ten', 'net', 'let', 'pen', 'pet', 'set',
@@ -73,6 +75,7 @@ const FEEDBACK_CLIPS: Record<string, string[]> = {
 // All pre-generated instruction & phrase narration slugs.
 // If textToSlug(text) is in this set, play from narration/inst-{slug}.mp3
 const KNOWN_NARRATION_SLUGS = new Set([
+  ...CONTENT_NARRATION_SLUGS,
   // --- World 1: Sound Fiesta ---
   // SoundSafari instructions
   'find-the-picture-that-starts-with-s',

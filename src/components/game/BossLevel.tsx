@@ -8,13 +8,16 @@ import GameShell from '@/components/ui/GameShell';
 import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
 import { speakFeedback, speakReveal } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeech, useInstructionSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import WordCard from '@/components/ui/WordCard';
 import { playSoundEffect } from '@/lib/audio';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
 interface BossChallenge {
   type: 'picture-match' | 'word-read' | 'sentence';
   prompt: string;
+  question?: string;
   icon: string;
   correct: string;
   options: string[];
@@ -64,28 +67,25 @@ const BOSS_DATA: Record<number, { name: string; challenges: BossChallenge[] }> =
     { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'pot', options: ['pot', 'hot', 'dot'] },
   ]},
   5: { name: 'Atlas Mountain Riddle', challenges: [
-    { type: 'sentence', prompt: 'The ship is big.', icon: '\uD83D\uDEA2', correct: 'big', options: ['big', 'small', 'red'] },
-    { type: 'sentence', prompt: 'She said no.', icon: '\uD83D\uDE45', correct: 'no', options: ['yes', 'no', 'go'] },
-    { type: 'sentence', prompt: 'He was sad.', icon: '\uD83D\uDE22', correct: 'sad', options: ['sad', 'happy', 'mad'] },
-    { type: 'sentence', prompt: 'I have a thin cat.', icon: '\uD83D\uDC31', correct: 'thin', options: ['fat', 'thin', 'big'] },
-    { type: 'sentence', prompt: 'We can go to the shop.', icon: '\uD83C\uDFEA', correct: 'shop', options: ['shop', 'ship', 'shed'] },
-    { type: 'sentence', prompt: 'The dog is in the shed.', icon: '\uD83D\uDC36', correct: 'shed', options: ['shop', 'ship', 'shed'] },
+    { type: 'sentence', prompt: 'The ship is big.', question: 'What is big?', icon: '', correct: 'the ship', options: ['the ship', 'the shop', 'the shed'] },
+    { type: 'sentence', prompt: 'She said no.', question: 'What did she say?', icon: '', correct: 'no', options: ['yes', 'no', 'go'] },
+    { type: 'sentence', prompt: 'He was sad.', question: 'How did he feel?', icon: '', correct: 'sad', options: ['sad', 'happy', 'mad'] },
+    { type: 'sentence', prompt: 'I have a thin cat.', question: 'What kind of cat?', icon: '', correct: 'thin', options: ['fat', 'thin', 'big'] },
+    { type: 'sentence', prompt: 'We can go to the shop.', question: 'Where can we go?', icon: '', correct: 'the shop', options: ['the shop', 'the ship', 'the shed'] },
+    { type: 'sentence', prompt: 'The dog is in the shed.', question: 'Where is the dog?', icon: '', correct: 'in the shed', options: ['in the shop', 'on the ship', 'in the shed'] },
   ]},
   6: { name: 'The Sunset Story', challenges: [
-    { type: 'sentence', prompt: 'Sam sat on a mat.', icon: '\uD83E\uDDD1', correct: 'a mat', options: ['a mat', 'a cat', 'a hat'] },
-    { type: 'sentence', prompt: 'The cat is big.', icon: '\uD83D\uDC31', correct: 'big', options: ['big', 'small', 'red'] },
-    { type: 'sentence', prompt: 'A bug is on the log.', icon: '\uD83D\uDC1B', correct: 'on the log', options: ['on the log', 'in the cup', 'on the hat'] },
-    { type: 'sentence', prompt: 'He got a red hat.', icon: '\uD83E\uDDE2', correct: 'red', options: ['red', 'blue', 'green'] },
-    { type: 'sentence', prompt: 'The fish is in the net.', icon: '\uD83D\uDC1F', correct: 'in the net', options: ['on the bed', 'in the net', 'in the cup'] },
-    { type: 'sentence', prompt: 'I have a pet dog.', icon: '\uD83D\uDC36', correct: 'a dog', options: ['a dog', 'a cat', 'a fish'] },
+    { type: 'sentence', prompt: 'Sam sat on a mat.', question: 'What did Sam sit on?', icon: '', correct: 'a mat', options: ['a mat', 'a cat', 'a hat'] },
+    { type: 'sentence', prompt: 'The cat is big.', question: 'Is the cat big or small?', icon: '', correct: 'big', options: ['big', 'small', 'red'] },
+    { type: 'sentence', prompt: 'A bug is on the log.', question: 'Where is the bug?', icon: '', correct: 'on the log', options: ['on the log', 'in the cup', 'on the hat'] },
+    { type: 'sentence', prompt: 'He got a red hat.', question: 'What color is the hat?', icon: '', correct: 'red', options: ['red', 'blue', 'green'] },
+    { type: 'sentence', prompt: 'The fish is in the net.', question: 'Where is the fish?', icon: '', correct: 'in the net', options: ['on the bed', 'in the net', 'in the cup'] },
+    { type: 'sentence', prompt: 'I have a pet dog.', question: 'What pet do I have?', icon: '', correct: 'a dog', options: ['a dog', 'a cat', 'a fish'] },
   ]},
 };
 
-// WORD_ICONS imported from @/lib/wordIcons
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const optionId = (option: string) => option;
+const challengeId = (challenge: BossChallenge) => `${challenge.type}:${challenge.prompt}`;
 
 interface Props {
   worldId: number;
@@ -95,20 +95,35 @@ interface Props {
 export default function BossLevel({ worldId, onComplete }: Props) {
   const boss = BOSS_DATA[worldId];
   const world = WORLDS.find((w) => w.id === worldId);
-  const challenges = useMemo(() => shuffle(boss.challenges).slice(0, 6), [boss]);
+  const session = useContentSession({
+    gameId: `boss-${worldId}`,
+    candidates: boss.challenges,
+    count: 6,
+    getId: challengeId,
+  });
+  const challenges = session.items;
   const [round, setRound] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const { completeBoss, addCoins, addPassportStamp, addCompanion, addCostume } = useGameStore();
 
   const current = challenges[round];
-  const stableOptions = useMemo(() => current.options, [current]);
+  const stableOptions = useMemo(() => buildChoiceSet(current.correct, current.options, {
+    count: current.options.length,
+    seed: `${session.seed}:${round}:options`,
+    answerIndex: getBalancedAnswerIndex(round, current.options.length, session.seed),
+    getId: optionId,
+  }), [current, round, session.seed]);
 
-  const { activeOption, doneSpeaking, replay } = useGameSpeechWithOptions(
-    current.prompt,
-    stableOptions,
-    [round]
+  // Assessment prompts never pronounce answer options. Written-word rounds
+  // use picture-only choices, and sentence rounds remain self-read.
+  const picturePrompt = useGameSpeech(current.type === 'picture-match' ? current.prompt : null, [round]);
+  const assessmentPrompt = useInstructionSpeech(
+    current.type === 'word-read' ? 'dragon-feed' : 'story-stroll',
+    current.type !== 'picture-match',
+    [round],
   );
+  const replay = current.type === 'picture-match' ? picturePrompt.replay : assessmentPrompt.replay;
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
 
@@ -138,7 +153,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
   }, [shouldReveal, current, round, challenges, worldId, world, completeBoss, addCoins, addPassportStamp, addCompanion, addCostume]);
 
   const handleAnswer = useCallback((answer: string) => {
-    if (feedback || !doneSpeaking || shouldReveal) return;
+    if (feedback || shouldReveal) return;
     const isLast = round >= challenges.length - 1;
     if (answer === current.correct) {
       playSoundEffect('correct');
@@ -166,7 +181,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
       speakFeedback('wrong');
       setTimeout(() => setFeedback(null), 2000);
     }
-  }, [feedback, doneSpeaking, shouldReveal, current, round, challenges, worldId, world, completeBoss, addCoins, addPassportStamp, addCompanion, addCostume, recordWrong]);
+  }, [feedback, shouldReveal, current, round, challenges, worldId, world, completeBoss, addCoins, addPassportStamp, addCompanion, addCostume, recordWrong]);
 
   return (
     <GameShell
@@ -194,8 +209,8 @@ export default function BossLevel({ worldId, onComplete }: Props) {
               </div>
             ) : current.type === 'sentence' ? (
               <div className="bg-white rounded-3xl px-6 py-5 shadow-xl">
-                {current.icon && <span className="text-6xl block mb-2">{current.icon}</span>}
                 <p className="text-2xl font-bold font-[Fredoka] text-gray-800">{current.prompt}</p>
+                <p data-testid="boss-question" className="text-xl font-semibold font-[Fredoka] text-violet-700 mt-3">{current.question}</p>
               </div>
             ) : (
               <div className="bg-white rounded-3xl px-6 py-4 shadow-xl">
@@ -208,20 +223,23 @@ export default function BossLevel({ worldId, onComplete }: Props) {
 
         {/* Big answer choices */}
         <div className="flex gap-4 flex-wrap justify-center">
-          {stableOptions.map((opt, i) => {
+          {stableOptions.map((opt) => {
             const isRight = opt === current.correct;
             const highlight =
               (shouldReveal && isRight) ? 'ring-4 ring-green-400 scale-105 animate-hint-pulse'
                 : (feedback === 'correct' && isRight) ? 'ring-4 ring-green-400'
-                  : (activeOption === i) ? 'ring-4 ring-blue-400 scale-105' : '';
+                  : '';
             return (
               <motion.button key={opt} whileTap={{ scale: 0.92 }} onClick={() => handleAnswer(opt)}
-                disabled={feedback !== null || !doneSpeaking || shouldReveal}
+                disabled={feedback !== null || shouldReveal}
                 className={`rounded-3xl shadow-xl bg-white press-3d transition-all ${highlight}`}>
-                {current.type === 'picture-match' ? (
-                  <span className="flex flex-col items-center gap-1 p-3">
+                {current.type === 'word-read' ? (
+                  <span className="flex items-center justify-center p-3">
                     <WordCard word={opt} size={96} />
-                    <span className="text-lg font-bold font-[Fredoka] text-gray-700 lowercase">{opt}</span>
+                  </span>
+                ) : current.type === 'picture-match' && !/^\d+$/.test(opt) ? (
+                  <span className="flex items-center justify-center p-3">
+                    <WordCard word={opt} size={96} />
                   </span>
                 ) : (
                   <span className="block px-8 py-5 text-4xl font-bold font-[Fredoka] text-gray-700 lowercase">{opt}</span>

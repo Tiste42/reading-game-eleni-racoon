@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import GameShell from '@/components/ui/GameShell';
@@ -10,13 +10,12 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getWordsForActivity } from '@/content/registry';
+import type { ContentWord } from '@/content/types';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-// Only SATPIN + e, l letters AND words a 3-4 year old knows and can picture.
-const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const wordId = (entry: ContentWord) => entry.id;
 
 interface Props {
   worldId: number;
@@ -28,23 +27,31 @@ type Phase = 'read' | 'sailing' | 'won';
 export default function SailboatRace({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [phase, setPhase] = useState<Phase>('read');
-  const [choices, setChoices] = useState<string[]>([]);
+  const [choices, setChoices] = useState<ContentWord[]>([]);
   const [sailTo, setSailTo] = useState<number | null>(null);
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(WORDS).slice(0, 5));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'blend-to-picture'), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'sailboat-race', candidates: pool, count: 5, getId: wordId });
+  const words = session.items;
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const word = words[round];
-  const letters = word.split('');
+  const entry = words[round];
+  const word = entry.text;
+  const units = entry.units;
   const isLast = round >= words.length - 1;
 
   useEffect(() => {
     setPhase('read');
     setSailTo(null);
     setWrongPick(null);
-    const others = shuffle(WORDS.filter((w) => w !== words[round])).slice(0, 2);
-    setChoices(shuffle([words[round], ...others]));
+    setChoices(buildChoiceSet(entry, pool, {
+      count: 3,
+      seed: `${session.seed}:${entry.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
+      getId: wordId,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
@@ -57,11 +64,11 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
 
   // She can sound the word out herself: tap any sail letter to hear its sound
   const soundOut = useCallback(async () => {
-    for (let i = 0; i < letters.length; i++) {
-      await speakPhoneme(letters[i]);
-      if (i < letters.length - 1) await new Promise((r) => setTimeout(r, 120));
+    for (let i = 0; i < units.length; i++) {
+      await speakPhoneme(units[i].phonemeId);
+      if (i < units.length - 1) await new Promise((r) => setTimeout(r, 120));
     }
-  }, [letters]);
+  }, [units]);
 
   const advance = useCallback(() => {
     if (isLast) {
@@ -79,7 +86,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
       (async () => {
         recordSoundAttempt(word, false);
         await speakReveal(word);
-        setSailTo(choices.indexOf(word));
+        setSailTo(choices.findIndex((choice) => choice.id === entry.id));
         setPhase('sailing');
         await new Promise((r) => setTimeout(r, 1400));
         advance();
@@ -89,9 +96,9 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
   }, [shouldReveal, phase]);
 
   const pickIsland = useCallback(
-    (w: string, index: number) => {
+    (choice: ContentWord, index: number) => {
       if (phase !== 'read') return;
-      if (w === word) {
+      if (choice.id === entry.id) {
         recordSoundAttempt(word, true);
         incrementStreak();
         masterWord(word);
@@ -110,14 +117,14 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
-        setWrongPick(w);
+        setWrongPick(choice.id);
         (async () => {
           await soundOut();
           setWrongPick(null);
         })();
       }
     },
-    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
+    [phase, entry.id, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
   );
 
   // Boat slides toward the chosen island (3 islands → x offsets)
@@ -154,14 +161,14 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
           >
             {/* sail with big tappable letters */}
             <div className="bg-white rounded-2xl px-4 py-3 shadow-xl flex gap-2 border-b-8 border-amber-700">
-              {letters.map((letter, i) => (
+              {units.map((unit, i) => (
                 <motion.button
                   key={i}
-                  onClick={() => speakPhoneme(letter)}
+                  onClick={() => speakPhoneme(unit.phonemeId)}
                   whileTap={{ scale: 0.88 }}
                   className="w-[72px] h-[80px] rounded-2xl bg-yellow-300 text-gray-800 text-6xl font-bold font-[Fredoka] lowercase shadow-md press-3d flex items-center justify-center"
                 >
-                  {letter}
+                  {unit.text}
                 </motion.button>
               ))}
             </div>
@@ -172,17 +179,17 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
 
         {/* The islands */}
         <div className="grid grid-cols-3 gap-2 w-full max-w-md mx-auto px-1">
-          {choices.map((w, index) => {
-            const isAnswer = w === word;
+          {choices.map((choice, index) => {
+            const isAnswer = choice.id === entry.id;
             const highlight = (phase !== 'read' || shouldReveal) && isAnswer;
             return (
               <motion.button
-                key={`${round}-${w}`}
-                onClick={() => pickIsland(w, index)}
+                key={choice.id}
+                onClick={() => pickIsland(choice, index)}
                 disabled={phase !== 'read'}
                 initial={{ y: 40, opacity: 0 }}
                 animate={
-                  wrongPick === w
+                  wrongPick === choice.id
                     ? { x: [-8, 8, -8, 8, 0], y: 0, opacity: 1 }
                     : highlight
                       ? { y: [0, -10, 0], opacity: 1 }
@@ -194,7 +201,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
                 }`}
               >
                 <span className="bg-white rounded-3xl p-1.5 shadow-xl press-3d">
-                  <WordCard word={w} size={88} />
+                  <WordCard word={choice.text} size={88} />
                 </span>
                 <span className="text-6xl -mt-3">🏝️</span>
               </motion.button>

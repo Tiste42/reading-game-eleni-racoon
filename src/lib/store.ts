@@ -2,6 +2,9 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import type { ContentPackId } from '@/content/types';
+import { normalizeEnabledPackIds, updateEnabledPackIds } from '@/content/registry';
+import type { ContentHistory } from './roundSelector';
 
 export interface SessionEntry {
   date: string;
@@ -43,6 +46,10 @@ interface GameState {
   volume: number;
   musicVolume: number;
   freePlay: boolean;
+  enabledContentPackIds: ContentPackId[];
+  contentSeed: string;
+  contentRunCounter: number;
+  recentContentByGame: Record<string, ContentHistory>;
 
   setCurrentWorld: (world: number) => void;
   completeGame: (world: number, gameId: string) => void;
@@ -65,6 +72,9 @@ interface GameState {
   setVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
   toggleFreePlay: () => void;
+  setContentPackEnabled: (packId: ContentPackId, enabled: boolean) => void;
+  beginContentRun: () => void;
+  recordContentBatch: (gameId: string, targetIds: string[]) => void;
   isWorldUnlocked: (world: number) => boolean;
   isGameUnlocked: (world: number, gameIndex: number) => boolean;
   resetProgress: () => void;
@@ -99,6 +109,10 @@ export const useGameStore = create<GameState>()(
       volume: 0.9,
       musicVolume: 0.08, // music sits well under Leni's voice by default
       freePlay: false,
+      enabledContentPackIds: [],
+      contentSeed: 'eleni-v2',
+      contentRunCounter: 0,
+      recentContentByGame: {},
 
       setCurrentWorld: (world) => set({ currentWorld: world }),
 
@@ -204,6 +218,28 @@ export const useGameStore = create<GameState>()(
       setMusicVolume: (musicVolume) =>
         set((state) => ({ musicVolume: Math.min(musicVolume, state.volume * 0.6) })),
       toggleFreePlay: () => set((state) => ({ freePlay: !state.freePlay })),
+      setContentPackEnabled: (packId, enabled) =>
+        set((state) => ({
+          enabledContentPackIds: updateEnabledPackIds(state.enabledContentPackIds, packId, enabled),
+        })),
+      beginContentRun: () =>
+        set((state) => ({ contentRunCounter: state.contentRunCounter + 1 })),
+      recordContentBatch: (gameId, targetIds) =>
+        set((state) => {
+          const previous = state.recentContentByGame[gameId] || { targetIds: [] };
+          const keepNewest = (previousValues: string[], newValues: string[], limit: number) => [
+            ...previousValues.filter((value) => !newValues.includes(value)),
+            ...new Set(newValues),
+          ].slice(-limit);
+          return {
+            recentContentByGame: {
+              ...state.recentContentByGame,
+              [gameId]: {
+                targetIds: keepNewest(previous.targetIds, targetIds, 24),
+              },
+            },
+          };
+        }),
 
       isWorldUnlocked: (world) => {
         if (get().freePlay) return true;
@@ -234,10 +270,34 @@ export const useGameStore = create<GameState>()(
           soundStats: {},
           streakCount: 0,
           sessionHistory: [],
+          enabledContentPackIds: [],
+          contentRunCounter: 0,
+          recentContentByGame: {},
         }),
     }),
     {
       name: 'eleni-sound-safari',
+      version: 2,
+      migrate: (persistedState) => {
+        const legacy = (persistedState || {}) as Partial<GameState>;
+        const advanced = Boolean(
+          legacy.worldProgress?.[3]?.bossCompleted ||
+          legacy.worldProgress?.[4]?.gamesCompleted?.length ||
+          (legacy.masteredWords?.length ?? 0) >= 6,
+        );
+        const migratedPacks = legacy.enabledContentPackIds
+          ? normalizeEnabledPackIds(legacy.enabledContentPackIds)
+          : advanced
+            ? (['continuous-bridge', 'cvc-grid', 'longer-words'] as ContentPackId[])
+            : [];
+        return {
+          ...legacy,
+          enabledContentPackIds: migratedPacks,
+          contentSeed: legacy.contentSeed || 'eleni-v2',
+          contentRunCounter: legacy.contentRunCounter || 0,
+          recentContentByGame: legacy.recentContentByGame || {},
+        } as GameState;
+      },
       storage: createJSONStorage(() => {
         if (typeof window === 'undefined') {
           return {

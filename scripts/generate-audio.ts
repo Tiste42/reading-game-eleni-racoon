@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { CONTENT_NARRATION_PHRASES } from '../src/content/registry';
 
 const envPath = path.join(process.cwd(), '.env.local');
 if (fs.existsSync(envPath)) {
@@ -558,6 +559,7 @@ function buildManifest(): AudioClip[] {
     'Remove the net', 'Add more net', 'Swim away', 'Sit on it', 'Move the log', 'Jump on it',
     'Leave it', 'Push it deeper', 'Pick it up', 'Put it in the bin', 'Kick it', 'Hide it',
     'Cook it', 'Free the fish', 'Watch it',
+    ...CONTENT_NARRATION_PHRASES,
   ];
 
   // Wrong/reveal template narrations
@@ -638,7 +640,6 @@ function buildManifest(): AudioClip[] {
   // Dynamically import book config — works at build time with tsx
   let BOOKS: Array<{ id: string; pages: Array<{ narrationText: string }> }> = [];
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const booksModule = require('../src/lib/books');
     BOOKS = booksModule.BOOKS || [];
   } catch {
@@ -743,6 +744,7 @@ async function main() {
     console.log(`\n--- ${cat.toUpperCase()} (${catClips.length} clips) ---`);
 
     for (const clip of catClips) {
+      const existed = fs.existsSync(path.join(OUTPUT_DIR, clip.outputPath));
       const ok = await generateClip(clip);
       if (ok) {
         successCount++;
@@ -750,7 +752,7 @@ async function main() {
         failCount++;
         failures.push(clip.outputPath);
       }
-      await sleep(RATE_LIMIT_MS);
+      if (!existed) await sleep(RATE_LIMIT_MS);
     }
   }
 

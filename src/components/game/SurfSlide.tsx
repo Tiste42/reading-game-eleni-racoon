@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import GameShell from '@/components/ui/GameShell';
@@ -10,9 +10,12 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getWordsForActivity } from '@/content/registry';
+import type { ContentWord } from '@/content/types';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-/** Dedicated surfing-Leni artwork; falls back to the wetsuit costume until
- * the file is added at /images/generated/eleni/eleni-surfing.png */
+/** Dedicated surfing-Leni artwork with a defensive fallback. */
 function SurfingLeni({ size, done }: { size: number; done: boolean }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
@@ -20,7 +23,7 @@ function SurfingLeni({ size, done }: { size: number; done: boolean }) {
   }
   return (
     <img
-      src="/images/generated/eleni/eleni-surfing.png"
+      src="/images/generated/eleni/eleni-surfer.png"
       width={size}
       height={size}
       alt="Leni surfing"
@@ -32,14 +35,7 @@ function SurfingLeni({ size, done }: { size: number; done: boolean }) {
   );
 }
 
-// Blending words — only SATPIN + e, l letters AND words a 3-4 year old
-// actually KNOWS and can picture (an ant, a pen, lips...). No "tin"/"pan" —
-// toddlers don't know those words. Every word here has real art.
-const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const wordId = (entry: ContentWord) => entry.id;
 
 interface Props {
   worldId: number;
@@ -52,15 +48,19 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [step, setStep] = useState(0); // letters surfed so far
   const [phase, setPhase] = useState<Phase>('blend');
-  const [choices, setChoices] = useState<string[]>([]);
+  const [choices, setChoices] = useState<ContentWord[]>([]);
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'blend-to-picture'), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'surf-slide', candidates: pool, count: 6, getId: wordId });
+  const words = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordSoundAttempt } = useGameStore();
 
-  const word = words[round];
-  const letters = word.split('');
-  const n = letters.length;
+  const entry = words[round];
+  const word = entry.text;
+  const units = entry.units;
+  const n = units.length;
   const isLast = round >= words.length - 1;
 
   useEffect(() => {
@@ -91,32 +91,35 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
   // play to COMPLETION (await) — a fixed timer cuts the recordings off and
   // the sounds never get to "blend".
   const soundOut = useCallback(async () => {
-    const ls = word.split('');
-    for (let i = 0; i < ls.length; i++) {
-      await speakPhoneme(ls[i]);
-      if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 120));
+    for (let i = 0; i < units.length; i++) {
+      await speakPhoneme(units[i].phonemeId);
+      if (i < units.length - 1) await new Promise((r) => setTimeout(r, 120));
     }
-  }, [word]);
+  }, [units]);
 
   // After the last letter is surfed: move to the choosing step and sound the
   // whole word out once so she can hear the letters blend together.
   const startChoose = useCallback(() => {
-    const others = shuffle(WORDS.filter((w) => w !== word)).slice(0, 2);
-    setChoices(shuffle([word, ...others]));
+    setChoices(buildChoiceSet(entry, pool, {
+      count: 3,
+      seed: `${session.seed}:${entry.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
+      getId: wordId,
+    }));
     setPhase('choose');
     soundOut();
-  }, [word, soundOut]);
+  }, [entry, pool, round, session.seed, soundOut]);
 
   const surfTo = useCallback(
     (i: number) => {
       if (phase !== 'blend' || i !== step) return; // only the next glowing letter responds
       playSoundEffect('tap');
-      speakPhoneme(letters[i]);
+      speakPhoneme(units[i].phonemeId);
       const ns = i + 1;
       setStep(ns);
       if (ns === n) setTimeout(startChoose, 800);
     },
-    [phase, step, letters, n, startChoose],
+    [phase, step, units, n, startChoose],
   );
 
   // Two wrong picks → model the answer and move on (never a dead end)
@@ -134,9 +137,9 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
   }, [shouldReveal, phase]);
 
   const pickChoice = useCallback(
-    (w: string) => {
+    (choice: ContentWord) => {
       if (phase !== 'choose') return;
-      if (w === word) {
+      if (choice.id === entry.id) {
         recordSoundAttempt(word, true);
         incrementStreak();
         masterWord(word);
@@ -153,7 +156,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
-        setWrongPick(w);
+        setWrongPick(choice.id);
         // Re-teach: sound the real word out again (human voice) so she can retry
         (async () => {
           await soundOut();
@@ -161,7 +164,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
         })();
       }
     },
-    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
+    [phase, entry.id, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
   );
 
   // The 🔊 Again button: replay the instruction while blending, or sound the
@@ -201,7 +204,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
           <>
             {/* Big tappable letters */}
             <div className="flex justify-center gap-3">
-              {letters.map((letter, i) => {
+              {units.map((unit, i) => {
                 const surfed = i < step;
                 const isNext = i === step;
                 return (
@@ -220,7 +223,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
                           : 'bg-white/70 text-gray-500'
                     }`}
                   >
-                    {letter}
+                    {unit.text}
                   </motion.button>
                 );
               })}
@@ -233,14 +236,14 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
           <div className="flex flex-col items-center gap-3">
             {/* The word — big tappable letters, tap to hear each sound again */}
             <div className="flex justify-center gap-3">
-              {letters.map((letter, i) => (
+              {units.map((unit, i) => (
                 <motion.button
                   key={i}
-                  onClick={() => speakPhoneme(letter)}
+                  onClick={() => speakPhoneme(unit.phonemeId)}
                   whileTap={{ scale: 0.9 }}
                   className="w-[88px] h-[96px] rounded-3xl bg-yellow-300 text-gray-800 text-7xl font-bold font-[Fredoka] lowercase shadow-lg press-3d flex items-center justify-center"
                 >
-                  {letter}
+                  {unit.text}
                 </motion.button>
               ))}
             </div>
@@ -254,21 +257,21 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-3 gap-3 w-full max-w-md mx-auto px-1 mt-1"
             >
-              {choices.map((w) => {
-                const isAnswer = w === word;
+              {choices.map((choice) => {
+                const isAnswer = choice.id === entry.id;
                 const revealAnswer = (phase === 'won' || shouldReveal) && isAnswer;
                 return (
                   <motion.button
-                    key={w}
-                    onClick={() => pickChoice(w)}
+                    key={choice.id}
+                    onClick={() => pickChoice(choice)}
                     disabled={phase === 'won'}
-                    animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                    animate={wrongPick === choice.id ? { x: [-8, 8, -8, 8, 0] } : {}}
                     whileTap={{ scale: 0.92 }}
                     className={`rounded-3xl p-2 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
                       revealAnswer ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                     }`}
                   >
-                    <WordCard word={w} size={96} />
+                    <WordCard word={choice.text} size={96} />
                   </motion.button>
                 );
               })}

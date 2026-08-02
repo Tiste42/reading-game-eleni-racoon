@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -8,27 +8,19 @@ import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback } from '@/lib/speech';
-import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useInstructionSpeech } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getWordChains, type ResolvedWordChain } from '@/content/registry';
+import type { GraphemeUnit } from '@/content/types';
+import { shuffleSeeded } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-interface PotionRound {
-  word: string; // build lines recorded for these
-  swapTo: string; // change first letter -> new word (word chaining!)
-  swapDistractor: string;
+interface BankTile {
+  id: string;
+  unit: GraphemeUnit;
 }
 
-const POTION_ROUNDS: PotionRound[] = [
-  { word: 'cat', swapTo: 'hat', swapDistractor: 's' },
-  { word: 'pin', swapTo: 'bin', swapDistractor: 'm' },
-  { word: 'hot', swapTo: 'pot', swapDistractor: 'l' },
-  { word: 'bat', swapTo: 'mat', swapDistractor: 'f' },
-  { word: 'dog', swapTo: 'log', swapDistractor: 'n' },
-  { word: 'cup', swapTo: 'pup', swapDistractor: 't' },
-];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const chainId = (chain: ResolvedWordChain) => chain.id;
 
 interface Props {
   worldId: number;
@@ -43,46 +35,49 @@ export default function PotionLab({ worldId, onComplete }: Props) {
   const [placed, setPlaced] = useState(0);
   const [wrongTile, setWrongTile] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
-  const [bank, setBank] = useState<string[]>([]);
-  const [swapChoices, setSwapChoices] = useState<string[]>([]);
+  const [bank, setBank] = useState<BankTile[]>([]);
+  const [usedTileIds, setUsedTileIds] = useState<Set<string>>(new Set());
+  const [swapChoices, setSwapChoices] = useState<GraphemeUnit[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(POTION_ROUNDS).slice(0, 5));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const chainPool = useMemo(() => getWordChains(enabledContentPackIds), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'potion-lab', candidates: chainPool, count: 5, getId: chainId });
+  const rounds = session.items;
   const { completeGame, addCoins, masterWord, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
-  const letters = current.word.split('');
-  const newLetter = current.swapTo[0];
+  const units = current.from.units;
+  const newUnit = current.to.units[current.changedUnitIndex];
   const isLast = round >= rounds.length - 1;
 
   useEffect(() => {
     setPhase('build');
     setPlaced(0);
     setWrongTile(null);
-    let s = shuffle(letters);
-    if (s.join('') === current.word) s = [...s].reverse();
+    let s = shuffleSeeded(
+      units.map((item, index) => ({ id: `${current.id}:${index}`, unit: item })),
+      `${session.seed}:${current.id}:bank`,
+    );
+    if (s.map((tile) => tile.unit.text).join('') === current.from.text) s = [...s].reverse();
     setBank(s);
-    setSwapChoices(shuffle([newLetter, current.swapDistractor]));
+    setUsedTileIds(new Set());
+    setSwapChoices(shuffleSeeded([newUnit, ...current.distractorUnits], `${session.seed}:${current.id}:swap`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
-  // Hint glow stays off so she sounds the word out herself. It only turns on
-  // after a wrong tap, or after ~5s stuck on the same letter (never trapped).
+  // Never reveal the next letter just because time passed. A hint appears only
+  // after a wrong attempt, then clears when she places the correct tile.
   useEffect(() => {
-    if (phase !== 'build') return;
     setShowHint(false);
-    const t = setTimeout(() => setShowHint(true), 5000);
-    return () => clearTimeout(t);
-  }, [placed, round, phase]);
+  }, [placed, round]);
 
   // Recorded line tells her to sound the word out, not just tap what glows.
-  const instruction = `Sound out ${current.word}. Say each sound, then put its letter in the cauldron!`;
-  const { replay } = useGameSpeech(phase === 'build' ? instruction : null, [round, phase]);
+  const { replay } = useInstructionSpeech('potion-lab', phase === 'build', [round]);
 
-  const soundOut = useCallback(async (w: string) => {
-    const ls = w.split('');
-    for (let i = 0; i < ls.length; i++) {
-      await speakPhoneme(ls[i]);
-      if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 120));
+  const soundOut = useCallback(async (wordUnits: GraphemeUnit[]) => {
+    for (let i = 0; i < wordUnits.length; i++) {
+      await speakPhoneme(wordUnits[i].phonemeId);
+      if (i < wordUnits.length - 1) await new Promise((r) => setTimeout(r, 120));
     }
   }, []);
 
@@ -98,69 +93,67 @@ export default function PotionLab({ worldId, onComplete }: Props) {
 
   // Build phase: tap letters in order (MarketBuilder pattern)
   const tapBankLetter = useCallback(
-    (letter: string, idx: number) => {
+    (tile: BankTile, idx: number) => {
       if (phase !== 'build') return;
-      const needed = letters[placed];
-      if (letter === needed) {
+      const needed = units[placed];
+      if (tile.unit.text === needed.text) {
         playSoundEffect('tap');
-        recordSoundAttempt(letter, true);
+        recordSoundAttempt(needed.phonemeId, true);
+        setUsedTileIds((currentIds) => new Set(currentIds).add(tile.id));
         const np = placed + 1;
         setPlaced(np);
-        if (np === letters.length) {
+        if (np === units.length) {
           (async () => {
-            await speakPhoneme(letter); // last sound plays fully...
+            await speakPhoneme(needed.phonemeId); // last sound plays fully...
             await new Promise((r) => setTimeout(r, 150));
             playSoundEffect('celebrate'); // potion bubbles!
-            masterWord(current.word);
-            await speakWord(current.word); // ...then Leni says the word
+            masterWord(current.from.text);
+            await speakWord(current.from.text); // ...then Leni says the word
             setPhase('swap');
           })();
         } else {
-          speakPhoneme(letter);
+          speakPhoneme(needed.phonemeId);
         }
       } else {
         playSoundEffect('wrong');
-        speakPhoneme(needed);
-        recordSoundAttempt(needed, false);
+        speakPhoneme(needed.phonemeId);
+        recordSoundAttempt(needed.phonemeId, false);
         setShowHint(true);
         setWrongTile(`bank-${idx}`);
         setTimeout(() => setWrongTile(null), 500);
       }
     },
-    [phase, letters, placed, current.word, masterWord, recordSoundAttempt],
+    [phase, units, placed, current.from.text, masterWord, recordSoundAttempt],
   );
 
-  // Swap phase: first letter popped out — pick the new letter to make a NEW word
+  // Swap phase: one grapheme pops out — pick the new one to make a new word.
   const tapSwapLetter = useCallback(
-    (letter: string) => {
+    (choice: GraphemeUnit) => {
       if (phase !== 'swap') return;
-      if (letter === newLetter) {
+      if (choice.text === newUnit.text && choice.phonemeId === newUnit.phonemeId) {
         playSoundEffect('coin');
-        recordSoundAttempt(letter, true);
-        masterWord(current.swapTo);
+        recordSoundAttempt(newUnit.phonemeId, true);
+        masterWord(current.to.text);
         setPhase('won');
         (async () => {
-          await soundOut(current.swapTo);
-          await speakWord(current.swapTo);
+          await soundOut(current.to.units);
+          await speakWord(current.to.text);
           await speakFeedback(isLast ? 'complete' : 'correct');
           await new Promise((r) => setTimeout(r, 800));
           finishRound();
         })();
       } else {
         playSoundEffect('wrong');
-        recordSoundAttempt(newLetter, false);
-        setWrongTile(`swap-${letter}`);
+        recordSoundAttempt(newUnit.phonemeId, false);
+        setWrongTile(`swap-${choice.text}`);
         (async () => {
-          await speakPhoneme(newLetter); // hint: the sound we need
+          await speakPhoneme(newUnit.phonemeId); // hint: the sound we need
           setWrongTile(null);
         })();
       }
     },
-    [phase, newLetter, current.swapTo, isLast, finishRound, masterWord, recordSoundAttempt, soundOut],
+    [phase, newUnit, current.to, isLast, finishRound, masterWord, recordSoundAttempt, soundOut],
   );
-
-  const isUsed = (letter: string) => letters.slice(0, placed).includes(letter);
-  const displayWord = phase === 'won' ? current.swapTo : current.word;
 
   return (
     <GameShell
@@ -179,23 +172,28 @@ export default function PotionLab({ worldId, onComplete }: Props) {
             {phase === 'build'
               ? 'Sound it out!'
               : phase === 'swap'
-                ? 'Magic! Swap the first letter — what new word can we make?'
-                : `${current.swapTo}! A brand new word!`}
+                ? 'Look at the picture. Swap one sound to make that word!'
+                : `${current.to.text}! A brand new word!`}
           </p>
         </div>
 
         {/* Cauldron with letter slots */}
         <div className="flex flex-col items-center">
-          <div className="flex gap-3 mb-1">
-            {letters.map((letter, i) => {
+          {phase !== 'won' && (
+            <div data-testid="potion-target-picture" className="bg-white/90 rounded-2xl p-1 shadow-lg mb-2">
+              <WordCard word={phase === 'build' ? current.from.text : current.to.text} size={90} />
+            </div>
+          )}
+          <div className="flex gap-2 sm:gap-3 mb-1">
+            {units.map((unit, i) => {
               const filled = i < placed;
               const isNext = i === placed && phase === 'build';
-              const isSwapSlot = i === 0 && phase === 'swap';
-              const shown = phase === 'won' && i === 0 ? newLetter : letter;
+              const isSwapSlot = i === current.changedUnitIndex && phase === 'swap';
+              const shown = phase === 'won' && i === current.changedUnitIndex ? newUnit.text : unit.text;
               return (
                 <div
                   key={i}
-                  className={`w-[84px] h-[92px] rounded-2xl flex items-center justify-center text-6xl font-bold font-[Fredoka] lowercase shadow-inner transition-colors ${
+                  className={`w-[72px] h-[78px] sm:w-[84px] sm:h-[92px] rounded-2xl flex items-center justify-center text-5xl sm:text-6xl font-bold font-[Fredoka] lowercase shadow-inner transition-colors ${
                     isSwapSlot
                       ? 'bg-violet-200 border-4 border-dashed border-violet-500 animate-hint-pulse'
                       : filled || phase !== 'build'
@@ -205,7 +203,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
                           : 'bg-white/30 border-4 border-dashed border-white/50'
                   }`}
                 >
-                  {(filled || phase === 'won' || (phase === 'swap' && i > 0)) && !isSwapSlot && (
+                  {(filled || phase === 'won' || (phase === 'swap' && i !== current.changedUnitIndex)) && !isSwapSlot && (
                     <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>{shown}</motion.span>
                   )}
                   {isSwapSlot && <span className="text-4xl">✨</span>}
@@ -223,22 +221,22 @@ export default function PotionLab({ worldId, onComplete }: Props) {
           <AnimatePresence>
             {phase === 'won' && (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-2 shadow-xl -mt-2">
-                <WordCard word={current.swapTo} size={110} />
+                <WordCard word={current.to.text} size={110} />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
         {/* Letter bank (build) or swap choices */}
-        <div className="flex gap-4 min-h-[110px] items-center">
+        <div className="flex gap-2 sm:gap-4 min-h-[110px] items-center">
           {phase === 'build' &&
-            bank.map((letter, idx) => {
-              const used = isUsed(letter);
-              const isNeeded = letter === letters[placed];
+            bank.map((tile, idx) => {
+              const used = usedTileIds.has(tile.id);
+              const isNeeded = tile.unit.text === units[placed]?.text;
               return (
                 <motion.button
-                  key={idx}
-                  onClick={() => tapBankLetter(letter, idx)}
+                  key={tile.id}
+                  onClick={() => tapBankLetter(tile, idx)}
                   disabled={used}
                   animate={
                     wrongTile === `bank-${idx}`
@@ -248,24 +246,24 @@ export default function PotionLab({ worldId, onComplete }: Props) {
                         : { scale: 1, opacity: 1 }
                   }
                   whileTap={{ scale: 0.9 }}
-                  className={`w-[100px] h-[108px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
+                  className={`w-[84px] h-[92px] sm:w-[100px] sm:h-[108px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-6xl sm:text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
                     isNeeded && showHint ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
                   }`}
                 >
-                  {letter}
+                  {tile.unit.text}
                 </motion.button>
               );
             })}
           {phase === 'swap' &&
-            swapChoices.map((letter) => (
+            swapChoices.map((choice) => (
               <motion.button
-                key={letter}
-                onClick={() => tapSwapLetter(letter)}
-                animate={wrongTile === `swap-${letter}` ? { x: [-8, 8, -8, 8, 0] } : {}}
+                key={`${choice.text}:${choice.phonemeId}`}
+                onClick={() => tapSwapLetter(choice)}
+                animate={wrongTile === `swap-${choice.text}` ? { x: [-8, 8, -8, 8, 0] } : {}}
                 whileTap={{ scale: 0.9 }}
                 className="w-[100px] h-[108px] rounded-3xl bg-violet-100 shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-violet-800 lowercase press-3d ring-2 ring-violet-300"
               >
-                {letter}
+                {choice.text}
               </motion.button>
             ))}
         </div>

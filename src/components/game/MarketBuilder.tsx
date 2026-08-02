@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -8,15 +8,19 @@ import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback } from '@/lib/speech';
-import { useGameSpeech } from '@/lib/useGameSpeech';
+import { useInstructionSpeech } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getWordsForActivity } from '@/content/registry';
+import type { ContentWord, GraphemeUnit } from '@/content/types';
+import { shuffleSeeded } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-// Only SATPIN + e, l letters AND words a 3-4 year old knows and can picture.
-const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
+interface BankTile {
+  id: string;
+  unit: GraphemeUnit;
 }
+
+const wordId = (entry: ContentWord) => entry.id;
 
 interface Props {
   worldId: number;
@@ -30,35 +34,42 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
   const [showHint, setShowHint] = useState(false);
   const [done, setDone] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'picture-to-build'), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'market-builder', candidates: pool, count: 6, getId: wordId });
+  const words = session.items;
   const { completeGame, addCoins, masterWord, recordSoundAttempt } = useGameStore();
 
-  const word = words[round];
-  const letters = word.split('');
+  const entry = words[round];
+  const word = entry.text;
+  const units = entry.units;
   const isLast = round >= words.length - 1;
 
   // Scrambled letter bank, stable per round
-  const [bank, setBank] = useState<string[]>([]);
+  const [bank, setBank] = useState<BankTile[]>([]);
+  const [usedTileIds, setUsedTileIds] = useState<Set<string>>(new Set());
   useEffect(() => {
-    let s = shuffle(letters);
-    if (s.join('') === word) s = [...s].reverse();
+    let s = shuffleSeeded(
+      units.map((item, index) => ({ id: `${entry.id}:${index}`, unit: item })),
+      `${session.seed}:${entry.id}:bank`,
+    );
+    if (s.map((tile) => tile.unit.text).join('') === word) s = [...s].reverse();
     setBank(s);
     setPlaced(0);
     setDone(false);
+    setUsedTileIds(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
-  // Hint glow stays off so she sounds the word out herself. It only turns on
-  // after a wrong tap, or after ~5s stuck on the same letter (never trapped).
+  // Never reveal the next letter just because time passed. A hint appears only
+  // after a wrong attempt, then clears when she places the correct tile.
   useEffect(() => {
-    if (done) return;
     setShowHint(false);
-    const t = setTimeout(() => setShowHint(true), 5000);
-    return () => clearTimeout(t);
-  }, [placed, round, done]);
+  }, [placed, round]);
 
-  const instruction = `Sound out ${word}. Say each sound, then find its letter!`;
-  const { replay } = useGameSpeech(done ? null : instruction, [round, done]);
+  // Generic recorded directions preserve the picture-to-word contract: the
+  // target word is never pronounced before Eleni builds it.
+  const { replay } = useInstructionSpeech('market-builder', !done, [round]);
 
   // Called after the LAST letter's sound has fully played. Leni then says the
   // whole word as the answer (no stretched-blend clip).
@@ -81,39 +92,37 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
   }, [word, isLast, worldId, completeGame, addCoins, masterWord]);
 
   const tapLetter = useCallback(
-    (letter: string, bankIdx: number) => {
+    (tile: BankTile, bankIdx: number) => {
       if (done) return;
-      const needed = letters[placed];
-      if (letter === needed) {
+      const needed = units[placed];
+      if (tile.unit.text === needed.text) {
         playSoundEffect('tap');
-        recordSoundAttempt(letter, true);
+        recordSoundAttempt(needed.phonemeId, true);
+        setUsedTileIds((current) => new Set(current).add(tile.id));
         const np = placed + 1;
         setPlaced(np);
-        if (np === letters.length) {
+        if (np === units.length) {
           // Last letter: let its human sound finish, THEN say the word
           (async () => {
-            await speakPhoneme(letter);
+            await speakPhoneme(needed.phonemeId);
             await new Promise((r) => setTimeout(r, 150));
             completeWord();
           })();
         } else {
-          speakPhoneme(letter);
+          speakPhoneme(needed.phonemeId);
         }
       } else {
         // Foolproof: a wrong tap never traps her — shake + play the sound she needs
         playSoundEffect('wrong');
-        speakPhoneme(needed);
-        recordSoundAttempt(needed, false);
+        speakPhoneme(needed.phonemeId);
+        recordSoundAttempt(needed.phonemeId, false);
         setShowHint(true);
         setWrongTile(bankIdx);
         setTimeout(() => setWrongTile(null), 500);
       }
     },
-    [done, letters, placed, completeWord, recordSoundAttempt],
+    [done, units, placed, completeWord, recordSoundAttempt],
   );
-
-  // A bank tile is "used" once its letter has been placed (letters are unique per word)
-  const isUsed = (letter: string) => letters.slice(0, placed).includes(letter);
 
   return (
     <GameShell
@@ -130,6 +139,7 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
           <EleniCharacter pose={done ? 'celebrating' : 'excited'} size={140} />
           <motion.div
             key={round}
+            data-testid="market-target-picture"
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white/90 rounded-3xl p-3 shadow-lg -mt-2"
@@ -140,14 +150,14 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
         </div>
 
         {/* Slots being filled */}
-        <div className="flex gap-3">
-          {letters.map((letter, i) => {
+        <div className="flex gap-2 sm:gap-3">
+          {units.map((unit, i) => {
             const filled = i < placed;
             const isNext = i === placed && !done;
             return (
               <div
                 key={i}
-                className={`w-[84px] h-[84px] rounded-2xl flex items-center justify-center text-6xl font-bold font-[Fredoka] lowercase shadow-inner transition-colors ${
+                className={`w-[72px] h-[78px] sm:w-[84px] sm:h-[84px] rounded-2xl flex items-center justify-center text-5xl sm:text-6xl font-bold font-[Fredoka] lowercase shadow-inner transition-colors ${
                   filled
                     ? 'bg-green-300 text-gray-800'
                     : isNext
@@ -157,7 +167,7 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
               >
                 {filled && (
                   <motion.span initial={{ scale: 0, y: -20 }} animate={{ scale: 1, y: 0 }}>
-                    {letter}
+                    {unit.text}
                   </motion.span>
                 )}
               </div>
@@ -166,14 +176,14 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
         </div>
 
         {/* Letter bank — big tiles */}
-        <div className="flex gap-4">
-          {bank.map((letter, bankIdx) => {
-            const used = isUsed(letter);
-            const isNeeded = letter === letters[placed] && !done;
+        <div className="flex gap-2 sm:gap-4">
+          {bank.map((tile, bankIdx) => {
+            const used = usedTileIds.has(tile.id);
+            const isNeeded = tile.unit.text === units[placed]?.text && !done;
             return (
               <motion.button
-                key={bankIdx}
-                onClick={() => tapLetter(letter, bankIdx)}
+                key={tile.id}
+                onClick={() => tapLetter(tile, bankIdx)}
                 disabled={used || done}
                 animate={
                   wrongTile === bankIdx
@@ -183,11 +193,11 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
                       : { scale: 1, opacity: 1 }
                 }
                 whileTap={{ scale: 0.9 }}
-                className={`w-[104px] h-[104px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
+                className={`w-[84px] h-[92px] sm:w-[104px] sm:h-[104px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-6xl sm:text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
                   isNeeded && showHint ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
                 }`}
               >
-                {letter}
+                {tile.unit.text}
               </motion.button>
             );
           })}

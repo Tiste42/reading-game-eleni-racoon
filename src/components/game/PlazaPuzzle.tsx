@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,13 +10,12 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getWordsForActivity } from '@/content/registry';
+import type { ContentWord } from '@/content/types';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-// Only SATPIN + e, l letters AND words a 3-4 year old knows and can picture.
-const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const wordId = (entry: ContentWord) => entry.id;
 
 interface Props {
   worldId: number;
@@ -28,21 +27,29 @@ type Phase = 'read' | 'won';
 export default function PlazaPuzzle({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [phase, setPhase] = useState<Phase>('read');
-  const [choices, setChoices] = useState<string[]>([]);
+  const [choices, setChoices] = useState<ContentWord[]>([]);
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [solvedWords, setSolvedWords] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [pieces] = useState(() => shuffle(WORDS).slice(0, 6));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'picture-to-build'), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'plaza-puzzle', candidates: pool, count: 6, getId: wordId });
+  const pieces = session.items;
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
-  const word = pieces[round];
+  const entry = pieces[round];
+  const word = entry.text;
   const isLast = round >= pieces.length - 1;
 
   useEffect(() => {
     setPhase('read');
     setWrongPick(null);
-    const others = shuffle(WORDS.filter((w) => w !== pieces[round])).slice(0, 2);
-    setChoices(shuffle([pieces[round], ...others]));
+    setChoices(buildChoiceSet(entry, pool, {
+      count: 3,
+      seed: `${session.seed}:${entry.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
+      getId: wordId,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 
@@ -54,11 +61,10 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
   const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
 
   // Sound a word out letter-by-letter with the human phonemes (full playback)
-  const soundOut = useCallback(async (w: string) => {
-    const ls = w.split('');
-    for (let i = 0; i < ls.length; i++) {
-      await speakPhoneme(ls[i]);
-      if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 120));
+  const soundOut = useCallback(async (choice: ContentWord) => {
+    for (let i = 0; i < choice.units.length; i++) {
+      await speakPhoneme(choice.units[i].phonemeId);
+      if (i < choice.units.length - 1) await new Promise((r) => setTimeout(r, 120));
     }
   }, []);
 
@@ -88,9 +94,9 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
   }, [shouldReveal, phase]);
 
   const pickWord = useCallback(
-    (w: string) => {
+    (choice: ContentWord) => {
       if (phase !== 'read') return;
-      if (w === word) {
+      if (choice.id === entry.id) {
         recordSoundAttempt(word, true);
         incrementStreak();
         masterWord(word);
@@ -108,17 +114,17 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
-        setWrongPick(w);
+        setWrongPick(choice.id);
         // Helpful re-teach: sound out the word she tapped so she hears it
         // doesn't match the picture, then let her try again
         (async () => {
-          await soundOut(w);
-          await speakWord(w);
+          await soundOut(choice);
+          await speakWord(choice.text);
           setWrongPick(null);
         })();
       }
     },
-    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
+    [phase, entry.id, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
   );
 
   return (
@@ -143,6 +149,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
         <AnimatePresence mode="wait">
           <motion.div
             key={round}
+            data-testid="plaza-target-picture"
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
@@ -154,21 +161,21 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
 
         {/* The word choices — SHE reads these */}
         <div className="flex gap-4 flex-wrap justify-center">
-          {choices.map((w) => {
-            const isAnswer = w === word;
+          {choices.map((choice) => {
+            const isAnswer = choice.id === entry.id;
             const highlight = (phase === 'won' || shouldReveal) && isAnswer;
             return (
               <motion.button
-                key={`${round}-${w}`}
-                onClick={() => pickWord(w)}
+                key={choice.id}
+                onClick={() => pickWord(choice)}
                 disabled={phase !== 'read'}
-                animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                animate={wrongPick === choice.id ? { x: [-8, 8, -8, 8, 0] } : {}}
                 whileTap={{ scale: 0.92 }}
                 className={`px-7 py-5 rounded-3xl shadow-xl bg-white press-3d transition-all ${
                   highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                 }`}
               >
-                <span className="text-5xl font-bold font-[Fredoka] text-gray-800 lowercase">{w}</span>
+                <span className="text-5xl font-bold font-[Fredoka] text-gray-800 lowercase">{choice.text}</span>
               </motion.button>
             );
           })}
@@ -176,16 +183,16 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
 
         {/* Mosaic strip: solved pieces fill in */}
         <div className="flex gap-2 bg-white/50 rounded-2xl px-4 py-2 shadow-inner">
-          {pieces.map((p, i) => (
+          {pieces.map((piece, i) => (
             <div
               key={i}
               className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                solvedWords.includes(p) ? 'bg-amber-200' : 'bg-white/40 border-2 border-dashed border-amber-300'
+                solvedWords.includes(piece.text) ? 'bg-amber-200' : 'bg-white/40 border-2 border-dashed border-amber-300'
               }`}
             >
-              {solvedWords.includes(p) && (
+              {solvedWords.includes(piece.text) && (
                 <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                  <WordCard word={p} size={44} />
+                  <WordCard word={piece.text} size={44} />
                 </motion.span>
               )}
             </div>
