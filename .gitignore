@@ -10,6 +10,7 @@
 
 # next.js
 /.next/
+/.next-pre-*/
 /out/
 
 # production
@@ -24,6 +25,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+/test-results/
+/playwright-report/
 
 # env files
 .env*.local

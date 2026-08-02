@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -11,13 +11,12 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getWordsForActivity } from '@/content/registry';
+import type { ContentWord } from '@/content/types';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-// Only SATPIN + e, l letters AND words a 3-4 year old knows and can picture.
-const WORDS = ['ant', 'pen', 'lip', 'net', 'pin', 'nap'];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const wordId = (entry: ContentWord) => entry.id;
 
 interface Props {
   worldId: number;
@@ -31,14 +30,18 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('look');
   const [revealed, setRevealed] = useState(0); // letters revealed through the telescope
   const [looking, setLooking] = useState(false);
-  const [choices, setChoices] = useState<string[]>([]);
+  const [choices, setChoices] = useState<ContentWord[]>([]);
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'blend-to-picture'), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'sound-telescope', candidates: pool, count: 6, getId: wordId });
+  const words = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordSoundAttempt } = useGameStore();
 
-  const word = words[round];
-  const letters = word.split('');
+  const entry = words[round];
+  const word = entry.text;
+  const units = entry.units;
   const isLast = round >= words.length - 1;
 
   useEffect(() => {
@@ -66,14 +69,13 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
   // truncates the recordings and the sounds never get to "blend".
   const soundOut = useCallback(
     async (reveal = false) => {
-      const ls = word.split('');
-      for (let i = 0; i < ls.length; i++) {
+      for (let i = 0; i < units.length; i++) {
         if (reveal) setRevealed(i + 1);
-        await speakPhoneme(ls[i]);
-        if (i < ls.length - 1) await new Promise((r) => setTimeout(r, 120));
+        await speakPhoneme(units[i].phonemeId);
+        if (i < units.length - 1) await new Promise((r) => setTimeout(r, 120));
       }
     },
-    [word],
+    [units],
   );
 
   const handleLook = useCallback(() => {
@@ -82,12 +84,16 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
     playSoundEffect('tap');
     (async () => {
       await soundOut(true); // reveal the letters one at a time as each sound plays
-      const others = shuffle(WORDS.filter((w) => w !== word)).slice(0, 2);
-      setChoices(shuffle([word, ...others]));
+      setChoices(buildChoiceSet(entry, pool, {
+        count: 3,
+        seed: `${session.seed}:${entry.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
+        getId: wordId,
+      }));
       setPhase('choose');
       setLooking(false);
     })();
-  }, [phase, looking, soundOut, word]);
+  }, [phase, looking, soundOut, entry, pool, round, session.seed]);
 
   // Two wrong picks → model the answer and move on (never a dead end)
   useEffect(() => {
@@ -104,9 +110,9 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
   }, [shouldReveal, phase]);
 
   const pickChoice = useCallback(
-    (w: string) => {
+    (choice: ContentWord) => {
       if (phase !== 'choose') return;
-      if (w === word) {
+      if (choice.id === entry.id) {
         recordSoundAttempt(word, true);
         incrementStreak();
         masterWord(word);
@@ -123,14 +129,14 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
-        setWrongPick(w);
+        setWrongPick(choice.id);
         (async () => {
           await soundOut();
           setWrongPick(null);
         })();
       }
     },
-    [phase, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
+    [phase, entry.id, word, isLast, advance, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt, soundOut],
   );
 
   return (
@@ -168,14 +174,14 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
             {/* Letters appear one at a time as their sounds play */}
             <div className="flex gap-3 min-h-[80px] items-center">
               {looking
-                ? letters.map((letter, i) => (
+                ? units.map((unit, i) => (
                     <motion.span
                       key={i}
                       initial={{ scale: 0, opacity: 0 }}
                       animate={i < revealed ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
                       className="w-[72px] h-[80px] rounded-2xl bg-yellow-300 text-gray-800 text-6xl font-bold font-[Fredoka] lowercase shadow-lg flex items-center justify-center"
                     >
-                      {letter}
+                      {unit.text}
                     </motion.span>
                   ))
                 : null}
@@ -195,14 +201,14 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
           <div className="flex flex-col items-center gap-3">
             {/* The word — big tappable letters, tap to hear each sound again */}
             <div className="flex justify-center gap-3">
-              {letters.map((letter, i) => (
+              {units.map((unit, i) => (
                 <motion.button
                   key={i}
-                  onClick={() => speakPhoneme(letter)}
+                  onClick={() => speakPhoneme(unit.phonemeId)}
                   whileTap={{ scale: 0.9 }}
                   className="w-[80px] h-[88px] rounded-3xl bg-yellow-300 text-gray-800 text-6xl font-bold font-[Fredoka] lowercase shadow-lg press-3d flex items-center justify-center"
                 >
-                  {letter}
+                  {unit.text}
                 </motion.button>
               ))}
             </div>
@@ -216,21 +222,21 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-3 gap-3 w-full max-w-md mx-auto px-1 mt-1"
             >
-              {choices.map((w) => {
-                const isAnswer = w === word;
+              {choices.map((choice) => {
+                const isAnswer = choice.id === entry.id;
                 const revealAnswer = (phase === 'won' || shouldReveal) && isAnswer;
                 return (
                   <motion.button
-                    key={w}
-                    onClick={() => pickChoice(w)}
+                    key={choice.id}
+                    onClick={() => pickChoice(choice)}
                     disabled={phase === 'won'}
-                    animate={wrongPick === w ? { x: [-8, 8, -8, 8, 0] } : {}}
+                    animate={wrongPick === choice.id ? { x: [-8, 8, -8, 8, 0] } : {}}
                     whileTap={{ scale: 0.92 }}
                     className={`rounded-3xl p-2 shadow-xl bg-white press-3d flex items-center justify-center transition-all ${
                       revealAnswer ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                     }`}
                   >
-                    <WordCard word={w} size={96} />
+                    <WordCard word={choice.text} size={96} />
                   </motion.button>
                 );
               })}

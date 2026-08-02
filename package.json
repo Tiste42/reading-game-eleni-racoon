@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "validate:content": "tsx scripts/validate-content.ts",
+    "test:unit": "tsx --test tests/unit/roundSelector.test.ts tests/unit/contentPacks.test.ts tests/unit/storeMigration.test.ts",
+    "test:e2e": "playwright test",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings=0",
     "generate:audio": "tsx scripts/generate-audio.ts",
     "generate:images": "tsx scripts/generate-images.ts"
   },
@@ -24,7 +28,9 @@
   },
   "devDependencies": {
     "@elevenlabs/elevenlabs-js": "^2.36.0",
+    "@eslint/eslintrc": "^3.3.1",
     "@google/genai": "^1.41.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.1.7",
     "@types/howler": "^2.2.12",
     "@types/node": "^22.15.21",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,39 +10,17 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-// Toddler-recognizable words per letter — every one has real art AND audio
-const LETTER_WORDS: Record<string, string[]> = {
-  s: ['sun', 'sock', 'star', 'snake'],
-  a: ['ant', 'apple'],
-  t: ['tiger', 'tent'],
-  p: ['pig', 'penguin', 'pen'],
-  i: ['igloo', 'insect'],
-  n: ['nest', 'nut', 'net'],
-  e: ['egg', 'elephant'],
-  l: ['lion', 'lemon', 'lip'],
-};
-const LETTERS = Object.keys(LETTER_WORDS);
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
-function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+import { getInitialSoundGroups, type ResolvedSoundGroup } from '@/content/registry';
+import { shuffleSeeded } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
 interface Pair {
   letter: string;
+  phonemeId: string;
   word: string;
 }
 
-// 2 rounds × 3 pairs, all different letters
-function buildRounds(): Pair[][] {
-  const letters = shuffle(LETTERS).slice(0, 6);
-  return [letters.slice(0, 3), letters.slice(3, 6)].map((group) =>
-    group.map((letter) => ({ letter, word: pick(LETTER_WORDS[letter]) })),
-  );
-}
+const groupId = (group: ResolvedSoundGroup) => group.id;
 
 interface Props {
   worldId: number;
@@ -56,9 +34,19 @@ export default function LetterMatch({ worldId, onComplete }: Props) {
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(buildRounds);
-  const [letterOrders] = useState(() => rounds.map((r) => shuffle(r.map((p) => p.letter))));
-  const [pictureOrders] = useState(() => rounds.map((r) => shuffle([...r])));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const groups = useMemo(() => getInitialSoundGroups(enabledContentPackIds), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'letter-match', candidates: groups, count: 6, getId: groupId });
+  const [rounds] = useState<Pair[][]>(() => {
+    const pairs = session.items.map((group) => ({
+      letter: group.letter,
+      phonemeId: group.phonemeId,
+      word: shuffleSeeded(group.words, `${session.seed}:${group.id}:word`)[0].text,
+    }));
+    return [pairs.slice(0, 3), pairs.slice(3, 6)];
+  });
+  const [letterOrders] = useState(() => rounds.map((items, i) => shuffleSeeded(items.map((pair) => pair.letter), `${session.seed}:letters:${i}`)));
+  const [pictureOrders] = useState(() => rounds.map((items, i) => shuffleSeeded(items, `${session.seed}:pictures:${i}`)));
   const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const pairs = rounds[round];
@@ -86,18 +74,19 @@ export default function LetterMatch({ worldId, onComplete }: Props) {
     (letter: string) => {
       if (advancing || matched.has(letter)) return;
       setSelected(letter);
-      speakPhoneme(letter);
+      const pair = pairs.find((item) => item.letter === letter);
+      speakPhoneme(pair?.phonemeId || letter);
     },
-    [advancing, matched],
+    [advancing, matched, pairs],
   );
 
   const tapPicture = useCallback(
     (pair: Pair) => {
       if (advancing || !selected || matched.has(pair.letter)) return;
       if (pair.letter === selected) {
-        recordSoundAttempt(selected, true);
+        recordSoundAttempt(pair.phonemeId, true);
         incrementStreak();
-        masterPhoneme(pair.letter);
+        masterPhoneme(pair.phonemeId);
         playSoundEffect('coin');
         const next = new Set(matched);
         next.add(pair.letter);
@@ -119,20 +108,21 @@ export default function LetterMatch({ worldId, onComplete }: Props) {
           }
         })();
       } else {
-        recordSoundAttempt(selected, false);
+        const selectedPair = pairs.find((item) => item.letter === selected);
+        recordSoundAttempt(selectedPair?.phonemeId || selected, false);
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
         setWrongPick(pair.word);
         // Re-teach: play the selected letter's sound again so she can re-listen
         (async () => {
-          await speakPhoneme(selected);
+          await speakPhoneme(selectedPair?.phonemeId || selected);
           setWrongPick(null);
         })();
       }
     },
     [
-      advancing, selected, matched, pairs.length, isLastRound, worldId,
+      advancing, selected, matched, pairs, isLastRound, worldId,
       completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak,
       recordWrong, recordSoundAttempt,
     ],

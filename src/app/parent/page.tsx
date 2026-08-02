@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
+import { OPTIONAL_CONTENT_PACKS } from '@/content/registry';
 
 export default function ParentDashboard() {
   const router = useRouter();
@@ -20,11 +21,13 @@ export default function ParentDashboard() {
     musicEnabled,
     volume,
     musicVolume,
+    enabledContentPackIds,
     toggleFreePlay,
     toggleSound,
     toggleMusic,
     setVolume,
     setMusicVolume,
+    setContentPackEnabled,
     resetProgress,
   } = useGameStore();
 
@@ -168,6 +171,23 @@ export default function ParentDashboard() {
 
         {/* Settings */}
         <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <h3 className="font-bold text-gray-700 mb-1">Practice Packs</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Mix in new sounds and words. The original SATPIN practice always stays available.
+          </p>
+          {OPTIONAL_CONTENT_PACKS.map((pack) => (
+            <ToggleRow
+              key={pack.id}
+              label={pack.name}
+              sublabel={`${pack.focus} — ${pack.description}`}
+              enabled={enabledContentPackIds.includes(pack.id)}
+              onToggle={() => setContentPackEnabled(pack.id, !enabledContentPackIds.includes(pack.id))}
+            />
+          ))}
+        </div>
+
+        {/* Settings */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
           <h3 className="font-bold text-gray-700 mb-3">Settings</h3>
 
           {/* Free Play Toggle */}
@@ -294,6 +314,8 @@ function ToggleRow({
       </div>
       <button
         onClick={onToggle}
+        aria-label={`Toggle ${label}`}
+        aria-pressed={enabled}
         className={`w-14 h-8 rounded-full transition-colors relative ${
           enabled ? 'bg-green-400' : 'bg-gray-300'
         }`}

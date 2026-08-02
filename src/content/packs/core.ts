@@ -1,0 +1,95 @@
+import type { ContentPack, ContentWord, GraphemeUnit } from '../types';
+
+const unit = (text: string, phonemeId = text): GraphemeUnit => ({ text, phonemeId });
+
+const word = (
+  text: string,
+  units: GraphemeUnit[],
+  activities: ContentWord['activities'],
+): ContentWord => ({
+  id: `core:${text}`,
+  text,
+  units,
+  picturePath: `/images/generated/items/${text}.png`,
+  audioPath: `/audio/words/${text}.mp3`,
+  activities,
+});
+
+const blendBuild = ['blend-to-picture', 'picture-to-build'] as const;
+
+export const CORE_PACK: ContentPack = {
+  id: 'core',
+  name: 'SATPIN + Eleni',
+  description: 'The original foundation words and sounds.',
+  focus: 's, a, t, p, i, n, e, l',
+  optional: false,
+  requiredPackIds: [],
+  prerequisitePhonemes: [],
+  introducedPhonemes: ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l'],
+  words: [
+    word('ant', [unit('a'), unit('n'), unit('t')], [...blendBuild]),
+    word('pen', [unit('p'), unit('e'), unit('n')], [...blendBuild, 'word-chain']),
+    word('lip', [unit('l'), unit('i'), unit('p')], [...blendBuild]),
+    word('net', [unit('n'), unit('e'), unit('t')], [...blendBuild]),
+    word('pin', [unit('p'), unit('i'), unit('n')], [...blendBuild, 'word-chain']),
+    word('nap', [unit('n'), unit('a'), unit('p')], [...blendBuild]),
+    word('sip', [unit('s'), unit('i'), unit('p')], [...blendBuild]),
+    word('tin', [unit('t'), unit('i'), unit('n')], [...blendBuild]),
+    word('ten', [unit('t'), unit('e'), unit('n')], [...blendBuild]),
+    word('pan', [unit('p'), unit('a'), unit('n')], [...blendBuild]),
+    word('pit', [unit('p'), unit('i'), unit('t')], [...blendBuild]),
+    word('pet', [unit('p'), unit('e'), unit('t')], [...blendBuild]),
+    word('cat', [unit('c', 'c'), unit('a'), unit('t')], ['word-chain']),
+    word('hat', [unit('h'), unit('a'), unit('t')], ['word-chain']),
+    word('bin', [unit('b'), unit('i'), unit('n')], ['word-chain']),
+    word('hot', [unit('h'), unit('o'), unit('t')], ['word-chain']),
+    word('pot', [unit('p'), unit('o'), unit('t')], ['word-chain']),
+    word('bat', [unit('b'), unit('a'), unit('t')], ['word-chain']),
+    word('mat', [unit('m'), unit('a'), unit('t')], ['word-chain']),
+    word('dog', [unit('d'), unit('o'), unit('g')], ['word-chain']),
+    word('log', [unit('l'), unit('o'), unit('g')], ['word-chain']),
+    word('cup', [unit('c', 'c'), unit('u'), unit('p')], ['word-chain']),
+    word('pup', [unit('p'), unit('u'), unit('p')], ['word-chain']),
+    ...[
+      ['sun', 's'], ['sock', 's'], ['star', 's'], ['snake', 's'],
+      ['apple', 'a'], ['tiger', 't'], ['tent', 't'], ['pig', 'p'],
+      ['penguin', 'p'], ['igloo', 'i'], ['insect', 'i'], ['nest', 'n'],
+      ['nut', 'n'], ['egg', 'e'], ['elephant', 'e'], ['lion', 'l'],
+      ['lemon', 'l'],
+    ].map(([text, first]) => word(text, [unit(first)], ['initial-sound', 'letter-match'])),
+  ],
+  initialSoundGroups: [
+    { id: 'core:s', letter: 's', phonemeId: 's', wordIds: ['core:sun', 'core:sock', 'core:star', 'core:snake'] },
+    { id: 'core:a', letter: 'a', phonemeId: 'a', wordIds: ['core:ant', 'core:apple'] },
+    { id: 'core:t', letter: 't', phonemeId: 't', wordIds: ['core:tiger', 'core:tent'] },
+    { id: 'core:p', letter: 'p', phonemeId: 'p', wordIds: ['core:pig', 'core:penguin', 'core:pen'] },
+    { id: 'core:i', letter: 'i', phonemeId: 'i', wordIds: ['core:igloo', 'core:insect'] },
+    { id: 'core:n', letter: 'n', phonemeId: 'n', wordIds: ['core:nest', 'core:nut', 'core:net'] },
+    { id: 'core:e', letter: 'e', phonemeId: 'e', wordIds: ['core:egg', 'core:elephant'] },
+    { id: 'core:l', letter: 'l', phonemeId: 'l', wordIds: ['core:lion', 'core:lemon', 'core:lip'] },
+  ],
+  wordChains: [
+    { id: 'core:cat-hat', fromWordId: 'core:cat', toWordId: 'core:hat', changedUnitIndex: 0, distractorUnits: [unit('s')] },
+    { id: 'core:pin-bin', fromWordId: 'core:pin', toWordId: 'core:bin', changedUnitIndex: 0, distractorUnits: [unit('m')] },
+    { id: 'core:hot-pot', fromWordId: 'core:hot', toWordId: 'core:pot', changedUnitIndex: 0, distractorUnits: [unit('l')] },
+    { id: 'core:bat-mat', fromWordId: 'core:bat', toWordId: 'core:mat', changedUnitIndex: 0, distractorUnits: [unit('f')] },
+    { id: 'core:dog-log', fromWordId: 'core:dog', toWordId: 'core:log', changedUnitIndex: 0, distractorUnits: [unit('n')] },
+    { id: 'core:cup-pup', fromWordId: 'core:cup', toWordId: 'core:pup', changedUnitIndex: 0, distractorUnits: [unit('t')] },
+  ],
+  stories: [
+    { id: 'story:mat', text: 'Sam sat on a mat.', pictureWord: 'mat', question: 'What did Sam sit on?', correct: 'a mat', options: ['a mat', 'a cat', 'a hat'], cue: 'self-read-sentence' },
+    { id: 'story:big-cat', text: 'The cat is big.', pictureWord: 'cat', question: 'Is the cat big or small?', correct: 'big', options: ['big', 'small', 'red'], cue: 'self-read-sentence' },
+    { id: 'story:bug-log', text: 'A bug is on the log.', pictureWord: 'bug', question: 'Where is the bug?', correct: 'on the log', options: ['on the log', 'in the cup', 'on the hat'], cue: 'self-read-sentence' },
+    { id: 'story:red-hat', text: 'He got a red hat.', pictureWord: 'hat', question: 'What color is the hat?', correct: 'red', options: ['red', 'blue', 'green'], cue: 'self-read-sentence' },
+    { id: 'story:fish-net', text: 'The fish is in the net.', pictureWord: 'fish', question: 'Where is the fish?', correct: 'in the net', options: ['in the net', 'on the bed', 'in the cup'], cue: 'self-read-sentence' },
+    { id: 'story:see-ship', text: 'She is on the ship.', pictureWord: 'ship', question: 'Where is she?', correct: 'on the ship', options: ['on the ship', 'in the shop', 'in the shed'], cue: 'self-read-sentence' },
+    { id: 'story:pet-dog', text: 'I got a pet dog.', pictureWord: 'dog', question: 'What pet is it?', correct: 'a dog', options: ['a dog', 'a cat', 'a fish'], cue: 'self-read-sentence' },
+  ],
+  postcards: [
+    { id: 'postcard:fish', template: 'It is a ___.', spoken: 'It is a blank.', correct: 'fish', options: ['fish', 'cat', 'log'], cue: 'picture-only' },
+    { id: 'postcard:hat', template: 'It is a big ___.', spoken: 'It is a big blank.', correct: 'hat', options: ['hat', 'net', 'cup'], cue: 'picture-only' },
+    { id: 'postcard:log', template: 'She sat on a ___.', spoken: 'She sat on a blank.', correct: 'log', options: ['log', 'mug', 'bat'], cue: 'picture-only' },
+    { id: 'postcard:dog', template: 'He got a pet ___.', spoken: 'He got a pet blank.', correct: 'dog', options: ['hen', 'dog', 'rat'], cue: 'picture-only' },
+    { id: 'postcard:cat', template: 'The ___ is on the mat.', spoken: 'The blank is on the mat.', correct: 'cat', options: ['bat', 'cat', 'hat'], cue: 'picture-only' },
+  ],
+};

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -11,28 +11,13 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakFeedback } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getStories } from '@/content/registry';
+import type { StoryRound } from '@/content/types';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-interface StorySentence {
-  text: string;
-  pictureWord: string;
-  question: string; // recorded
-  correct: string;
-  options: string[]; // all recorded (words or inst phrases)
-}
-
-const SENTENCES: StorySentence[] = [
-  { text: 'Sam sat on a mat.', pictureWord: 'mat', question: 'What did Sam sit on?', correct: 'a mat', options: ['a mat', 'a cat', 'a hat'] },
-  { text: 'The cat is big.', pictureWord: 'cat', question: 'Is the cat big or small?', correct: 'big', options: ['big', 'small', 'red'] },
-  { text: 'A bug is on the log.', pictureWord: 'bug', question: 'Where is the bug?', correct: 'on the log', options: ['on the log', 'in the cup', 'on the hat'] },
-  { text: 'He got a red hat.', pictureWord: 'hat', question: 'What color is the hat?', correct: 'red', options: ['red', 'blue', 'green'] },
-  { text: 'The fish is in the net.', pictureWord: 'fish', question: 'Where is the fish?', correct: 'in the net', options: ['in the net', 'on the bed', 'in the cup'] },
-  { text: 'She can see the ship.', pictureWord: 'ship', question: 'What can she see?', correct: 'the ship', options: ['the ship', 'the cat', 'the dog'] },
-  { text: 'I have a pet dog.', pictureWord: 'dog', question: 'What pet do I have?', correct: 'a dog', options: ['a dog', 'a cat', 'a fish'] },
-];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const storyId = (story: StoryRound) => story.id;
+const textId = (text: string) => text;
 
 interface Props {
   worldId: number;
@@ -47,7 +32,10 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [choices, setChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(SENTENCES).slice(0, 6));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const storyPool = useMemo(() => getStories(enabledContentPackIds), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'story-stroll', candidates: storyPool, count: 6, getId: storyId });
+  const rounds = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
@@ -56,7 +44,12 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
   useEffect(() => {
     setPhase('read');
     setWrongPick(null);
-    setChoices(shuffle([...current.options]));
+    setChoices(buildChoiceSet(current.correct, current.options, {
+      count: current.options.length,
+      seed: `${session.seed}:${current.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(round, current.options.length, session.seed),
+      getId: textId,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 

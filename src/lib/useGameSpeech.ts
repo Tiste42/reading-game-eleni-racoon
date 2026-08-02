@@ -1,7 +1,27 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { speak, speakPhoneme, stopSpeaking } from './speech';
+import { speak, speakInstruction, speakPhoneme, stopSpeaking } from './speech';
+
+export function useInstructionSpeech(gameId: string, active = true, deps: unknown[] = []) {
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => { speakInstruction(gameId); }, 400);
+    return () => {
+      clearTimeout(timer);
+      stopSpeaking();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, active, ...deps]);
+
+  const replay = useCallback(() => {
+    if (!active) return;
+    stopSpeaking();
+    speakInstruction(gameId);
+  }, [active, gameId]);
+
+  return { replay };
+}
 
 export function useGameSpeech(text: string | null, deps: unknown[] = []) {
   const spokenRef = useRef<string | null>(null);
@@ -160,10 +180,9 @@ export function useComposedSpeech(parts: SpeechPart[], deps: unknown[] = []) {
     const timer = setTimeout(() => runSequence(thisRun), 500);
     return () => {
       clearTimeout(timer);
-      runIdRef.current++;
+      if (runIdRef.current === thisRun) runIdRef.current = thisRun + 1;
       stopSpeaking();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [depsKey, runSequence]);
 
   const replay = useCallback(() => {

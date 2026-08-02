@@ -1,3 +1,19 @@
+# V2 Modular Content Packs (2026-08-02)
+
+Success: preserve every existing game and saved-progress path while adding removable,
+validated sound/word packs that produce varied rounds without answer leakage.
+
+- [x] Capture clean main-branch build/typecheck and deployment baseline
+- [x] Add typed pack/content registry and deterministic recent-history-aware selectors
+- [x] Migrate existing gameplay to pack-backed content without changing behavior
+- [x] Add curated harder sound/word packs using verified art and static audio
+- [x] Add automated content, asset, prerequisite, and answer-contract validation
+- [x] Preserve and migrate existing Zustand progress safely
+- [x] Verify upgraded anchor games on phone, tablet, and desktop
+- [x] Regression-smoke all existing worlds/games and old progress
+- [x] Complete independent architecture, phonics, and QA reviews
+- [ ] Commit, push, deploy, and verify the production PWA
+
 # Overhaul Plan — Leni's Sound Safari (audited 2026-06-11)
 
 Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution checklist.

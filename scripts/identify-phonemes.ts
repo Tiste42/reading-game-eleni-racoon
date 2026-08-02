@@ -12,9 +12,14 @@ const DIR = path.join(process.cwd(), 'public', 'audio', 'phonemes');
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function identify(file: string): Promise<string> {
+async function identify(file: string, target: string): Promise<string> {
   const b64 = fs.readFileSync(file).toString('base64');
-  const prompt = `Listen to this short audio clip from a children's phonics app. Transcribe EXACTLY what you hear as precisely as possible. Is it: (a) a pure consonant/vowel SOUND like "lll", "sss", "p", "eh", or (b) a letter NAME like "el", "pee", "ess", or (c) silence/noise? Reply ONLY compact JSON: {"hear":"<phonetic transcription>","type":"sound|letter-name|silence","note":"<5 words>"}`;
+  const targetHint = target === 'o'
+    ? 'It should be the American short-o vowel in top/pot, not the long-o letter name.'
+    : target === 'u'
+      ? 'It should be the short-u vowel in cup/mug.'
+      : `It should be the English phoneme written ${target}.`;
+  const prompt = `Listen to this short audio clip from a children's phonics app. ${targetHint} Transcribe EXACTLY what you hear and judge whether it matches the target. Reply ONLY compact JSON: {"hear":"<phonetic transcription>","type":"sound|letter-name|silence","matches_target":true|false,"note":"<8 words>"}`;
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
     {
@@ -35,11 +40,14 @@ async function identify(file: string): Promise<string> {
 
 async function main() {
   // World 3 letters first, then the rest
-  const order = ['l', 'i', 'p', 'e', 's', 'a', 't', 'n', 'b', 'd', 'k', 'c', 'g', 'm', 'r', 'f', 'h'];
+  const requested = process.argv.slice(2).map((value) => value.toLowerCase());
+  const order = requested.length > 0
+    ? requested
+    : ['l', 'i', 'p', 'e', 's', 'a', 't', 'n', 'b', 'd', 'k', 'c', 'g', 'm', 'r', 'f', 'h', 'o', 'u', 'sh', 'ch', 'th'];
   for (const ph of order) {
     const f = path.join(DIR, `${ph}.mp3`);
     if (!fs.existsSync(f)) { console.log(`${ph}: MISSING`); continue; }
-    const result = await identify(f);
+    const result = await identify(f, ph);
     console.log(`${ph}.mp3 -> ${result}`);
     await sleep(1300);
   }

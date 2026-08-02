@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,26 +10,13 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getPostcards } from '@/content/registry';
+import type { PostcardRound } from '@/content/types';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
-interface PostcardRound {
-  template: string; // shown with ___; spoken via the recorded "blank" line
-  spoken: string; // recorded line, e.g. 'I can see a blank.'
-  correct: string;
-  options: string[]; // all picturable words
-}
-
-const POSTCARDS: PostcardRound[] = [
-  { template: 'I can see a ___.', spoken: 'I can see a blank.', correct: 'fish', options: ['fish', 'cat', 'log'] },
-  { template: 'I have a big ___.', spoken: 'I have a big blank.', correct: 'hat', options: ['hat', 'net', 'cup'] },
-  { template: 'The ___ is red.', spoken: 'The blank is red.', correct: 'bus', options: ['dog', 'bus', 'pen'] },
-  { template: 'She sat on a ___.', spoken: 'She sat on a blank.', correct: 'log', options: ['log', 'mug', 'bat'] },
-  { template: 'He got a pet ___.', spoken: 'He got a pet blank.', correct: 'dog', options: ['hen', 'dog', 'rat'] },
-  { template: 'The ___ is on the mat.', spoken: 'The blank is on the mat.', correct: 'cat', options: ['bat', 'cat', 'hat'] },
-];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const postcardId = (postcard: PostcardRound) => postcard.id;
+const textId = (text: string) => text;
 
 interface Props {
   worldId: number;
@@ -45,7 +32,10 @@ export default function PostcardWriter({ worldId, onComplete }: Props) {
   const [choices, setChoices] = useState<string[]>([]);
   const [stamps, setStamps] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(POSTCARDS));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const postcardPool = useMemo(() => getPostcards(enabledContentPackIds), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'postcard-writer', candidates: postcardPool, count: 6, getId: postcardId });
+  const rounds = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
@@ -54,7 +44,12 @@ export default function PostcardWriter({ worldId, onComplete }: Props) {
   useEffect(() => {
     setPhase('pick');
     setWrongPick(null);
-    setChoices(shuffle([...current.options]));
+    setChoices(buildChoiceSet(current.correct, current.options, {
+      count: current.options.length,
+      seed: `${session.seed}:${current.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(round, current.options.length, session.seed),
+      getId: textId,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
 

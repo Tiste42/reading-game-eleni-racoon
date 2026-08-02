@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -11,42 +11,19 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-// Toddler-recognizable words per letter — every one has real art AND audio
-const LETTER_WORDS: Record<string, string[]> = {
-  s: ['sun', 'sock', 'star', 'snake'],
-  a: ['ant', 'apple'],
-  t: ['tiger', 'tent'],
-  p: ['pig', 'penguin', 'pen'],
-  i: ['igloo', 'insect'],
-  n: ['nest', 'nut', 'net'],
-  e: ['egg', 'elephant'],
-  l: ['lion', 'lemon', 'lip'],
-};
-const LETTERS = Object.keys(LETTER_WORDS);
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
-function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+import { getInitialSoundGroups, type ResolvedSoundGroup } from '@/content/registry';
+import { buildChoiceSet, getBalancedAnswerIndex, shuffleSeeded } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
 interface Round {
+  id: string;
   letter: string;
+  phonemeId: string;
   word: string; // the correct picture
   choices: Array<{ letter: string; word: string }>;
 }
 
-function buildRounds(): Round[] {
-  return shuffle(LETTERS).slice(0, 6).map((letter) => {
-    const word = pick(LETTER_WORDS[letter]);
-    const others = shuffle(LETTERS.filter((l) => l !== letter))
-      .slice(0, 2)
-      .map((l) => ({ letter: l, word: pick(LETTER_WORDS[l]) }));
-    return { letter, word, choices: shuffle([{ letter, word }, ...others]) };
-  });
-}
+const groupId = (group: ResolvedSoundGroup) => group.id;
 
 interface Props {
   worldId: number;
@@ -60,7 +37,28 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('play');
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(buildRounds);
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const groups = useMemo(() => getInitialSoundGroups(enabledContentPackIds), [enabledContentPackIds]);
+  const session = useContentSession({ gameId: 'sound-safari', candidates: groups, count: 6, getId: groupId });
+  const [rounds] = useState<Round[]>(() => session.items.map((group, index) => {
+    const target = shuffleSeeded(group.words, `${session.seed}:${group.id}:target`)[0];
+    const choiceGroups = buildChoiceSet(group, groups, {
+      count: 3,
+      seed: `${session.seed}:${group.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(index, 3, session.seed),
+      getId: groupId,
+    });
+    return {
+      id: group.id,
+      letter: group.letter,
+      phonemeId: group.phonemeId,
+      word: target.text,
+      choices: choiceGroups.map((choiceGroup) => ({
+        letter: choiceGroup.letter,
+        word: shuffleSeeded(choiceGroup.words, `${session.seed}:${group.id}:${choiceGroup.id}`)[0].text,
+      })),
+    };
+  }));
   const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
@@ -76,7 +74,7 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
     [
       { say: 'Which picture starts with this sound?' },
       { pause: 250 },
-      { phoneme: current.letter },
+      { phoneme: current.phonemeId },
     ],
     [round],
   );
@@ -100,9 +98,9 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
       modeling.current = true;
       setPhase('model');
       (async () => {
-        recordSoundAttempt(current.letter, false);
+        recordSoundAttempt(current.phonemeId, false);
         await speakReveal(current.word);
-        await speakPhoneme(current.letter);
+        await speakPhoneme(current.phonemeId);
         await new Promise((r) => setTimeout(r, 800));
         modeling.current = false;
         advance();
@@ -115,27 +113,27 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
     (choice: { letter: string; word: string }) => {
       if (phase !== 'play') return;
       if (choice.letter === current.letter) {
-        recordSoundAttempt(current.letter, true);
+        recordSoundAttempt(current.phonemeId, true);
         incrementStreak();
-        masterPhoneme(current.letter);
+        masterPhoneme(current.phonemeId);
         playSoundEffect('coin');
         setPhase('won');
         (async () => {
           await speakWord(choice.word);
-          await speakPhoneme(current.letter);
+          await speakPhoneme(current.phonemeId);
           await speakFeedback(isLast ? 'complete' : 'correct');
           await new Promise((r) => setTimeout(r, 800));
           advance();
         })();
       } else {
-        recordSoundAttempt(current.letter, false);
+        recordSoundAttempt(current.phonemeId, false);
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
         setWrongPick(choice.word);
         // Re-teach: play the target sound again so she can re-listen
         (async () => {
-          await speakPhoneme(current.letter);
+          await speakPhoneme(current.phonemeId);
           setWrongPick(null);
         })();
       }
@@ -164,7 +162,7 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
         {/* Big hear-the-sound button */}
         <PressButton
           silent
-          onClick={() => speakPhoneme(current.letter)}
+          onClick={() => speakPhoneme(current.phonemeId)}
           className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-xl flex items-center justify-center"
           aria-label="Hear the sound"
         >
