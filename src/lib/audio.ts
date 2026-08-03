@@ -4,7 +4,7 @@ import { Howl, Howler } from 'howler';
 
 // Bump this whenever pre-generated audio files are regenerated so browsers
 // fetch the new versions instead of stale cached ones.
-export const AUDIO_VERSION = '4-phonemes';
+export const AUDIO_VERSION = '5-alphabet-phonemes';
 
 const audioCache = new Map<string, Howl>();
 let audioUnlocked = false;
@@ -147,7 +147,7 @@ export function preloadWorldAudio(worldId: number): void {
       'narration/letter-trace-intro.mp3', 'narration/boss-2-intro.mp3',
       'phonemes/s.mp3', 'phonemes/a.mp3', 'phonemes/t.mp3',
       'phonemes/p.mp3', 'phonemes/i.mp3', 'phonemes/n.mp3',
-      'phonemes/e.mp3', 'phonemes/l.mp3',
+      'phonemes/e.mp3', 'phonemes/l.mp3', 'phonemes/q.mp3',
     ],
     3: [
       'narration/world-3-intro.mp3',

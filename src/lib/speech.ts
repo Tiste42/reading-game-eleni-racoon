@@ -3,7 +3,7 @@
 import { Howl, Howler } from 'howler';
 import { duckMusic, unduckMusic, AUDIO_VERSION } from './audio';
 import { useGameStore } from './store';
-import { CONTENT_AUDIO_WORDS, CONTENT_NARRATION_SLUGS } from '@/content/registry';
+import { CONTENT_AUDIO_WORDS, CONTENT_NARRATION_SLUGS, CONTENT_SYLLABLE_CLIPS } from '@/content/registry';
 
 // The parent "Voice Volume" slider — applied to every spoken clip.
 function voiceVolume(): number {
@@ -58,7 +58,7 @@ const KNOWN_WORDS = new Set([
 const KNOWN_PHONEMES = new Set([
   's', 'a', 't', 'p', 'i', 'n', 'e', 'l', 'c', 'k',
   'h', 'r', 'm', 'd', 'g', 'o', 'u', 'f', 'b', 'j',
-  'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th',
+  'q', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th',
 ]);
 
 // Feedback clip IDs mapped by type
@@ -76,6 +76,7 @@ const FEEDBACK_CLIPS: Record<string, string[]> = {
 // If textToSlug(text) is in this set, play from narration/inst-{slug}.mp3
 const KNOWN_NARRATION_SLUGS = new Set([
   ...CONTENT_NARRATION_SLUGS,
+  ...CONTENT_SYLLABLE_CLIPS.map((entry) => `${entry.word.replace(/[^a-z0-9]/g, '')}-has-${entry.syllables}-${entry.syllables === 1 ? 'beat' : 'beats'}`),
   // --- World 1: Sound Fiesta ---
   // SoundSafari instructions
   'find-the-picture-that-starts-with-s',
@@ -656,11 +657,11 @@ export async function speakBookPage(bookId: string, pageNum: number): Promise<vo
 // --- Pronunciation display text (used by game components for UI, not for audio) ---
 
 export const PHONEME_PRONUNCIATIONS: Record<string, string> = {
-  a: 'aah', b: 'buh', c: 'kuh', d: 'duh',
-  e: 'eh', f: 'fff', g: 'guh', h: 'huh',
-  i: 'ih', j: 'juh', k: 'kuh', l: 'lll',
-  m: 'mmm', n: 'nnn', o: 'oh', p: 'puh',
-  r: 'rrr', s: 'sss', t: 'tuh', u: 'uh',
-  v: 'vvv', w: 'wuh', x: 'ks', y: 'yuh', z: 'zzz',
-  sh: 'shh', ch: 'chuh', th: 'thh',
+  a: 'ă', b: 'b', c: 'k', d: 'd',
+  e: 'ĕ', f: 'fff', g: 'g', h: 'h',
+  i: 'ĭ', j: 'j', k: 'k', l: 'lll',
+  m: 'mmm', n: 'nnn', o: 'ŏ', p: 'p', q: 'kw',
+  r: 'rrr', s: 'sss', t: 't', u: 'ŭ',
+  v: 'vvv', w: 'w', x: 'ks', y: 'y', z: 'zzz',
+  sh: 'shh', ch: 'ch', th: 'thh',
 };

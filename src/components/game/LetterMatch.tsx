@@ -13,6 +13,7 @@ import { playSoundEffect } from '@/lib/audio';
 import { getInitialSoundGroups, type ResolvedSoundGroup } from '@/content/registry';
 import { shuffleSeeded } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { getPracticedPhonemes } from '@/content/progression';
 
 interface Pair {
   letter: string;
@@ -35,8 +36,17 @@ export default function LetterMatch({ worldId, onComplete }: Props) {
   const [advancing, setAdvancing] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
-  const groups = useMemo(() => getInitialSoundGroups(enabledContentPackIds), [enabledContentPackIds]);
-  const session = useContentSession({ gameId: 'letter-match', candidates: groups, count: 6, getId: groupId });
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(
+    () => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes),
+    [enabledContentPackIds, taughtPhonemes],
+  );
+  const groups = useMemo(
+    () => getInitialSoundGroups(enabledContentPackIds, practicedPhonemes),
+    [enabledContentPackIds, practicedPhonemes],
+  );
+  const unambiguousGroups = useMemo(() => groups.filter((group) => group.phonemeId !== 'k'), [groups]);
+  const session = useContentSession({ gameId: 'letter-match', candidates: unambiguousGroups, count: 6, getId: groupId });
   const [rounds] = useState<Pair[][]>(() => {
     const pairs = session.items.map((group) => ({
       letter: group.letter,

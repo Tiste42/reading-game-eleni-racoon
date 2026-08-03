@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,39 +10,15 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakPhoneme, speakFeedback, speakReveal } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-interface RoundData {
-  common: string[];
-  odd: string;
-  commonSound: string;
-}
-
-const ROUND_DATA: RoundData[] = [
-  { common: ['cat', 'cap'], odd: 'dog', commonSound: 'c' },
-  { common: ['sun', 'soap'], odd: 'hat', commonSound: 's' },
-  { common: ['pen', 'pot'], odd: 'net', commonSound: 'p' },
-  { common: ['bat', 'bin'], odd: 'cup', commonSound: 'b' },
-  { common: ['man', 'mug'], odd: 'fan', commonSound: 'm' },
-  { common: ['red', 'rat'], odd: 'log', commonSound: 'r' },
-  { common: ['hen', 'hot'], odd: 'van', commonSound: 'h' },
-  { common: ['fox', 'fin'], odd: 'dog', commonSound: 'f' },
-];
+import { getInitialSoundGroups } from '@/content/registry';
+import { buildSoundPictureCandidates } from '@/content/earlyRoundBuilders';
+import { useContentSession } from '@/lib/useContentSession';
+import { shuffleSeeded } from '@/lib/roundSelector';
 
 interface BuiltRound {
   words: string[];
   oddIndex: number;
   commonSound: string;
-}
-
-function buildRound(data: RoundData): BuiltRound {
-  const oddIndex = Math.floor(Math.random() * 3);
-  const words = [...data.common];
-  words.splice(oddIndex, 0, data.odd);
-  return { words, oddIndex, commonSound: data.commonSound };
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
 }
 
 interface Props {
@@ -55,8 +31,23 @@ export default function OddSoundOut({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<'play' | 'won' | 'model'>('play');
   const [wrongIdx, setWrongIdx] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(ROUND_DATA).slice(0, 6).map(buildRound));
-  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt, enabledContentPackIds } = useGameStore();
+  const candidates = useMemo(
+    () => buildSoundPictureCandidates(getInitialSoundGroups(enabledContentPackIds), 2, 1, 2),
+    [enabledContentPackIds],
+  );
+  const session = useContentSession({
+    gameId: 'odd-one-out',
+    historyKey: 'world1-initial-sounds',
+    candidates,
+    count: 6,
+    getId: (candidate) => candidate.id,
+  });
+  const rounds: BuiltRound[] = useMemo(() => session.items.map((candidate, index) => {
+    const oddWord = candidate.distractorWords[0];
+    const words = shuffleSeeded([...candidate.targetWords, oddWord], `${session.seed}:items:${index}`);
+    return { words, oddIndex: words.indexOf(oddWord), commonSound: candidate.targetLetter };
+  }), [session]);
 
   const current = rounds[round];
   const oddWord = current.words[current.oddIndex];

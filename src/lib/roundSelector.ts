@@ -50,12 +50,18 @@ export function selectTargets<T>(
 export function buildChoiceSet<T>(
   answer: T,
   pool: readonly T[],
-  options: { count: number; seed: string; answerIndex: number; getId: (item: T) => string },
+  options: {
+    count: number;
+    seed: string;
+    answerIndex: number;
+    getId: (item: T) => string;
+    canUseDistractor?: (answer: T, distractor: T) => boolean;
+  },
 ): T[] {
-  const { count, seed, answerIndex, getId } = options;
+  const { count, seed, answerIndex, getId, canUseDistractor = () => true } = options;
   const answerId = getId(answer);
   const distractors = shuffleSeeded(
-    pool.filter((item) => getId(item) !== answerId),
+    pool.filter((item) => getId(item) !== answerId && canUseDistractor(answer, item)),
     `${seed}:distractors`,
   ).slice(0, Math.max(0, count - 1));
   const choices = [...distractors];
@@ -80,4 +86,25 @@ export function getBalancedAnswerIndex(
     `${seed}:answer-positions:${cycle}`,
   );
   return positions[round % choiceCount];
+}
+
+export function buildAssessmentChoiceSet<T>(
+  answer: T,
+  pool: readonly T[],
+  options: {
+    count?: number;
+    round: number;
+    seed: string;
+    getId: (item: T) => string;
+    canUseDistractor?: (answer: T, distractor: T) => boolean;
+  },
+): T[] {
+  const choiceCount = Math.min(options.count ?? 3, pool.length);
+  return buildChoiceSet(answer, pool, {
+    count: choiceCount,
+    seed: `${options.seed}:${options.round}:choices`,
+    answerIndex: getBalancedAnswerIndex(options.round, choiceCount, options.seed),
+    getId: options.getId,
+    canUseDistractor: options.canUseDistractor,
+  });
 }

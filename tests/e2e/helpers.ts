@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-export const allPacks = ['continuous-bridge', 'cvc-grid', 'longer-words'];
+export const allPacks = ['alphabet-adventure', 'continuous-bridge', 'cvc-grid', 'longer-words'];
 
 export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks) {
   await page.addInitScript((packs) => {
@@ -8,7 +8,7 @@ export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks)
       [1, 2, 3, 4, 5, 6].map((world) => [world, { gamesCompleted: [], bossCompleted: false, stars: 0 }]),
     );
     localStorage.setItem('eleni-sound-safari', JSON.stringify({
-      version: 2,
+      version: 3,
       state: {
         currentWorld: 0,
         worldProgress,
@@ -17,6 +17,7 @@ export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks)
         costumes: [],
         passportStamps: [],
         masteredPhonemes: [],
+        taughtPhonemes: 'abcdefghijklmnopqrstuvwxyz'.split(''),
         masteredWords: [],
         ownedItems: [],
         soundStats: {},

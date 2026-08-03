@@ -1,4 +1,4 @@
-export type ContentPackId = 'core' | 'continuous-bridge' | 'cvc-grid' | 'longer-words';
+export type ContentPackId = 'core' | 'alphabet-adventure' | 'continuous-bridge' | 'cvc-grid' | 'longer-words';
 
 export type ContentActivity =
   | 'initial-sound'
@@ -26,6 +26,26 @@ export interface InitialSoundGroup {
   letter: string;
   phonemeId: string;
   wordIds: string[];
+}
+
+export interface LetterExample {
+  id: string;
+  letter: string;
+  phonemeId: string;
+  word: string;
+  soundPosition: 'start' | 'end';
+}
+
+export interface RhymeFamily {
+  id: string;
+  words: string[];
+}
+
+export interface SyllableWord {
+  id: string;
+  word: string;
+  syllables: 1 | 2 | 3 | 4;
+  spokenSyllables: string;
 }
 
 export interface WordChain {
@@ -65,7 +85,10 @@ export interface ContentPack {
   prerequisitePhonemes: string[];
   introducedPhonemes: string[];
   words: ContentWord[];
+  letterExamples: LetterExample[];
   initialSoundGroups: InitialSoundGroup[];
+  rhymeFamilies: RhymeFamily[];
+  syllableWords: SyllableWord[];
   wordChains: WordChain[];
   stories: StoryRound[];
   postcards: PostcardRound[];

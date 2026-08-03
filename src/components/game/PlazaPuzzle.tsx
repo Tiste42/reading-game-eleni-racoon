@@ -14,6 +14,8 @@ import { getWordsForActivity } from '@/content/registry';
 import type { ContentWord } from '@/content/types';
 import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { getPracticedPhonemes } from '@/content/progression';
+import { canSharePictureChoices } from '@/content/pictureConflicts';
 
 const wordId = (entry: ContentWord) => entry.id;
 
@@ -32,8 +34,10 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
   const [solvedWords, setSolvedWords] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
-  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'picture-to-build'), [enabledContentPackIds]);
-  const session = useContentSession({ gameId: 'plaza-puzzle', candidates: pool, count: 6, getId: wordId });
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(() => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes), [enabledContentPackIds, taughtPhonemes]);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'picture-to-build', practicedPhonemes), [enabledContentPackIds, practicedPhonemes]);
+  const session = useContentSession({ gameId: 'plaza-puzzle', historyKey: 'world3-blending-words', candidates: pool, count: 6, getId: wordId });
   const pieces = session.items;
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
@@ -49,6 +53,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
       seed: `${session.seed}:${entry.id}:choices`,
       answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
       getId: wordId,
+      canUseDistractor: (answer, distractor) => canSharePictureChoices(answer.text, distractor.text),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);

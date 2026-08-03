@@ -23,6 +23,7 @@ test('v0 progress survives the V2 persistence migration', async () => {
     enabledContentPackIds: string[];
     contentRunCounter: number;
     recentContentByGame: Record<string, unknown>;
+    taughtPhonemes: string[];
   };
 
   assert.equal(migrated.coins, 47);
@@ -31,7 +32,8 @@ test('v0 progress survives the V2 persistence migration', async () => {
   assert.equal(migrated.soundEnabled, false);
   assert.equal(migrated.volume, 0.65);
   assert.deepEqual(migrated.worldProgress, legacy.worldProgress);
-  assert.deepEqual(migrated.enabledContentPackIds, ['continuous-bridge', 'cvc-grid', 'longer-words']);
+  assert.deepEqual(migrated.enabledContentPackIds, ['alphabet-adventure', 'continuous-bridge', 'cvc-grid', 'longer-words']);
+  assert.deepEqual(migrated.taughtPhonemes, 'abcdefghijklmnopqrstuvwxyz'.split(''));
   assert.equal(migrated.contentRunCounter, 0);
   assert.deepEqual(migrated.recentContentByGame, {});
 });
@@ -42,8 +44,10 @@ test('minimal and corrupt persisted values get safe content defaults', async () 
   const migrated = await migrate({ enabledContentPackIds: ['missing-pack'] }, 0) as {
     enabledContentPackIds: string[];
     recentContentByGame: Record<string, unknown>;
+    taughtPhonemes: string[];
   };
-  assert.deepEqual(migrated.enabledContentPackIds, []);
+  assert.deepEqual(migrated.enabledContentPackIds, ['alphabet-adventure']);
+  assert.deepEqual(migrated.taughtPhonemes, ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l']);
   assert.deepEqual(migrated.recentContentByGame, {});
 });
 

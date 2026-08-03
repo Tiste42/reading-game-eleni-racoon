@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   getEnabledPacks,
+  getInitialSoundGroups,
+  getLetterExamples,
   getPostcards,
   getStories,
   getWordChains,
@@ -9,6 +11,9 @@ import {
   normalizeEnabledPackIds,
   updateEnabledPackIds,
 } from '../../src/content/registry';
+import { getPracticedPhonemes } from '../../src/content/progression';
+import { buildRhymeCandidates, buildSoundPictureCandidates } from '../../src/content/earlyRoundBuilders';
+import { getRhymeFamilies } from '../../src/content/registry';
 
 test('core stays active while optional packs can be removed', () => {
   assert.deepEqual(getEnabledPacks([]).map((pack) => pack.id), ['core']);
@@ -48,4 +53,40 @@ test('enabled packs expand only progression-safe later-world activities', () => 
   assert.ok(getWordChains(all).some((chain) => chain.to.text === 'rat'));
   assert.ok(getStories(all).some((story) => story.pictureWord === 'lamp'));
   assert.ok(getPostcards(all).some((postcard) => postcard.correct === 'ship'));
+});
+
+test('Alphabet Adventure covers all 26 letters with concrete examples', () => {
+  const examples = getLetterExamples(['alphabet-adventure']);
+  assert.equal(examples.length, 26);
+  assert.deepEqual(examples.map((example) => example.letter).sort(), 'abcdefghijklmnopqrstuvwxyz'.split(''));
+  assert.equal(examples.find((example) => example.letter === 'x')?.word, 'fox');
+});
+
+test('new World 3 words stay locked until every sound has been taught', () => {
+  const enabled = ['alphabet-adventure'] as const;
+  const coreOnly = getPracticedPhonemes(enabled, ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l']);
+  const coreWords = getWordsForActivity(enabled, 'blend-to-picture', coreOnly).map((word) => word.text);
+  assert.equal(coreWords.includes('dog'), false);
+  assert.equal(coreWords.includes('fox'), false);
+
+  const allTaught = getPracticedPhonemes(enabled, 'abcdefghijklmnopqrstuvwxyz'.split(''));
+  const expandedWords = getWordsForActivity(enabled, 'blend-to-picture', allTaught).map((word) => word.text);
+  assert.equal(expandedWords.includes('dog'), true);
+  assert.equal(expandedWords.includes('fox'), true);
+  assert.ok(expandedWords.length >= 40);
+});
+
+test('early round builders provide broad valid rotating pools', () => {
+  const groups = getInitialSoundGroups(['alphabet-adventure']);
+  const soundRounds = buildSoundPictureCandidates(groups, 2, 2, 2);
+  assert.ok(soundRounds.length >= 20);
+  assert.ok(soundRounds.every((round) => round.targetWords.length >= 2));
+  assert.ok(soundRounds.every((round) => new Set([...round.targetWords, ...round.distractorWords]).size === round.targetWords.length + round.distractorWords.length));
+  const cRound = soundRounds.find((round) => round.targetLetter === 'c');
+  assert.ok(cRound);
+  assert.equal(cRound.distractorWords.includes('kite'), false);
+
+  const rhymeRounds = buildRhymeCandidates(getRhymeFamilies(['alphabet-adventure']));
+  assert.ok(rhymeRounds.length >= 35);
+  assert.ok(rhymeRounds.every((round) => round.match !== round.target && round.distractors.length === 2));
 });

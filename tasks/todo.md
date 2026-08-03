@@ -1,3 +1,19 @@
+# V2.1 Early-World Expansion (2026-08-03)
+
+Success: preserve every working World 1-3 mechanic while making repeat sessions
+materially different through full-alphabet sound coverage, larger picture/word
+pools, and persistent recent-content rotation. Existing progress must survive.
+
+- [x] Inventory every World 1-3 content pool and available picture/audio asset
+- [x] Add a default-on, removable Alphabet Adventure content pack
+- [x] Expand World 1 rhyme, syllable, sorting, odd-one-out, and sound-hunt pools
+- [x] Expand World 2 across all 26 letters with scientifically correct examples
+- [x] Expand World 3 with a much larger decodable picture-word pool
+- [x] Add and validate every required picture, word, phoneme, and narration asset
+- [x] Prove early-game variety, no answer leakage, save migration, and responsive fit
+- [x] Regression-test all 36 games and complete independent phonics/QA review
+- [ ] Commit, deploy, and verify V2.1 on the public production PWA
+
 # V2 Modular Content Packs (2026-08-02)
 
 Success: preserve every existing game and saved-progress path while adding removable,

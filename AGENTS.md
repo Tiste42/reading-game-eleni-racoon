@@ -41,8 +41,8 @@ A phonics-based reading game for a 4-year-old girl named Eleni. The main charact
 - **This world is diagnostic** — it tracks which sounds she's solid on vs. shaky, feeding into World 2
 
 ### World 2: The Letter Garden — France
-- **Focus:** SATPIN letter-sound mastery (S, A, T, P, I, N) plus E and L from Eleni's name
-- **Difficulty:** Still foundational but more focused. She's not just identifying — she's practicing specific letter-sound pairs repeatedly.
+- **Focus:** SATPIN + E/L remain the foundation, then rotating Alphabet Adventure practice expands across all 26 letters over repeat sessions.
+- **Difficulty:** Still foundational but more focused. She's not just identifying — she's practicing specific letter-sound pairs repeatedly, with persistent rotation so every letter is eventually covered.
 - **Games should include:** letter tracing with phoneme audio, sound-to-letter matching, "feed the animal that starts with /t/", letter memory match, spelling her own name
 - **Must be harder than World 1** — World 1 is broad awareness, World 2 is targeted mastery of specific letters
 - **Key principle:** Games must be INTERACTIVE and ENGAGING, not passive tap-and-listen. Every game must require the child to think and make a choice.
@@ -52,13 +52,13 @@ A phonics-based reading game for a 4-year-old girl named Eleni. The main charact
 - **Difficulty:** This is where reading begins. Hardest conceptual leap.
 - **Games should include:** sailboat slide (drag across letters to blend sounds), word building from letter tiles, picture matching after blending, blend-then-choose
 - **Key mechanic:** continuous motion blending — the child drags across letters and sounds play without gaps. Stopping = sound stops. This prevents the pause-between-sounds problem.
-- **Only use SATPIN + E, L letters** — never introduce unknown sounds during blending practice
+- **Use taught letters only.** Start with SATPIN + E/L, then mix in the additional letters explicitly practiced in World 2. Never introduce an unpracticed sound during blending.
 
 ### World 4: The Castle of Words — England & Wales
 - **Focus:** CVC word families (-at, -an, -it, -ip, -in, -ot, -ug), phoneme manipulation (swap one letter to make a new word)
 - **Difficulty:** Building speed and confidence with reading CVC words
 - **Games should include:** potion lab (swap letters), word family towers, read-the-word-to-open-the-door, dragon egg word scramble
-- **Expands letter set** — introduces c, k, e, h, r, m, d beyond SATPIN
+- **Expands manipulation and fluency** — reuses the broader taught letter set in harder word families and phoneme swaps.
 
 ### World 5: The Market of Mysteries — Morocco
 - **Focus:** High-frequency sight words ("heart words": the, was, said, is, to, he, she) + digraphs (sh, ch, th)

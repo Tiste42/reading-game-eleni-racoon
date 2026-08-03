@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ContentPackId } from '@/content/types';
 import { normalizeEnabledPackIds, updateEnabledPackIds } from '@/content/registry';
+import { ALPHABET_PHONEMES, CORE_FOUNDATION_PHONEMES } from '@/content/progression';
 import type { ContentHistory } from './roundSelector';
 
 export interface SessionEntry {
@@ -36,6 +37,7 @@ interface GameState {
   costumes: string[];
   passportStamps: number[];
   masteredPhonemes: string[];
+  taughtPhonemes: string[];
   masteredWords: string[];
   ownedItems: string[];
   soundStats: Record<string, SoundStat>;
@@ -59,6 +61,7 @@ interface GameState {
   addCostume: (costume: string) => void;
   addPassportStamp: (world: number) => void;
   masterPhoneme: (phoneme: string) => void;
+  teachPhoneme: (phoneme: string) => void;
   masterWord: (word: string) => void;
   recordSoundAttempt: (sound: string, correct: boolean) => void;
   getShakySounds: () => string[];
@@ -99,6 +102,7 @@ export const useGameStore = create<GameState>()(
       costumes: [],
       passportStamps: [],
       masteredPhonemes: [],
+      taughtPhonemes: [...CORE_FOUNDATION_PHONEMES],
       masteredWords: [],
       ownedItems: [],
       soundStats: {},
@@ -109,7 +113,7 @@ export const useGameStore = create<GameState>()(
       volume: 0.9,
       musicVolume: 0.08, // music sits well under Leni's voice by default
       freePlay: false,
-      enabledContentPackIds: [],
+      enabledContentPackIds: ['alphabet-adventure'],
       contentSeed: 'eleni-v2',
       contentRunCounter: 0,
       recentContentByGame: {},
@@ -159,6 +163,12 @@ export const useGameStore = create<GameState>()(
           masteredPhonemes: state.masteredPhonemes.includes(phoneme)
             ? state.masteredPhonemes
             : [...state.masteredPhonemes, phoneme],
+        })),
+      teachPhoneme: (phoneme) =>
+        set((state) => ({
+          taughtPhonemes: state.taughtPhonemes.includes(phoneme)
+            ? state.taughtPhonemes
+            : [...state.taughtPhonemes, phoneme],
         })),
       masterWord: (word) =>
         set((state) => ({
@@ -265,34 +275,47 @@ export const useGameStore = create<GameState>()(
           costumes: [],
           passportStamps: [],
           masteredPhonemes: [],
+          taughtPhonemes: [...CORE_FOUNDATION_PHONEMES],
           masteredWords: [],
           ownedItems: [],
           soundStats: {},
           streakCount: 0,
           sessionHistory: [],
-          enabledContentPackIds: [],
+          enabledContentPackIds: ['alphabet-adventure'],
           contentRunCounter: 0,
           recentContentByGame: {},
         }),
     }),
     {
       name: 'eleni-sound-safari',
-      version: 2,
-      migrate: (persistedState) => {
+      version: 3,
+      migrate: (persistedState, persistedVersion) => {
         const legacy = (persistedState || {}) as Partial<GameState>;
         const advanced = Boolean(
+          legacy.worldProgress?.[2]?.gamesCompleted?.length ||
+          legacy.worldProgress?.[2]?.bossCompleted ||
+          legacy.worldProgress?.[3]?.gamesCompleted?.length ||
           legacy.worldProgress?.[3]?.bossCompleted ||
           legacy.worldProgress?.[4]?.gamesCompleted?.length ||
           (legacy.masteredWords?.length ?? 0) >= 6,
         );
-        const migratedPacks = legacy.enabledContentPackIds
+        const previousPacks = legacy.enabledContentPackIds
           ? normalizeEnabledPackIds(legacy.enabledContentPackIds)
           : advanced
             ? (['continuous-bridge', 'cvc-grid', 'longer-words'] as ContentPackId[])
             : [];
+        const migratedPacks = persistedVersion < 3
+          ? normalizeEnabledPackIds(['alphabet-adventure', ...previousPacks])
+          : previousPacks;
+        const taughtPhonemes = persistedVersion < 3
+          ? advanced
+            ? [...ALPHABET_PHONEMES]
+            : [...new Set([...CORE_FOUNDATION_PHONEMES, ...(legacy.masteredPhonemes || [])])]
+          : legacy.taughtPhonemes || [...CORE_FOUNDATION_PHONEMES];
         return {
           ...legacy,
           enabledContentPackIds: migratedPacks,
+          taughtPhonemes,
           contentSeed: legacy.contentSeed || 'eleni-v2',
           contentRunCounter: legacy.contentRunCounter || 0,
           recentContentByGame: legacy.recentContentByGame || {},

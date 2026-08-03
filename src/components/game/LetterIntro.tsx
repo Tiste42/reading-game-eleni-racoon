@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -11,22 +11,13 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getLetterExamples } from '@/content/registry';
+import type { LetterExample } from '@/content/types';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
+import { canShareSoundChoices } from '@/content/phonemeConflicts';
 
-// World 2 letters with a familiar example word (all have real art)
-const LETTERS: Array<{ letter: string; word: string }> = [
-  { letter: 's', word: 'sun' },
-  { letter: 'a', word: 'ant' },
-  { letter: 't', word: 'tiger' },
-  { letter: 'p', word: 'pig' },
-  { letter: 'i', word: 'igloo' },
-  { letter: 'n', word: 'nest' },
-  { letter: 'e', word: 'egg' },
-  { letter: 'l', word: 'lion' },
-];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const exampleId = (example: LetterExample) => example.letter;
 
 interface Props {
   worldId: number;
@@ -40,13 +31,27 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('play');
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(LETTERS).slice(0, 6));
-  const [choicesByRound] = useState(() =>
-    rounds.map((r) =>
-      shuffle([r.letter, ...shuffle(LETTERS.filter((l) => l.letter !== r.letter)).slice(0, 2).map((l) => l.letter)]),
-    ),
-  );
-  const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const examples = useMemo(() => getLetterExamples(enabledContentPackIds), [enabledContentPackIds]);
+  const candidates = useMemo(() => {
+    const untaught = examples.filter((example) => !taughtPhonemes.includes(example.phonemeId));
+    return untaught.length >= 6
+      ? untaught
+      : [...untaught, ...examples.filter((example) => taughtPhonemes.includes(example.phonemeId))];
+  }, [examples, taughtPhonemes]);
+  const session = useContentSession({ gameId: 'letter-intro', candidates, count: 6, getId: exampleId });
+  const rounds = session.items;
+  const [choicesByRound] = useState(() => rounds.map((current, index) =>
+    buildChoiceSet(current, examples, {
+      count: 3,
+      seed: `${session.seed}:${current.letter}:choices`,
+      answerIndex: getBalancedAnswerIndex(index, 3, session.seed),
+      getId: exampleId,
+      canUseDistractor: (answer, distractor) => canShareSoundChoices(answer.phonemeId, distractor.phonemeId),
+    }).map((example) => example.letter),
+  ));
+  const { completeGame, addCoins, masterPhoneme, teachPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
   const choices = choicesByRound[round];
@@ -62,7 +67,7 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
     [
       { say: 'What letter makes this sound?' },
       { pause: 250 },
-      { phoneme: current.letter },
+      { phoneme: current.phonemeId },
     ],
     [round],
   );
@@ -86,8 +91,9 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
       modeling.current = true;
       setPhase('model');
       (async () => {
-        recordSoundAttempt(current.letter, false);
-        await speakReveal(current.letter);
+        recordSoundAttempt(current.phonemeId, false);
+        teachPhoneme(current.phonemeId);
+        await speakReveal(current.phonemeId);
         await speakWord(current.word);
         await new Promise((r) => setTimeout(r, 800));
         modeling.current = false;
@@ -101,32 +107,33 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
     (letter: string) => {
       if (phase !== 'play') return;
       if (letter === current.letter) {
-        recordSoundAttempt(letter, true);
+        recordSoundAttempt(current.phonemeId, true);
         incrementStreak();
-        masterPhoneme(letter);
+        teachPhoneme(current.phonemeId);
+        masterPhoneme(current.phonemeId);
         playSoundEffect('coin');
         setPhase('won');
         (async () => {
-          await speakPhoneme(letter);
+          await speakPhoneme(current.phonemeId);
           await speakWord(current.word);
           await speakFeedback(isLast ? 'complete' : 'correct');
           await new Promise((r) => setTimeout(r, 800));
           advance();
         })();
       } else {
-        recordSoundAttempt(current.letter, false);
+        recordSoundAttempt(current.phonemeId, false);
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
         setWrongPick(letter);
         // Re-teach: play the target sound again so she can re-listen
         (async () => {
-          await speakPhoneme(current.letter);
+          await speakPhoneme(current.phonemeId);
           setWrongPick(null);
         })();
       }
     },
-    [phase, current, isLast, advance, incrementStreak, masterPhoneme, resetStreak, recordWrong, recordSoundAttempt],
+    [phase, current, isLast, advance, incrementStreak, masterPhoneme, teachPhoneme, resetStreak, recordWrong, recordSoundAttempt],
   );
 
   return (
@@ -150,7 +157,7 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
         {/* Big hear-the-sound button */}
         <PressButton
           silent
-          onClick={() => speakPhoneme(current.letter)}
+          onClick={() => speakPhoneme(current.phonemeId)}
           className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center"
           aria-label="Hear the sound"
         >

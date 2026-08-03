@@ -5,6 +5,32 @@ test.beforeEach(async ({ page }) => {
   await seedFreePlay(page);
 });
 
+test('Rhyme Beach keeps spellings hidden until after the child chooses', async ({ page }) => {
+  const errors = captureRuntimeFailures(page);
+  await page.goto('/world/1/rhyme-match');
+  const target = page.getByTestId('rhyme-target');
+  const choices = page.getByTestId('rhyme-choice');
+  await expect(target).toBeVisible();
+  await expect(choices).toHaveCount(3);
+  expect((await target.textContent()) || '').not.toMatch(/[a-z]/i);
+  for (const choice of await choices.all()) {
+    expect((await choice.textContent()) || '').not.toMatch(/[a-z]/i);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('Letter Trace asks from the picture without printing its answer word', async ({ page }) => {
+  const errors = captureRuntimeFailures(page);
+  await page.goto('/world/2/letter-trace');
+  await expect(page.getByTestId('letter-trace-prompt')).toHaveText('What letter does it start with?');
+  const picture = page.getByRole('button', { name: /^Hear / }).getByRole('img');
+  await expect(picture).toBeVisible();
+  const answerWord = await picture.getAttribute('alt');
+  expect(answerWord).toBeTruthy();
+  expect((await page.locator('body').innerText()).toLowerCase()).not.toContain((answerWord || '').toLowerCase());
+  expect(errors).toEqual([]);
+});
+
 test('Market Builder does not pronounce its pictured answer before completion', async ({ page }) => {
   const errors = captureRuntimeFailures(page);
   const wordRequests: string[] = [];
@@ -42,7 +68,7 @@ test('World 3 boss shows one written target and unlabeled picture choices', asyn
   await page.goto('/world/3/boss-3');
   const target = (await page.locator('.text-6xl.font-bold').first().textContent())?.trim();
   expect(target).toBeTruthy();
-  const choice = page.getByRole('button', { name: target || '' });
+  const choice = page.getByRole('button', { name: target || '', exact: true });
   await expect(choice).toBeVisible();
   await expect(choice).not.toContainText(target || 'missing');
   await choice.click();

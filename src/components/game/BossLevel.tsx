@@ -8,11 +8,15 @@ import GameShell from '@/components/ui/GameShell';
 import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
 import { speakFeedback, speakReveal } from '@/lib/speech';
-import { useGameSpeech, useInstructionSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useComposedSpeech, useGameSpeech, useInstructionSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import WordCard from '@/components/ui/WordCard';
 import { playSoundEffect } from '@/lib/audio';
-import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { buildAssessmentChoiceSet } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { getInitialSoundGroups, getWordsForActivity } from '@/content/registry';
+import { getPracticedPhonemes } from '@/content/progression';
+import { canSharePictureChoices } from '@/content/pictureConflicts';
+import { canShareSoundChoices } from '@/content/phonemeConflicts';
 
 interface BossChallenge {
   type: 'picture-match' | 'word-read' | 'sentence';
@@ -21,6 +25,8 @@ interface BossChallenge {
   icon: string;
   correct: string;
   options: string[];
+  phonemeId?: string;
+  contentId?: string;
 }
 
 const BOSS_DATA: Record<number, { name: string; challenges: BossChallenge[] }> = {
@@ -85,7 +91,7 @@ const BOSS_DATA: Record<number, { name: string; challenges: BossChallenge[] }> =
 };
 
 const optionId = (option: string) => option;
-const challengeId = (challenge: BossChallenge) => `${challenge.type}:${challenge.prompt}`;
+const challengeId = (challenge: BossChallenge) => challenge.contentId || `${challenge.type}:${challenge.prompt}:${challenge.correct}`;
 
 interface Props {
   worldId: number;
@@ -95,9 +101,46 @@ interface Props {
 export default function BossLevel({ worldId, onComplete }: Props) {
   const boss = BOSS_DATA[worldId];
   const world = WORLDS.find((w) => w.id === worldId);
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(
+    () => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes),
+    [enabledContentPackIds, taughtPhonemes],
+  );
+  const earlyChallenges = useMemo(() => {
+    if (worldId === 2) {
+      const groups = getInitialSoundGroups(enabledContentPackIds, practicedPhonemes);
+      return groups.map((group): BossChallenge => ({
+        type: 'picture-match',
+        prompt: 'Which picture starts with this sound?',
+        icon: '',
+        phonemeId: group.phonemeId,
+        contentId: group.id,
+        correct: group.words[0].text,
+        options: groups
+          .filter((candidate) => canShareSoundChoices(group.phonemeId, candidate.phonemeId))
+          .map((candidate) => candidate.words[0]?.text)
+          .filter(Boolean),
+      }));
+    }
+    if (worldId === 3) {
+      const words = getWordsForActivity(enabledContentPackIds, 'blend-to-picture', practicedPhonemes);
+      const optionWords = words.map((word) => word.text);
+      return words.map((word): BossChallenge => ({
+        type: 'word-read',
+        prompt: 'What word is this?',
+        icon: '',
+        contentId: word.id,
+        correct: word.text,
+        options: optionWords,
+      }));
+    }
+    return boss.challenges;
+  }, [boss.challenges, enabledContentPackIds, practicedPhonemes, worldId]);
   const session = useContentSession({
     gameId: `boss-${worldId}`,
-    candidates: boss.challenges,
+    historyKey: worldId === 3 ? 'world3-blending-words' : `boss-${worldId}`,
+    candidates: earlyChallenges,
     count: 6,
     getId: challengeId,
   });
@@ -108,22 +151,31 @@ export default function BossLevel({ worldId, onComplete }: Props) {
   const { completeBoss, addCoins, addPassportStamp, addCompanion, addCostume } = useGameStore();
 
   const current = challenges[round];
-  const stableOptions = useMemo(() => buildChoiceSet(current.correct, current.options, {
-    count: current.options.length,
-    seed: `${session.seed}:${round}:options`,
-    answerIndex: getBalancedAnswerIndex(round, current.options.length, session.seed),
+  const stableOptions = useMemo(() => buildAssessmentChoiceSet(current.correct, current.options, {
+    count: 3,
+    round,
+    seed: session.seed,
     getId: optionId,
+    canUseDistractor: (answer, distractor) => canSharePictureChoices(answer, distractor),
   }), [current, round, session.seed]);
 
   // Assessment prompts never pronounce answer options. Written-word rounds
   // use picture-only choices, and sentence rounds remain self-read.
-  const picturePrompt = useGameSpeech(current.type === 'picture-match' ? current.prompt : null, [round]);
+  const picturePrompt = useGameSpeech(current.type === 'picture-match' && !current.phonemeId ? current.prompt : null, [round]);
+  const soundPicturePrompt = useComposedSpeech(
+    current.type === 'picture-match' && current.phonemeId
+      ? [{ say: 'Which picture starts with this sound?' }, { pause: 250 }, { phoneme: current.phonemeId }]
+      : [],
+    [round],
+  );
   const assessmentPrompt = useInstructionSpeech(
     current.type === 'word-read' ? 'dragon-feed' : 'story-stroll',
     current.type !== 'picture-match',
     [round],
   );
-  const replay = current.type === 'picture-match' ? picturePrompt.replay : assessmentPrompt.replay;
+  const replay = current.type === 'picture-match'
+    ? current.phonemeId ? soundPicturePrompt.replay : picturePrompt.replay
+    : assessmentPrompt.replay;
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
 

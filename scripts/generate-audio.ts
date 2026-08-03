@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CONTENT_NARRATION_PHRASES } from '../src/content/registry';
+import { CONTENT_AUDIO_WORDS, CONTENT_NARRATION_PHRASES, CONTENT_SYLLABLE_CLIPS } from '../src/content/registry';
 
 const envPath = path.join(process.cwd(), '.env.local');
 if (fs.existsSync(envPath)) {
@@ -15,6 +15,7 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'JQLMoxrGsJub4hRarykA';
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'audio');
 const RATE_LIMIT_MS = 500;
+const FORCE_PHONEMES = process.argv.includes('--force-phonemes');
 
 interface AudioClip {
   id: string;
@@ -24,15 +25,19 @@ interface AudioClip {
 }
 
 // Natural pronunciation text for phonemes — spoken by the same voice model
-// as everything else. No SSML/IPA needed.
-// Continuous sounds get stretched, stop sounds get a minimal vowel.
+// Exact build-time phoneme tags keep vowels short and stop sounds free of schwa.
+const cmu = (letter: string, phoneme: string) =>
+  `<phoneme alphabet="cmu-arpabet" ph="${phoneme}">${letter}</phoneme>`;
+
 const PHONEME_TEXT: Record<string, string> = {
-  s: 'ssss', a: 'ah', t: 'tuh', p: 'puh', i: 'ih',
-  n: 'nnnn', e: 'eh', l: 'llll', c: 'kuh', k: 'kuh',
-  h: 'huh', r: 'rrrr', m: 'mmmm', d: 'duh', g: 'guh',
-  o: 'oh', u: 'uh', f: 'ffff', b: 'buh', j: 'juh',
-  v: 'vvvv', w: 'wuh', x: 'ks', y: 'yuh', z: 'zzzz',
-  sh: 'shhhh', ch: 'chuh', th: 'thhhh',
+  a: cmu('a', 'AE1'), b: cmu('b', 'B'), c: cmu('c', 'K'), d: cmu('d', 'D'),
+  e: cmu('e', 'EH1'), f: cmu('f', 'F'), g: cmu('g', 'G'), h: cmu('h', 'HH'),
+  i: cmu('i', 'IH1'), j: cmu('j', 'JH'), k: cmu('k', 'K'), l: cmu('l', 'L'),
+  m: cmu('m', 'M'), n: cmu('n', 'N'), o: cmu('o', 'AA1'), p: cmu('p', 'P'),
+  q: cmu('q', 'K W'), r: cmu('r', 'R'), s: cmu('s', 'S'), t: cmu('t', 'T'),
+  u: cmu('u', 'AH1'), v: cmu('v', 'V'), w: cmu('w', 'W'), x: cmu('x', 'K S'),
+  y: cmu('y', 'Y'), z: cmu('z', 'Z'), sh: cmu('sh', 'SH'),
+  ch: cmu('ch', 'CH'), th: cmu('th', 'TH'),
 };
 
 
@@ -43,7 +48,7 @@ function buildManifest(): AudioClip[] {
   const phonemeLetters = [
     's', 'a', 't', 'p', 'i', 'n', 'e', 'l', 'c', 'k',
     'h', 'r', 'm', 'd', 'g', 'o', 'u', 'f', 'b', 'j',
-    'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th',
+    'q', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th',
   ];
 
   for (const ph of phonemeLetters) {
@@ -78,6 +83,10 @@ function buildManifest(): AudioClip[] {
     'fast', 'mad', 'yes', 'pug',
     'monkey', 'rabbit', 'tomato', 'butterfly', 'dinosaur', 'watermelon',
   ];
+
+  for (const contentWord of CONTENT_AUDIO_WORDS) {
+    if (!words.includes(contentWord)) words.push(contentWord);
+  }
 
   for (const w of words) {
     clips.push({
@@ -272,6 +281,17 @@ function buildManifest(): AudioClip[] {
       id: `narration-${n.id}`,
       text: n.text,
       outputPath: `narration/${n.id}.mp3`,
+      category: 'narration',
+    });
+  }
+
+  for (const entry of CONTENT_SYLLABLE_CLIPS) {
+    const outputPath = `narration/syll-${entry.word}.mp3`;
+    if (clips.some((clip) => clip.outputPath === outputPath)) continue;
+    clips.push({
+      id: `narration-syll-${entry.word}`,
+      text: entry.spokenSyllables,
+      outputPath,
       category: 'narration',
     });
   }
@@ -549,6 +569,15 @@ function buildManifest(): AudioClip[] {
     { text: '4', ttsText: 'four!' },
   ];
 
+  const numberWords = ['', 'one', 'two', 'three', 'four'];
+  for (const entry of CONTENT_SYLLABLE_CLIPS) {
+    const beatWord = entry.syllables === 1 ? 'beat' : 'beats';
+    instructionNarrations.push({
+      text: `${entry.word} has ${entry.syllables} ${beatWord}`,
+      ttsText: `${entry.word} has ${numberWords[entry.syllables]} ${beatWord}!`,
+    });
+  }
+
   // Multi-word option phrases (spoken as options in games)
   const phraseNarrations = [
     'a mat', 'a cat', 'a hat', 'a dog', 'a fish', 'a bug', 'a cup', 'a net', 'a man',
@@ -666,7 +695,7 @@ async function generateClip(clip: AudioClip): Promise<boolean> {
   const outputFile = path.join(OUTPUT_DIR, clip.outputPath);
   const dir = path.dirname(outputFile);
 
-  if (fs.existsSync(outputFile)) {
+  if (fs.existsSync(outputFile) && !(FORCE_PHONEMES && clip.category === 'phoneme')) {
     console.log(`  SKIP: ${clip.outputPath} (exists)`);
     return true;
   }
@@ -676,7 +705,7 @@ async function generateClip(clip: AudioClip): Promise<boolean> {
   try {
     const body: Record<string, unknown> = {
       text: clip.text,
-      model_id: 'eleven_multilingual_v2',
+      model_id: clip.category === 'phoneme' ? 'eleven_turbo_v2' : 'eleven_multilingual_v2',
       voice_settings: {
         stability: 0.75,
         similarity_boost: 0.75,
@@ -752,7 +781,9 @@ async function main() {
         failCount++;
         failures.push(clip.outputPath);
       }
-      if (!existed) await sleep(RATE_LIMIT_MS);
+      if (!existed || (FORCE_PHONEMES && clip.category === 'phoneme')) {
+        await sleep(RATE_LIMIT_MS);
+      }
     }
   }
 

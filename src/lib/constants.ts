@@ -148,7 +148,7 @@ export const WORLDS: WorldConfig[] = [
 
 export const SATPIN_LETTERS = ['s', 'a', 't', 'p', 'i', 'n'];
 export const EXTENDED_LETTERS = ['e', 'l'];
-export const WORLD_2_LETTERS = [...SATPIN_LETTERS, ...EXTENDED_LETTERS];
+export const WORLD_2_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
 export const ADAPTIVE_THRESHOLDS = {
   INCREASE_DIFFICULTY_STREAK: 3,

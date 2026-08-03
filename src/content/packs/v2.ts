@@ -32,7 +32,10 @@ export const CONTINUOUS_BRIDGE_PACK: ContentPack = {
     word('continuous-bridge', 'rat', [unit('r'), unit('a'), unit('t')], ['word-chain']),
     word('continuous-bridge', 'pot', [unit('p'), unit('o'), unit('t')]),
   ],
+  letterExamples: [],
   initialSoundGroups: [],
+  rhymeFamilies: [],
+  syllableWords: [],
   wordChains: [
     { id: 'continuous:mat-rat', fromWordId: 'continuous-bridge:mat', toWordId: 'continuous-bridge:rat', changedUnitIndex: 0, distractorUnits: [unit('f')] },
     { id: 'continuous:map-mat', fromWordId: 'continuous-bridge:map', toWordId: 'continuous-bridge:mat', changedUnitIndex: 2, distractorUnits: [unit('n')] },
@@ -65,7 +68,10 @@ export const CVC_GRID_PACK: ContentPack = {
     ].map(([text, letters]) => word('cvc-grid', text as string, (letters as string[]).map((letter) => unit(letter, letter === 'c' ? 'c' : letter)), ['word-chain'])),
     word('cvc-grid', 'red', [unit('r'), unit('e'), unit('d')], ['word-chain']),
   ],
+  letterExamples: [],
   initialSoundGroups: [],
+  rhymeFamilies: [],
+  syllableWords: [],
   wordChains: [
     { id: 'cvc:bug-mug', fromWordId: 'cvc-grid:bug', toWordId: 'cvc-grid:mug', changedUnitIndex: 0, distractorUnits: [unit('d')] },
     { id: 'cvc:rug-pug', fromWordId: 'cvc-grid:rug', toWordId: 'cvc-grid:pug', changedUnitIndex: 0, distractorUnits: [unit('b')] },
@@ -99,7 +105,10 @@ export const LONGER_WORDS_PACK: ContentPack = {
     word('longer-words', 'nest', [unit('n'), unit('e'), unit('s'), unit('t')]),
     word('longer-words', 'tent', [unit('t'), unit('e'), unit('n'), unit('t')]),
   ],
+  letterExamples: [],
   initialSoundGroups: [],
+  rhymeFamilies: [],
+  syllableWords: [],
   wordChains: [],
   stories: [
     { id: 'longer:story-ship', text: 'The ship is big.', pictureWord: 'ship', question: 'What is big?', correct: 'the ship', options: ['the ship', 'the shop', 'the shed'], cue: 'self-read-sentence' },

@@ -14,6 +14,8 @@ import { getWordsForActivity } from '@/content/registry';
 import type { ContentWord } from '@/content/types';
 import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { getPracticedPhonemes } from '@/content/progression';
+import { canSharePictureChoices } from '@/content/pictureConflicts';
 
 const wordId = (entry: ContentWord) => entry.id;
 
@@ -32,8 +34,10 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
-  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'blend-to-picture'), [enabledContentPackIds]);
-  const session = useContentSession({ gameId: 'sailboat-race', candidates: pool, count: 5, getId: wordId });
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(() => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes), [enabledContentPackIds, taughtPhonemes]);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'blend-to-picture', practicedPhonemes), [enabledContentPackIds, practicedPhonemes]);
+  const session = useContentSession({ gameId: 'sailboat-race', historyKey: 'world3-blending-words', candidates: pool, count: 5, getId: wordId });
   const words = session.items;
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
@@ -51,6 +55,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
       seed: `${session.seed}:${entry.id}:choices`,
       answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
       getId: wordId,
+      canUseDistractor: (answer, distractor) => canSharePictureChoices(answer.text, distractor.text),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
