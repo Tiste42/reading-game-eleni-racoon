@@ -14,6 +14,8 @@ import { playSoundEffect } from '@/lib/audio';
 import { getInitialSoundGroups, type ResolvedSoundGroup } from '@/content/registry';
 import { buildChoiceSet, getBalancedAnswerIndex, shuffleSeeded } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { getPracticedPhonemes } from '@/content/progression';
+import { canShareSoundChoices } from '@/content/phonemeConflicts';
 
 interface Round {
   id: string;
@@ -38,7 +40,15 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
-  const groups = useMemo(() => getInitialSoundGroups(enabledContentPackIds), [enabledContentPackIds]);
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(
+    () => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes),
+    [enabledContentPackIds, taughtPhonemes],
+  );
+  const groups = useMemo(
+    () => getInitialSoundGroups(enabledContentPackIds, practicedPhonemes),
+    [enabledContentPackIds, practicedPhonemes],
+  );
   const session = useContentSession({ gameId: 'sound-safari', candidates: groups, count: 6, getId: groupId });
   const [rounds] = useState<Round[]>(() => session.items.map((group, index) => {
     const target = shuffleSeeded(group.words, `${session.seed}:${group.id}:target`)[0];
@@ -47,6 +57,7 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
       seed: `${session.seed}:${group.id}:choices`,
       answerIndex: getBalancedAnswerIndex(index, 3, session.seed),
       getId: groupId,
+      canUseDistractor: (answer, distractor) => canShareSoundChoices(answer.phonemeId, distractor.phonemeId),
     });
     return {
       id: group.id,

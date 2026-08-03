@@ -6,15 +6,16 @@ import { selectTargets } from './roundSelector';
 
 interface Options<T> {
   gameId: string;
+  historyKey?: string;
   candidates: readonly T[];
   count: number;
   getId: (item: T) => string;
 }
 
-export function useContentSession<T>({ gameId, candidates, count, getId }: Options<T>) {
+export function useContentSession<T>({ gameId, historyKey = gameId, candidates, count, getId }: Options<T>) {
   const seedBase = useGameStore((state) => state.contentSeed);
   const runCounter = useGameStore((state) => state.contentRunCounter);
-  const history = useGameStore((state) => state.recentContentByGame[gameId]);
+  const history = useGameStore((state) => state.recentContentByGame[historyKey]);
   const beginContentRun = useGameStore((state) => state.beginContentRun);
   const recordContentBatch = useGameStore((state) => state.recordContentBatch);
   const recorded = useRef(false);
@@ -34,8 +35,8 @@ export function useContentSession<T>({ gameId, candidates, count, getId }: Optio
     if (recorded.current) return;
     recorded.current = true;
     beginContentRun();
-    recordContentBatch(gameId, session.items.map(getId));
-  }, [beginContentRun, gameId, getId, recordContentBatch, session.items]);
+    recordContentBatch(historyKey, session.items.map(getId));
+  }, [beginContentRun, getId, historyKey, recordContentBatch, session.items]);
 
   return session;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,47 +10,15 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakPhoneme, speakFeedback } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getInitialSoundGroups } from '@/content/registry';
+import { buildSoundPictureCandidates } from '@/content/earlyRoundBuilders';
+import { useContentSession } from '@/lib/useContentSession';
+import { shuffleSeeded } from '@/lib/roundSelector';
 
 interface SortRound {
   targetLetter: string;
   items: Array<{ word: string; startsWithTarget: boolean }>;
 }
-
-const SORT_ROUNDS: SortRound[] = [
-  {
-    targetLetter: 's',
-    items: [
-      { word: 'sun', startsWithTarget: true },
-      { word: 'sock', startsWithTarget: true },
-      { word: 'ball', startsWithTarget: false },
-      { word: 'star', startsWithTarget: true },
-      { word: 'dog', startsWithTarget: false },
-      { word: 'snake', startsWithTarget: true },
-    ],
-  },
-  {
-    targetLetter: 'm',
-    items: [
-      { word: 'moon', startsWithTarget: true },
-      { word: 'cat', startsWithTarget: false },
-      { word: 'mouse', startsWithTarget: true },
-      { word: 'milk', startsWithTarget: true },
-      { word: 'tree', startsWithTarget: false },
-      { word: 'map', startsWithTarget: true },
-    ],
-  },
-  {
-    targetLetter: 't',
-    items: [
-      { word: 'tiger', startsWithTarget: true },
-      { word: 'tent', startsWithTarget: true },
-      { word: 'fish', startsWithTarget: false },
-      { word: 'top', startsWithTarget: true },
-      { word: 'hat', startsWithTarget: false },
-      { word: 'turtle', startsWithTarget: true },
-    ],
-  },
-];
 
 interface FlyState {
   word: string;
@@ -63,10 +31,6 @@ interface Props {
   onComplete: () => void;
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
-
 export default function SoundSorting({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [sorted, setSorted] = useState<string[]>([]);
@@ -75,9 +39,25 @@ export default function SoundSorting({ worldId, onComplete }: Props) {
   const [basketBounce, setBasketBounce] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
   const basketRef = useRef<HTMLDivElement>(null);
-  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
-
-  const [rounds] = useState(() => shuffle(SORT_ROUNDS).map((r) => ({ ...r, items: shuffle(r.items) })));
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt, enabledContentPackIds } = useGameStore();
+  const candidates = useMemo(
+    () => buildSoundPictureCandidates(getInitialSoundGroups(enabledContentPackIds), 3, 3, 3),
+    [enabledContentPackIds],
+  );
+  const session = useContentSession({
+    gameId: 'first-sound',
+    historyKey: 'world1-initial-sounds',
+    candidates,
+    count: 3,
+    getId: (candidate) => candidate.id,
+  });
+  const rounds: SortRound[] = useMemo(() => session.items.map((candidate, index) => ({
+    targetLetter: candidate.targetLetter,
+    items: shuffleSeeded([
+      ...candidate.targetWords.map((word) => ({ word, startsWithTarget: true })),
+      ...candidate.distractorWords.map((word) => ({ word, startsWithTarget: false })),
+    ], `${session.seed}:items:${index}`),
+  })), [session]);
 
   const current = rounds[round];
   const isLastRound = round >= rounds.length - 1;

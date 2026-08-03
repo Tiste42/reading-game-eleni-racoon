@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,54 +10,15 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakPhoneme, speakFeedback, speakReveal } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getInitialSoundGroups } from '@/content/registry';
+import { buildSoundPictureCandidates } from '@/content/earlyRoundBuilders';
+import { useContentSession } from '@/lib/useContentSession';
+import { shuffleSeeded } from '@/lib/roundSelector';
 
 interface HuntRound {
   targetSound: string;
   items: { word: string; startsWithTarget: boolean }[];
 }
-
-const ROUNDS: HuntRound[] = [
-  { targetSound: 's', items: [
-    { word: 'sun', startsWithTarget: true },
-    { word: 'snake', startsWithTarget: true },
-    { word: 'dog', startsWithTarget: false },
-    { word: 'sock', startsWithTarget: true },
-    { word: 'cat', startsWithTarget: false },
-    { word: 'hat', startsWithTarget: false },
-  ]},
-  { targetSound: 'b', items: [
-    { word: 'ball', startsWithTarget: true },
-    { word: 'bird', startsWithTarget: true },
-    { word: 'fish', startsWithTarget: false },
-    { word: 'bus', startsWithTarget: true },
-    { word: 'pen', startsWithTarget: false },
-    { word: 'cup', startsWithTarget: false },
-  ]},
-  { targetSound: 'm', items: [
-    { word: 'moon', startsWithTarget: true },
-    { word: 'mouse', startsWithTarget: true },
-    { word: 'tree', startsWithTarget: false },
-    { word: 'milk', startsWithTarget: true },
-    { word: 'bed', startsWithTarget: false },
-    { word: 'van', startsWithTarget: false },
-  ]},
-  { targetSound: 't', items: [
-    { word: 'tiger', startsWithTarget: true },
-    { word: 'tent', startsWithTarget: true },
-    { word: 'rain', startsWithTarget: false },
-    { word: 'top', startsWithTarget: true },
-    { word: 'leg', startsWithTarget: false },
-    { word: 'egg', startsWithTarget: false },
-  ]},
-  { targetSound: 'p', items: [
-    { word: 'pig', startsWithTarget: true },
-    { word: 'pen', startsWithTarget: true },
-    { word: 'dog', startsWithTarget: false },
-    { word: 'pot', startsWithTarget: true },
-    { word: 'net', startsWithTarget: false },
-    { word: 'hat', startsWithTarget: false },
-  ]},
-];
 
 // Scattered scene slots: % positions with playful rotation/scale variety
 const SLOTS = [
@@ -69,14 +30,6 @@ const SLOTS = [
   { left: 38, top: 66, rot: -7, scale: 1.0 },
 ];
 
-// Long delay so the hint helps a stuck child without giving answers away
-// (the naming sequence itself takes ~12s, so the hint must come well after)
-const HINT_DELAY_MS = 22000;
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
-
 interface Props {
   worldId: number;
   onComplete: () => void;
@@ -86,12 +39,26 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   const [roundIdx, setRoundIdx] = useState(0);
   const [found, setFound] = useState<string[]>([]);
   const [wrongShake, setWrongShake] = useState<string | null>(null);
-  const [hintWord, setHintWord] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() =>
-    shuffle(ROUNDS).slice(0, 4).map((r) => ({ ...r, items: shuffle(r.items) })),
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt, enabledContentPackIds } = useGameStore();
+  const candidates = useMemo(
+    () => buildSoundPictureCandidates(getInitialSoundGroups(enabledContentPackIds), 3, 3, 2),
+    [enabledContentPackIds],
   );
-  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
+  const session = useContentSession({
+    gameId: 'sound-hunt',
+    historyKey: 'world1-initial-sounds',
+    candidates,
+    count: 4,
+    getId: (candidate) => candidate.id,
+  });
+  const rounds: HuntRound[] = useMemo(() => session.items.map((candidate, index) => ({
+    targetSound: candidate.targetLetter,
+    items: shuffleSeeded([
+      ...candidate.targetWords.map((word) => ({ word, startsWithTarget: true })),
+      ...candidate.distractorWords.map((word) => ({ word, startsWithTarget: false })),
+    ], `${session.seed}:items:${index}`),
+  })), [session]);
 
   const current = rounds[roundIdx];
   const targetItems = current.items.filter((i) => i.startsWithTarget);
@@ -115,18 +82,6 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
   );
 
   const { shouldReveal, recordWrong } = useWrongAttempts(roundIdx, 3);
-
-  // Gentle idle hint: only after a LONG quiet stretch (don't give answers away)
-  useEffect(() => {
-    if (roundDone) return;
-    setHintWord(null);
-    const timer = setTimeout(() => {
-      const remaining = targetItems.find((i) => !found.includes(i.word));
-      if (remaining) setHintWord(remaining.word);
-    }, HINT_DELAY_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [found, roundIdx, roundDone]);
 
   // Too many wrong taps: reveal one target outright
   useEffect(() => {
@@ -170,7 +125,6 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
         incrementStreak();
         playSoundEffect('coin');
         setFound((f) => [...f, item.word]);
-        setHintWord(null);
         const willBeDone = found.length + 1 >= targetCount;
         const isGameDone = willBeDone && roundIdx >= rounds.length - 1;
         speakFeedback(isGameDone ? 'complete' : 'correct');
@@ -233,7 +187,6 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
               const slot = SLOTS[index % SLOTS.length];
               const isFound = found.includes(item.word);
               const isBeingSpoken = activeOption === index;
-              const hintThis = hintWord === item.word;
 
               return (
                 <motion.button
@@ -255,7 +208,7 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
                   }
                   className={`absolute w-[104px] h-[104px] rounded-full bg-white/95 shadow-xl flex items-center justify-center ${
                     isBeingSpoken ? 'ring-4 ring-blue-400 z-10' : ''
-                  } ${hintThis ? 'animate-hint-pulse ring-4 ring-yellow-300 z-10' : ''}`}
+                  }`}
                   style={{ left: `${slot.left}%`, top: `${slot.top}%`, rotate: `${slot.rot}deg` }}
                 >
                   <WordCard word={item.word} size={70} />

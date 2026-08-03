@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,20 +10,10 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakClip, speakWord, speakFeedback } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-interface RhymeRound {
-  target: string;
-  match: string;
-  distractors: string[];
-}
-
-const RHYME_ROUNDS: RhymeRound[] = [
-  { target: 'cat', match: 'hat', distractors: ['dog', 'sun'] },
-  { target: 'bug', match: 'mug', distractors: ['fish', 'pen'] },
-  { target: 'log', match: 'dog', distractors: ['cat', 'bed'] },
-  { target: 'hen', match: 'ten', distractors: ['cup', 'map'] },
-  { target: 'pin', match: 'bin', distractors: ['car', 'egg'] },
-];
+import { getRhymeFamilies } from '@/content/registry';
+import { buildRhymeCandidates } from '@/content/earlyRoundBuilders';
+import { useContentSession } from '@/lib/useContentSession';
+import { shuffleSeeded } from '@/lib/roundSelector';
 
 const PINATA_STYLES = [
   'from-pink-400 via-yellow-300 to-purple-400',
@@ -38,10 +28,6 @@ interface Props {
   onComplete: () => void;
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
-
 export default function RhymeBeach({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [phase, setPhase] = useState<'play' | 'burst' | 'model'>('play');
@@ -49,14 +35,21 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
   const [candies, setCandies] = useState(0);
   const [burstAt, setBurstAt] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
-
-  const [rounds] = useState(() =>
-    shuffle(RHYME_ROUNDS).map((r) => ({
-      ...r,
-      choices: shuffle([r.match, ...r.distractors]),
-    })),
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt, enabledContentPackIds } = useGameStore();
+  const candidates = useMemo(
+    () => buildRhymeCandidates(getRhymeFamilies(enabledContentPackIds)),
+    [enabledContentPackIds],
   );
+  const session = useContentSession({
+    gameId: 'rhyme-match',
+    candidates,
+    count: 6,
+    getId: (candidate) => candidate.id,
+  });
+  const rounds = useMemo(() => session.items.map((candidate, index) => ({
+    ...candidate,
+    choices: shuffleSeeded([candidate.match, ...candidate.distractors], `${session.seed}:choices:${index}`),
+  })), [session]);
 
   const current = rounds[round];
   const isLastRound = round >= rounds.length - 1;
@@ -165,13 +158,16 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
         >
           <p className="text-base text-pink-800 font-[Fredoka] font-semibold mb-1">Find what rhymes with...</p>
           <button
+            data-testid="rhyme-target"
             onClick={() => speak(current.target)}
             className="inline-flex items-center gap-3 bg-white/90 rounded-2xl px-6 py-3 shadow-lg press-3d"
           >
             <WordCard word={current.target} size={64} />
-            <span className="text-4xl font-bold font-[Fredoka] text-purple-600 lowercase">
-              {current.target}
-            </span>
+            {phase !== 'play' && (
+              <span className="text-4xl font-bold font-[Fredoka] text-purple-600 lowercase">
+                {current.target}
+              </span>
+            )}
             <span className="text-2xl">🔊</span>
           </button>
         </motion.div>
@@ -221,6 +217,7 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
                   </AnimatePresence>
 
                   <motion.button
+                    data-testid="rhyme-choice"
                     onClick={() => handleChoice(word, index)}
                     disabled={phase !== 'play' || hasFallen}
                     initial={{ y: -60, opacity: 0 }}
@@ -256,7 +253,9 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
                   >
                     <span className="bg-white/90 rounded-2xl p-2 shadow-inner flex flex-col items-center">
                       <WordCard word={word} size={68} />
-                      <span className="text-lg font-bold font-[Fredoka] text-gray-600 lowercase">{word}</span>
+                      {phase !== 'play' && (
+                        <span className="text-lg font-bold font-[Fredoka] text-gray-600 lowercase">{word}</span>
+                      )}
                     </span>
                     {/* piñata fringe */}
                     <div className="absolute -bottom-1 left-4 right-4 flex justify-between pointer-events-none">

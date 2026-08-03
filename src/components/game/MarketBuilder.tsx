@@ -14,6 +14,7 @@ import { getWordsForActivity } from '@/content/registry';
 import type { ContentWord, GraphemeUnit } from '@/content/types';
 import { shuffleSeeded } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { getPracticedPhonemes } from '@/content/progression';
 
 interface BankTile {
   id: string;
@@ -35,8 +36,10 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
   const [done, setDone] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
-  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'picture-to-build'), [enabledContentPackIds]);
-  const session = useContentSession({ gameId: 'market-builder', candidates: pool, count: 6, getId: wordId });
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(() => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes), [enabledContentPackIds, taughtPhonemes]);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'picture-to-build', practicedPhonemes), [enabledContentPackIds, practicedPhonemes]);
+  const session = useContentSession({ gameId: 'market-builder', historyKey: 'world3-blending-words', candidates: pool, count: 6, getId: wordId });
   const words = session.items;
   const { completeGame, addCoins, masterWord, recordSoundAttempt } = useGameStore();
 

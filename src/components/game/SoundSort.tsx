@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -11,6 +11,10 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getInitialSoundGroups, type ResolvedSoundGroup } from '@/content/registry';
+import { getPracticedPhonemes } from '@/content/progression';
+import { shuffleSeeded } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
 
 interface SortItem {
   word: string;
@@ -22,41 +26,13 @@ interface SortRound {
   items: SortItem[];
 }
 
-// Each round pairs two visually & aurally distinct letters, 2 items per letter.
-// All words have pre-generated audio + art.
-const ROUNDS: SortRound[] = [
-  {
-    letters: ['s', 't'],
-    items: [
-      { word: 'sun', letter: 's' },
-      { word: 'sock', letter: 's' },
-      { word: 'tiger', letter: 't' },
-      { word: 'tent', letter: 't' },
-    ],
-  },
-  {
-    letters: ['p', 'n'],
-    items: [
-      { word: 'pig', letter: 'p' },
-      { word: 'pen', letter: 'p' },
-      { word: 'nest', letter: 'n' },
-      { word: 'net', letter: 'n' },
-    ],
-  },
-  {
-    letters: ['e', 'l'],
-    items: [
-      { word: 'egg', letter: 'e' },
-      { word: 'elephant', letter: 'e' },
-      { word: 'lion', letter: 'l' },
-      { word: 'lemon', letter: 'l' },
-    ],
-  },
-];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
+interface SortCandidate {
+  id: string;
+  groups: [ResolvedSoundGroup, ResolvedSoundGroup];
 }
+
+const SAFE_PAIRINGS = [['s', 't'], ['p', 'n'], ['e', 'l'], ['b', 'm'], ['c', 'f'], ['d', 'r'], ['h', 'j']] as const;
+const candidateId = (candidate: SortCandidate) => candidate.id;
 
 interface FlyState {
   dx: number;
@@ -79,7 +55,36 @@ export default function SoundSort({ worldId, onComplete }: Props) {
   const [wrongBasket, setWrongBasket] = useState<number | null>(null);
   const [bounce, setBounce] = useState<{ idx: number; key: number } | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => ROUNDS.map((r) => ({ ...r, items: shuffle(r.items) })));
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(
+    () => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes),
+    [enabledContentPackIds, taughtPhonemes],
+  );
+  const groups = useMemo(
+    () => getInitialSoundGroups(enabledContentPackIds, practicedPhonemes),
+    [enabledContentPackIds, practicedPhonemes],
+  );
+  const candidates = useMemo(() => {
+    const byLetter = new Map(groups.map((group) => [group.letter, group]));
+    return SAFE_PAIRINGS.flatMap(([left, right]) => {
+      const leftGroup = byLetter.get(left);
+      const rightGroup = byLetter.get(right);
+      return leftGroup && rightGroup && leftGroup.words.length >= 2 && rightGroup.words.length >= 2
+        ? [{ id: `${left}-${right}`, groups: [leftGroup, rightGroup] as [ResolvedSoundGroup, ResolvedSoundGroup] }]
+        : [];
+    });
+  }, [groups]);
+  const session = useContentSession({ gameId: 'sound-sort', candidates, count: 3, getId: candidateId });
+  const [rounds] = useState<SortRound[]>(() => session.items.map((candidate) => ({
+    letters: [candidate.groups[0].letter, candidate.groups[1].letter],
+    items: shuffleSeeded(candidate.groups.flatMap((group) =>
+      shuffleSeeded(group.words, `${session.seed}:${candidate.id}:${group.id}`).slice(0, 2).map((word) => ({
+        word: word.text,
+        letter: group.letter,
+      })),
+    ), `${session.seed}:${candidate.id}:items`),
+  })));
   const itemRef = useRef<HTMLDivElement>(null);
   const basketRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const { completeGame, addCoins, incrementStreak, resetStreak, masterPhoneme, recordSoundAttempt } = useGameStore();

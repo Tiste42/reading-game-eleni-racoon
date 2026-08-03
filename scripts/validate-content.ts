@@ -3,6 +3,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import sharp from 'sharp';
 import { CONTENT_PACKS } from '../src/content/registry';
+import { ITEM_ART } from '../src/lib/itemArt';
 
 const root = process.cwd();
 const errors: string[] = [];
@@ -10,13 +11,9 @@ const seenPackIds = new Set<string>();
 const seenWordIds = new Set<string>();
 const allPackIds = new Set(CONTENT_PACKS.map((pack) => pack.id));
 const allWords = new Map(CONTENT_PACKS.flatMap((pack) => pack.words).map((word) => [word.id, word]));
-const WORLD_2_PHONEMES = new Set(['s', 'a', 't', 'p', 'i', 'n', 'e', 'l']);
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const WORLD_2_PHONEMES = new Set(ALPHABET);
 const WORLD_3_ACTIVITIES = new Set(['blend-to-picture', 'picture-to-build']);
-const PICTURE_CONFLICTS = [
-  ['cap', 'hat'],
-  ['pet', 'dog'],
-  ['mat', 'rug'],
-];
 
 function fail(message: string) {
   errors.push(message);
@@ -43,7 +40,7 @@ function validateOptions(owner: string, correct: string, options: string[]) {
 async function main() {
   const referencedImages = new Set<string>();
   const referencedAudio = new Set<string>();
-  const world3PictureWords = new Set<string>();
+  const letterExamples = new Map<string, string>();
 
   for (const pack of CONTENT_PACKS) {
     if (seenPackIds.has(pack.id)) fail(`duplicate pack id: ${pack.id}`);
@@ -72,7 +69,6 @@ async function main() {
         }
       }
       if (entry.activities.some((activity) => WORLD_3_ACTIVITIES.has(activity))) {
-        world3PictureWords.add(entry.text);
         if (entry.units.length !== 3) fail(`${entry.id}: World 3 blending words must have exactly three grapheme units`);
         for (const unit of entry.units) {
           if (!WORLD_2_PHONEMES.has(unit.phonemeId)) {
@@ -89,7 +85,7 @@ async function main() {
       if (!WORLD_2_PHONEMES.has(group.phonemeId)) {
         fail(`${group.id}: ${group.phonemeId} is not taught before World 2 practice`);
       }
-      if (group.wordIds.length < 2) fail(`${group.id}: needs at least two picture words`);
+      if (group.wordIds.length < 1) fail(`${group.id}: needs at least one picture word`);
       for (const wordId of group.wordIds) {
         const entry = allWords.get(wordId);
         if (!entry) {
@@ -100,6 +96,37 @@ async function main() {
           fail(`${group.id}: ${entry.text} does not start with ${group.phonemeId}`);
         }
       }
+    }
+
+    for (const example of pack.letterExamples) {
+      if (letterExamples.has(example.letter)) fail(`${example.id}: duplicate example for ${example.letter}`);
+      letterExamples.set(example.letter, example.word);
+      if (!WORLD_2_PHONEMES.has(example.phonemeId)) fail(`${example.id}: unknown alphabet phoneme ${example.phonemeId}`);
+      if (example.soundPosition === 'start' && !example.word.toLowerCase().startsWith(example.letter)) {
+        fail(`${example.id}: ${example.word} must start with ${example.letter}`);
+      }
+      if (example.soundPosition === 'end' && !example.word.toLowerCase().endsWith(example.letter)) {
+        fail(`${example.id}: ${example.word} must end with ${example.letter}`);
+      }
+      referencedImages.add(`/images/generated/items/${example.word}.png`);
+      referencedAudio.add(`/audio/words/${example.word}.mp3`);
+      referencedAudio.add(`/audio/phonemes/${example.phonemeId}.mp3`);
+    }
+
+    for (const family of pack.rhymeFamilies) {
+      if (family.words.length < 2) fail(`${family.id}: needs at least two rhyming words`);
+      if (new Set(family.words).size !== family.words.length) fail(`${family.id}: duplicate rhyme word`);
+      for (const word of family.words) {
+        referencedImages.add(`/images/generated/items/${word}.png`);
+        referencedAudio.add(`/audio/words/${word}.mp3`);
+      }
+    }
+
+    for (const syllable of pack.syllableWords) {
+      referencedImages.add(`/images/generated/items/${syllable.word}.png`);
+      referencedAudio.add(`/audio/words/${syllable.word}.mp3`);
+      referencedAudio.add(`/audio/narration/syll-${syllable.word}.mp3`);
+      referencedAudio.add(narrationPath(`${syllable.word} has ${syllable.syllables} ${syllable.syllables === 1 ? 'beat' : 'beats'}`));
     }
 
     for (const chain of pack.wordChains) {
@@ -141,13 +168,13 @@ async function main() {
     }
   }
 
-  for (const conflict of PICTURE_CONFLICTS) {
-    if (conflict.every((word) => world3PictureWords.has(word))) {
-      fail(`World 3 picture pool contains ambiguous pair: ${conflict.join(' / ')}`);
-    }
+  for (const letter of ALPHABET) {
+    if (!letterExamples.has(letter)) fail(`missing World 2 letter example: ${letter}`);
   }
 
   for (const imagePath of referencedImages) {
+    const word = path.basename(imagePath, '.png');
+    if (!ITEM_ART.has(word)) fail(`picture is not registered in ITEM_ART: ${imagePath}`);
     const file = diskPath(imagePath);
     if (!fs.existsSync(file) || fs.statSync(file).size < 1_000) {
       fail(`missing or empty picture: ${imagePath}`);

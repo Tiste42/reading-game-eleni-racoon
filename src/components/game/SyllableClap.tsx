@@ -11,30 +11,11 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakFeedback, speakSyllables } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getSyllableWords } from '@/content/registry';
+import type { SyllableWord } from '@/content/types';
+import { useContentSession } from '@/lib/useContentSession';
 
-interface SyllableWord {
-  word: string;
-  syllables: number;
-}
-
-const WORDS: SyllableWord[] = [
-  { word: 'cat', syllables: 1 },
-  { word: 'dog', syllables: 1 },
-  { word: 'sun', syllables: 1 },
-  { word: 'apple', syllables: 2 },
-  { word: 'monkey', syllables: 2 },
-  { word: 'rabbit', syllables: 2 },
-  { word: 'banana', syllables: 3 },
-  { word: 'elephant', syllables: 3 },
-  { word: 'tomato', syllables: 3 },
-  { word: 'butterfly', syllables: 3 },
-  { word: 'dinosaur', syllables: 3 },
-  { word: 'watermelon', syllables: 4 },
-];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const syllableId = (entry: SyllableWord) => entry.id;
 
 function beatsText(word: string, n: number): string {
   return `${word} has ${n} ${n === 1 ? 'beat' : 'beats'}`;
@@ -51,8 +32,10 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<'play' | 'checking' | 'model'>('play');
   const [bouncing, setBouncing] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [words] = useState(() => shuffle(WORDS).slice(0, 6));
-  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
+  const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt, enabledContentPackIds } = useGameStore();
+  const candidates = getSyllableWords(enabledContentPackIds);
+  const session = useContentSession({ gameId: 'syllable-clap', candidates, count: 6, getId: syllableId });
+  const words = session.items;
 
   const current = words[round];
   const isLast = round >= words.length - 1;

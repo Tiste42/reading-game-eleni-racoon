@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildChoiceSet, getBalancedAnswerIndex, selectTargets, shuffleSeeded } from '../../src/lib/roundSelector';
+import { buildAssessmentChoiceSet, buildChoiceSet, getBalancedAnswerIndex, selectTargets, shuffleSeeded } from '../../src/lib/roundSelector';
+import { canSharePictureChoices } from '../../src/content/pictureConflicts';
+import { canShareSoundChoices } from '../../src/content/phonemeConflicts';
 
 const ids = Array.from({ length: 12 }, (_, index) => ({ id: `item-${index}` }));
 const getId = (item: { id: string }) => item.id;
@@ -71,4 +73,57 @@ test('answer positions are balanced without repeating a fixed left-to-right cycl
     positions,
     Array.from({ length: 9 }, (_, round) => getBalancedAnswerIndex(round, 3, 'eleni-session')),
   );
+});
+
+test('picture choices exclude look-alike answers without shrinking the round', () => {
+  const words = ['cap', 'hat', 'dog', 'sun', 'fish'].map((id) => ({ id }));
+  const choices = buildChoiceSet(words[0], words, {
+    count: 3,
+    seed: 'safe-pictures',
+    answerIndex: 1,
+    getId,
+    canUseDistractor: (answer, distractor) => canSharePictureChoices(answer.id, distractor.id),
+  });
+  assert.equal(choices.length, 3);
+  assert.equal(choices[1].id, 'cap');
+  assert.equal(choices.some((choice) => choice.id === 'hat'), false);
+});
+
+test('known ambiguous picture pairs never appear together', () => {
+  const unsafePairs = [
+    ['dog', 'pup'], ['dog', 'pet'], ['dog', 'pug'], ['dog', 'sit'], ['dog', 'wet'],
+    ['bin', 'tin'], ['bin', 'can'], ['tin', 'can'], ['cot', 'bed'], ['jog', 'run'],
+    ['hot', 'pot'], ['hot', 'log'], ['pot', 'log'], ['man', 'cap'],
+  ] as const;
+
+  for (const [left, right] of unsafePairs) {
+    assert.equal(canSharePictureChoices(left, right), false, `${left}/${right} should be excluded`);
+  }
+});
+
+test('a large boss pool still balances the answer across exactly three choices', () => {
+  const largePool = Array.from({ length: 53 }, (_, index) => ({ id: `word-${index}` }));
+  const positions = [0, 0, 0];
+  for (let round = 0; round < 300; round += 1) {
+    const choices = buildAssessmentChoiceSet(largePool[0], largePool, {
+      round,
+      seed: 'boss-three-choices',
+      getId,
+    });
+    assert.equal(choices.length, 3);
+    positions[choices.findIndex((choice) => choice.id === largePool[0].id)] += 1;
+  }
+  assert.deepEqual(positions, [100, 100, 100]);
+});
+
+test('equivalent c and k sounds never compete as separate correct answers', () => {
+  const choices = buildChoiceSet({ id: 'c' }, [{ id: 'c' }, { id: 'k' }, { id: 'e' }, { id: 'm' }], {
+    count: 3,
+    seed: 'phoneme-equivalence',
+    answerIndex: 0,
+    getId,
+    canUseDistractor: (answer, distractor) => canShareSoundChoices(answer.id, distractor.id),
+  });
+  assert.equal(choices.some((choice) => choice.id === 'k'), false);
+  assert.equal(choices.length, 3);
 });

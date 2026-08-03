@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -11,38 +11,24 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { getInitialSoundGroups } from '@/content/registry';
+import { getPracticedPhonemes } from '@/content/progression';
+import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
+import { useContentSession } from '@/lib/useContentSession';
+import { canShareSoundChoices } from '@/content/phonemeConflicts';
 
 // Every word here has a pre-generated "What letter does X start with?" narration line
 interface PictureRound {
+  id: string;
   word: string;
   letter: string;
+  phonemeId: string;
 }
 
-const ALL_PICTURES: PictureRound[] = [
-  { word: 'sun', letter: 's' },
-  { word: 'snake', letter: 's' },
-  { word: 'apple', letter: 'a' },
-  { word: 'ant', letter: 'a' },
-  { word: 'tiger', letter: 't' },
-  { word: 'tent', letter: 't' },
-  { word: 'penguin', letter: 'p' },
-  { word: 'pig', letter: 'p' },
-  { word: 'igloo', letter: 'i' },
-  { word: 'insect', letter: 'i' },
-  { word: 'nut', letter: 'n' },
-  { word: 'nest', letter: 'n' },
-  { word: 'egg', letter: 'e' },
-  { word: 'elephant', letter: 'e' },
-  { word: 'lemon', letter: 'l' },
-  { word: 'lion', letter: 'l' },
-];
+const pictureId = (picture: PictureRound) => picture.id;
+const letterId = (letter: string) => letter;
 
 // World 2 letter set — distractors only ever come from taught letters
-const W2_LETTERS = ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l'];
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
 
 interface Props {
   worldId: number;
@@ -56,12 +42,38 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('play');
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(ALL_PICTURES).slice(0, 6));
-  const [choicesByRound] = useState(() =>
-    rounds.map((r) =>
-      shuffle([r.letter, ...shuffle(W2_LETTERS.filter((l) => l !== r.letter)).slice(0, 2)]),
-    ),
+  const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(
+    () => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes),
+    [enabledContentPackIds, taughtPhonemes],
   );
+  const groups = useMemo(
+    () => getInitialSoundGroups(enabledContentPackIds, practicedPhonemes),
+    [enabledContentPackIds, practicedPhonemes],
+  );
+  const pictures = useMemo<PictureRound[]>(() => groups.flatMap((group) => group.words.map((word) => ({
+    id: `${group.id}:${word.id}`,
+    word: word.text,
+    letter: group.letter,
+    phonemeId: group.phonemeId,
+  }))), [groups]);
+  const session = useContentSession({ gameId: 'letter-trace', candidates: pictures, count: 6, getId: pictureId });
+  const rounds = session.items;
+  const availableLetters = useMemo(() => [...new Set(groups.map((group) => group.letter))], [groups]);
+  const phonemeByLetter = useMemo(() => new Map(groups.map((group) => [group.letter, group.phonemeId])), [groups]);
+  const [choicesByRound] = useState(() => rounds.map((current, index) =>
+    buildChoiceSet(current.letter, availableLetters, {
+      count: 3,
+      seed: `${session.seed}:${current.id}:choices`,
+      answerIndex: getBalancedAnswerIndex(index, 3, session.seed),
+      getId: letterId,
+      canUseDistractor: (answer, distractor) => canShareSoundChoices(
+        phonemeByLetter.get(answer) || answer,
+        phonemeByLetter.get(distractor) || distractor,
+      ),
+    }),
+  ));
   const { completeGame, addCoins, masterPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
@@ -75,7 +87,11 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
 
   // Per-word instruction line — every one exists as a pre-generated narration file
   const { replay } = useComposedSpeech(
-    [{ say: `What letter does ${current.word} start with?` }],
+    [
+      { say: 'What letter does it start with?' },
+      { pause: 200 },
+      { options: [current.word] },
+    ],
     [round],
   );
 
@@ -99,8 +115,8 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
       modeling.current = true;
       setPhase('model');
       (async () => {
-        recordSoundAttempt(current.letter, false);
-        await speakReveal(current.letter);
+        recordSoundAttempt(current.phonemeId, false);
+        await speakReveal(current.phonemeId);
         await speakWord(current.word);
         await new Promise((r) => setTimeout(r, 800));
         modeling.current = false;
@@ -114,20 +130,20 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
     (letter: string) => {
       if (phase !== 'play') return;
       if (letter === current.letter) {
-        recordSoundAttempt(letter, true);
+        recordSoundAttempt(current.phonemeId, true);
         incrementStreak();
-        masterPhoneme(letter);
+        masterPhoneme(current.phonemeId);
         playSoundEffect('coin');
         setPhase('won');
         (async () => {
-          await speakPhoneme(letter);
+          await speakPhoneme(current.phonemeId);
           await speakWord(current.word);
           await speakFeedback(isLast ? 'complete' : 'correct');
           await new Promise((r) => setTimeout(r, 800));
           advance();
         })();
       } else {
-        recordSoundAttempt(current.letter, false);
+        recordSoundAttempt(current.phonemeId, false);
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
@@ -155,8 +171,11 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
         {/* Leni + prompt */}
         <div className="flex flex-col items-center">
           <EleniCharacter pose={phase === 'won' ? 'celebrating' : 'excited'} size={120} />
-          <p className="text-purple-900 font-[Fredoka] font-bold text-2xl text-center">
-            What letter does <span className="text-pink-600">{current.word}</span> start with?
+          <p
+            data-testid="letter-trace-prompt"
+            className="text-purple-900 font-[Fredoka] font-bold text-2xl text-center"
+          >
+            What letter does it start with?
           </p>
         </div>
 

@@ -14,6 +14,8 @@ import { getWordsForActivity } from '@/content/registry';
 import type { ContentWord } from '@/content/types';
 import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { getPracticedPhonemes } from '@/content/progression';
+import { canSharePictureChoices } from '@/content/pictureConflicts';
 
 /** Dedicated surfing-Leni artwork with a defensive fallback. */
 function SurfingLeni({ size, done }: { size: number; done: boolean }) {
@@ -52,8 +54,10 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
-  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'blend-to-picture'), [enabledContentPackIds]);
-  const session = useContentSession({ gameId: 'surf-slide', candidates: pool, count: 6, getId: wordId });
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const practicedPhonemes = useMemo(() => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes), [enabledContentPackIds, taughtPhonemes]);
+  const pool = useMemo(() => getWordsForActivity(enabledContentPackIds, 'blend-to-picture', practicedPhonemes), [enabledContentPackIds, practicedPhonemes]);
+  const session = useContentSession({ gameId: 'surf-slide', historyKey: 'world3-blending-words', candidates: pool, count: 6, getId: wordId });
   const words = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, masterWord, recordSoundAttempt } = useGameStore();
 
@@ -104,7 +108,8 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
       count: 3,
       seed: `${session.seed}:${entry.id}:choices`,
       answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
-      getId: wordId,
+        getId: wordId,
+        canUseDistractor: (answer, distractor) => canSharePictureChoices(answer.text, distractor.text),
     }));
     setPhase('choose');
     soundOut();
