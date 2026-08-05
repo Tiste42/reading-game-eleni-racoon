@@ -2,7 +2,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
 import sharp from 'sharp';
-import { CONTENT_PACKS } from '../src/content/registry';
+import { CONTENT_NARRATION_PHRASES, CONTENT_PACKS } from '../src/content/registry';
+import { hasChildIdentifiablePicture } from '../src/content/pictureQuality';
+import { canSharePictureChoices } from '../src/content/pictureConflicts';
+import { REQUIRED_DIGRAPHS, REQUIRED_HEART_WORDS } from '../src/content/learningIntegrity';
+import { ALPHABET_PHONEMES } from '../src/content/progression';
+import { WORLD_4_DOOR_ROUNDS, WORLD_4_FAMILY_ROUNDS, WORLD_4_PICTURE_ROUNDS, isWorld4PictureRoundSafe, isWorld4RoundDecodable } from '../src/content/world4Content';
+import { BEACH_COMPREHENSION_ROUNDS, CONNECTED_COMPREHENSION_ROUNDS, MANATEE_COMPREHENSION_ROUNDS, WORLD_5_BOSS_SENTENCES, WORLD_6_BOSS_SENTENCES, analyzeChildReadableText } from '../src/content/connectedText';
+import { WORLD_1_BOSS_CHALLENGES } from '../src/content/bossContent';
+import { WORLD_5_DECODER_ROUNDS } from '../src/content/world5Content';
 import { ITEM_ART } from '../src/lib/itemArt';
 
 const root = process.cwd();
@@ -40,7 +48,36 @@ function validateOptions(owner: string, correct: string, options: string[]) {
 async function main() {
   const referencedImages = new Set<string>();
   const referencedAudio = new Set<string>();
+  for (const phoneme of REQUIRED_DIGRAPHS) {
+    referencedAudio.add(`/audio/phonemes/${phoneme}.mp3`);
+  }
   const letterExamples = new Map<string, string>();
+  const connectedTextPhonemes = new Set([...ALPHABET_PHONEMES, ...REQUIRED_DIGRAPHS]);
+  const connectedTextHeartWords = new Set<string>(REQUIRED_HEART_WORDS);
+
+  const registerPicture = (owner: string, word: string) => {
+    if (!hasChildIdentifiablePicture(word)) {
+      fail(`${owner}: ${word} has not passed the child-identifiability audit`);
+    }
+    referencedImages.add(`/images/generated/items/${word}.png`);
+  };
+
+  const validatePictureSet = (owner: string, correct: string, options: string[]) => {
+    validateOptions(owner, correct, options);
+    options.forEach((word) => registerPicture(owner, word));
+    for (let left = 0; left < options.length; left++) {
+      for (let right = left + 1; right < options.length; right++) {
+        if (!canSharePictureChoices(options[left], options[right])) {
+          fail(`${owner}: visually confusable choices ${options[left]}/${options[right]}`);
+        }
+      }
+    }
+  };
+
+  const validateChildText = (owner: string, text: string) => {
+    const unknown = analyzeChildReadableText(text, connectedTextPhonemes, connectedTextHeartWords);
+    if (unknown.length) fail(`${owner}: child-readable text uses untaught words: ${[...new Set(unknown)].join(', ')}`);
+  };
 
   for (const pack of CONTENT_PACKS) {
     if (seenPackIds.has(pack.id)) fail(`duplicate pack id: ${pack.id}`);
@@ -69,6 +106,9 @@ async function main() {
         }
       }
       if (entry.activities.some((activity) => WORLD_3_ACTIVITIES.has(activity))) {
+        if (!hasChildIdentifiablePicture(entry.text)) {
+          fail(`${entry.id}: picture has not passed the child-identifiability audit`);
+        }
         if (entry.units.length !== 3) fail(`${entry.id}: World 3 blending words must have exactly three grapheme units`);
         for (const unit of entry.units) {
           if (!WORLD_2_PHONEMES.has(unit.phonemeId)) {
@@ -95,6 +135,9 @@ async function main() {
         if (entry.units[0]?.phonemeId !== group.phonemeId) {
           fail(`${group.id}: ${entry.text} does not start with ${group.phonemeId}`);
         }
+        if (!hasChildIdentifiablePicture(entry.text)) {
+          fail(`${group.id}: ${entry.text} has not passed the child-identifiability audit`);
+        }
       }
     }
 
@@ -108,6 +151,9 @@ async function main() {
       if (example.soundPosition === 'end' && !example.word.toLowerCase().endsWith(example.letter)) {
         fail(`${example.id}: ${example.word} must end with ${example.letter}`);
       }
+      if (!hasChildIdentifiablePicture(example.word)) {
+        fail(`${example.id}: ${example.word} has not passed the child-identifiability audit`);
+      }
       referencedImages.add(`/images/generated/items/${example.word}.png`);
       referencedAudio.add(`/audio/words/${example.word}.mp3`);
       referencedAudio.add(`/audio/phonemes/${example.phonemeId}.mp3`);
@@ -117,12 +163,16 @@ async function main() {
       if (family.words.length < 2) fail(`${family.id}: needs at least two rhyming words`);
       if (new Set(family.words).size !== family.words.length) fail(`${family.id}: duplicate rhyme word`);
       for (const word of family.words) {
+        if (!hasChildIdentifiablePicture(word)) {
+          fail(`${family.id}: ${word} has not passed the child-identifiability audit`);
+        }
         referencedImages.add(`/images/generated/items/${word}.png`);
         referencedAudio.add(`/audio/words/${word}.mp3`);
       }
     }
 
     for (const syllable of pack.syllableWords) {
+      registerPicture(`syllable:${syllable.word}`, syllable.word);
       referencedImages.add(`/images/generated/items/${syllable.word}.png`);
       referencedAudio.add(`/audio/words/${syllable.word}.mp3`);
       referencedAudio.add(`/audio/narration/syll-${syllable.word}.mp3`);
@@ -147,29 +197,113 @@ async function main() {
       if (chain.distractorUnits.some((unit) => unit.text === answer.text && unit.phonemeId === answer.phonemeId)) {
         fail(`${chain.id}: answer duplicated as distractor`);
       }
+      registerPicture(chain.id, from.text);
+      registerPicture(chain.id, to.text);
     }
 
     for (const story of pack.stories) {
       if (story.cue !== 'self-read-sentence') fail(`${story.id}: sentence cue can reveal the answer`);
-      validateOptions(story.id, story.correct, story.options);
-      referencedImages.add(`/images/generated/items/${story.pictureWord}.png`);
+      validateChildText(story.id, story.text);
+      validatePictureSet(story.id, story.correct, story.options);
+      if (story.options.some((option) => option.trim().includes(' '))) {
+        fail(`${story.id}: comprehension choices must be picture words, not copyable phrases`);
+      }
+      registerPicture(story.id, story.pictureWord);
       referencedAudio.add(narrationPath(story.question));
       for (const option of story.options) {
-        referencedAudio.add(option.trim().includes(' ')
-          ? narrationPath(option)
-          : `/audio/words/${option.toLowerCase()}.mp3`);
+        referencedAudio.add(`/audio/words/${option.toLowerCase()}.mp3`);
       }
     }
     for (const postcard of pack.postcards) {
       if (postcard.cue !== 'picture-only') fail(`${postcard.id}: postcard choices must stay text-only`);
       validateOptions(postcard.id, postcard.correct, postcard.options);
-      referencedImages.add(`/images/generated/items/${postcard.correct}.png`);
+      validateChildText(postcard.id, postcard.template.replace('___', postcard.correct));
+      for (const option of postcard.options) {
+        validateChildText(`${postcard.id}:option`, option);
+      }
+      registerPicture(postcard.id, postcard.correct);
       referencedAudio.add(narrationPath(postcard.spoken));
+      for (const option of postcard.options) {
+        referencedAudio.add(`/audio/words/${option.toLowerCase()}.mp3`);
+      }
     }
   }
 
   for (const letter of ALPHABET) {
     if (!letterExamples.has(letter)) fail(`missing World 2 letter example: ${letter}`);
+  }
+
+  for (const round of WORLD_4_PICTURE_ROUNDS) {
+    const words = [round.word, ...round.distractors];
+    if (!isWorld4PictureRoundSafe(round)) fail(`world4-picture:${round.word}: unsafe picture set`);
+    if (!isWorld4RoundDecodable(round, new Set(ALPHABET_PHONEMES))) fail(`world4-picture:${round.word}: undecodable word`);
+    validatePictureSet(`world4-picture:${round.word}`, round.word, words);
+  }
+  for (const round of WORLD_4_FAMILY_ROUNDS) {
+    if (!isWorld4RoundDecodable(round, new Set(ALPHABET_PHONEMES))) fail(`world4-family:${round.member}: undecodable word`);
+  }
+  for (const round of WORLD_4_DOOR_ROUNDS) {
+    if (!isWorld4RoundDecodable(round, new Set(ALPHABET_PHONEMES))) fail(`world4-door:${round.target}: undecodable word`);
+    registerPicture(`world4-door:${round.target}`, round.target);
+  }
+
+  for (const [index, round] of CONNECTED_COMPREHENSION_ROUNDS.entries()) {
+    validateChildText(`connected:${index}`, round.sentence);
+    validatePictureSet(`connected:${index}`, round.correct, round.options);
+  }
+  for (const [index, round] of MANATEE_COMPREHENSION_ROUNDS.entries()) {
+    validateChildText(`manatee:${index}`, round.sentence);
+    validatePictureSet(`manatee:${index}`, round.correct, round.options);
+  }
+  for (const [index, round] of BEACH_COMPREHENSION_ROUNDS.entries()) {
+    validateChildText(`beach:${index}`, round.sentence);
+    validateOptions(`beach:${index}`, round.correct, round.options.map((option) => option.label));
+  }
+  for (const [world, rounds] of [[5, WORLD_5_BOSS_SENTENCES], [6, WORLD_6_BOSS_SENTENCES]] as const) {
+    for (const [index, round] of rounds.entries()) {
+      validateChildText(`boss-${world}:${index}`, round.prompt);
+      validatePictureSet(`boss-${world}:${index}`, round.correct, round.options);
+    }
+  }
+  for (const [index, round] of WORLD_1_BOSS_CHALLENGES.entries()) {
+    if (round.options.every((option) => /^\d+$/.test(option))) continue;
+    validatePictureSet(`boss-1:${index}`, round.correct, round.options);
+  }
+  for (const [index, round] of WORLD_5_DECODER_ROUNDS.entries()) {
+    const owner = `world5-decoder:${index}`;
+    if (round.units.join('') !== round.word) fail(`${owner}: units do not spell ${round.word}`);
+    if (round.units.some((unit) => !connectedTextPhonemes.has(unit))) {
+      fail(`${owner}: uses an untaught grapheme unit`);
+    }
+    validatePictureSet(owner, round.word, [round.word, ...round.distractors]);
+    referencedAudio.add(`/audio/words/${round.word}.mp3`);
+    for (const unit of round.units) referencedAudio.add(`/audio/phonemes/${unit}.mp3`);
+  }
+
+  for (const badText of ['The boat is on the sea.', 'She does have it.']) {
+    if (analyzeChildReadableText(badText, connectedTextPhonemes, connectedTextHeartWords).length === 0) {
+      fail(`reading contract negative control did not reject: ${badText}`);
+    }
+  }
+
+  for (const narration of CONTENT_NARRATION_PHRASES) {
+    referencedAudio.add(narrationPath(narration));
+  }
+
+  for (const [iconPath, expectedSize] of [
+    ['/icons/icon-192.png', 192],
+    ['/icons/icon-512.png', 512],
+    ['/icons/apple-touch-icon.png', 180],
+  ] as const) {
+    const appIcon = diskPath(iconPath);
+    if (!fs.existsSync(appIcon) || fs.statSync(appIcon).size < 1_000) {
+      fail(`missing app icon: ${iconPath}`);
+      continue;
+    }
+    const metadata = await sharp(appIcon).metadata();
+    if (metadata.width !== expectedSize || metadata.height !== expectedSize) {
+      fail(`${iconPath}: expected ${expectedSize}x${expectedSize}, got ${metadata.width}x${metadata.height}`);
+    }
   }
 
   for (const imagePath of referencedImages) {

@@ -58,7 +58,7 @@ const KNOWN_WORDS = new Set([
 const KNOWN_PHONEMES = new Set([
   's', 'a', 't', 'p', 'i', 'n', 'e', 'l', 'c', 'k',
   'h', 'r', 'm', 'd', 'g', 'o', 'u', 'f', 'b', 'j',
-  'q', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th',
+  'q', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th', 'th-voiced',
 ]);
 
 // Feedback clip IDs mapped by type
@@ -230,8 +230,20 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'the-heart-word-is-no-tap-each-letter-to-learn-it',
   'the-heart-word-is-go-tap-each-letter-to-learn-it',
   'the-heart-word-is-my-tap-each-letter-to-learn-it',
+  'the-heart-word-is-the-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-said-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-is-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-to-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-he-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-she-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-we-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-you-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-go-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-no-tap-the-part-we-learn-by-heart',
+  'the-heart-word-is-my-tap-the-part-we-learn-by-heart',
   // TreasureMemory
   'match-the-word-pairs-tap-a-card-to-flip-it',
+  'match-each-printed-word-to-its-sound',
   // RuinDecoder — child reads word, picks picture
   'read-the-ancient-word-which-picture-matches',
   // SoukSentences — child reads phrase, answers question
@@ -259,6 +271,8 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'the-manatee-needs-help-the-cup-fell-in-the-pond-what-should-we-do',
   'the-manatee-needs-help-a-can-is-on-the-sand-what-should-we-do',
   'the-manatee-needs-help-the-fish-is-in-a-net-how-do-we-help',
+  'what-should-we-do',
+  'how-do-we-help',
 
   // --- Boss Level prompts ---
   // W1
@@ -290,6 +304,11 @@ const KNOWN_NARRATION_SLUGS = new Set([
   'i-have-a-thin-cat',
   'we-can-go-to-the-shop',
   'the-dog-is-in-the-shed',
+  'who-heard-no',
+  'where-was-he',
+  'what-do-i-have',
+  'where-can-we-go',
+  'who-is-in-the-shed',
   // W6 (reuse some ComicCreator/sentence slugs + extras)
   'sam-sat-on-a-mat',
   'a-bug-is-on-the-log',
@@ -663,5 +682,5 @@ export const PHONEME_PRONUNCIATIONS: Record<string, string> = {
   m: 'mmm', n: 'nnn', o: 'ŏ', p: 'p', q: 'kw',
   r: 'rrr', s: 'sss', t: 't', u: 'ŭ',
   v: 'vvv', w: 'w', x: 'ks', y: 'y', z: 'zzz',
-  sh: 'shh', ch: 'ch', th: 'thh',
+  sh: 'shh', ch: 'ch', th: 'thh', 'th-voiced': 'thh',
 };

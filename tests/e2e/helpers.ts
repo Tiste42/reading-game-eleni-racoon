@@ -8,7 +8,7 @@ export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks)
       [1, 2, 3, 4, 5, 6].map((world) => [world, { gamesCompleted: [], bossCompleted: false, stars: 0 }]),
     );
     localStorage.setItem('eleni-sound-safari', JSON.stringify({
-      version: 3,
+      version: 4,
       state: {
         currentWorld: 0,
         worldProgress,
@@ -17,8 +17,8 @@ export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks)
         costumes: [],
         passportStamps: [],
         masteredPhonemes: [],
-        taughtPhonemes: 'abcdefghijklmnopqrstuvwxyz'.split(''),
-        masteredWords: [],
+        taughtPhonemes: [...'abcdefghijklmnopqrstuvwxyz'.split(''), 'sh', 'ch', 'th', 'th-voiced'],
+        masteredWords: ['the', 'was', 'said', 'is', 'to', 'he', 'she'],
         ownedItems: [],
         soundStats: {},
         streakCount: 0,

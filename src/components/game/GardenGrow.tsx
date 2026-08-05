@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,23 +10,7 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-interface GardenWord {
-  word: string;
-  distractors: string[];
-}
-
-// All picturable words; distractors look similar so she must READ
-const GARDEN_WORDS: GardenWord[] = [
-  { word: 'pan', distractors: ['pen', 'pin'] },
-  { word: 'bug', distractors: ['mug', 'rug'] },
-  { word: 'hot', distractors: ['pot', 'dot'] },
-  { word: 'jet', distractors: ['wet', 'net'] },
-  { word: 'rat', distractors: ['hat', 'bat'] },
-  { word: 'fin', distractors: ['bin', 'win'] },
-  { word: 'hug', distractors: ['mug', 'bug'] },
-  { word: 'red', distractors: ['bed', 'fed'] },
-];
+import { WORLD_4_PICTURE_ROUNDS, isWorld4PictureRoundSafe, isWorld4RoundDecodable } from '@/content/world4Content';
 
 const FLOWERS = ['🌻', '🌷', '🌼', '🌸', '🌺', '🪻'];
 
@@ -48,7 +32,11 @@ export default function GardenGrow({ worldId, onComplete }: Props) {
   const [choices, setChoices] = useState<string[]>([]);
   const [grown, setGrown] = useState<number>(0);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(GARDEN_WORDS).slice(0, 6));
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
+  const rounds = useMemo(() => shuffle(WORLD_4_PICTURE_ROUNDS.filter((candidate) =>
+    isWorld4PictureRoundSafe(candidate) && isWorld4RoundDecodable(candidate, taughtPhonemeSet),
+  )).slice(0, 6), [taughtPhonemeSet]);
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const word = rounds[round].word;

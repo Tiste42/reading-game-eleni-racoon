@@ -1,30 +1,29 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
 import GameShell from '@/components/ui/GameShell';
-import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-import { ITEM_ART } from '@/lib/itemArt';
 
 type Digraph = 'sh' | 'ch' | 'th';
+type DigraphPhoneme = Digraph | 'th-voiced';
 
 // Per-word "The word is X. Which two letters..." lines are recorded for all
-const DIGRAPH_WORDS: Array<{ word: string; digraph: Digraph }> = [
-  { word: 'ship', digraph: 'sh' },
-  { word: 'shop', digraph: 'sh' },
-  { word: 'shed', digraph: 'sh' },
-  { word: 'chip', digraph: 'ch' },
-  { word: 'chop', digraph: 'ch' },
-  { word: 'chat', digraph: 'ch' },
-  { word: 'thin', digraph: 'th' },
-  { word: 'this', digraph: 'th' },
-  { word: 'that', digraph: 'th' },
+const DIGRAPH_WORDS: Array<{ word: string; digraph: Digraph; phonemeId: DigraphPhoneme }> = [
+  { word: 'ship', digraph: 'sh', phonemeId: 'sh' },
+  { word: 'shop', digraph: 'sh', phonemeId: 'sh' },
+  { word: 'shed', digraph: 'sh', phonemeId: 'sh' },
+  { word: 'chip', digraph: 'ch', phonemeId: 'ch' },
+  { word: 'chop', digraph: 'ch', phonemeId: 'ch' },
+  { word: 'chat', digraph: 'ch', phonemeId: 'ch' },
+  { word: 'thin', digraph: 'th', phonemeId: 'th' },
+  { word: 'this', digraph: 'th', phonemeId: 'th-voiced' },
+  { word: 'that', digraph: 'th', phonemeId: 'th-voiced' },
 ];
 
 const OPTIONS: Digraph[] = ['sh', 'ch', 'th'];
@@ -39,6 +38,17 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
 }
 
+function buildBalancedRounds() {
+  const shAndCh = (['sh', 'ch'] as const).flatMap((digraph) =>
+    shuffle(DIGRAPH_WORDS.filter((entry) => entry.digraph === digraph)).slice(0, 2),
+  );
+  const th = [
+    ...shuffle(DIGRAPH_WORDS.filter((entry) => entry.phonemeId === 'th')).slice(0, 1),
+    ...shuffle(DIGRAPH_WORDS.filter((entry) => entry.phonemeId === 'th-voiced')).slice(0, 1),
+  ];
+  return shuffle([...shAndCh, ...th]);
+}
+
 interface Props {
   worldId: number;
   onComplete: () => void;
@@ -51,11 +61,11 @@ export default function DigraphDiscovery({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('pick');
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(DIGRAPH_WORDS).slice(0, 6));
-  const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
+  const [rounds] = useState(buildBalancedRounds);
+  const { completeGame, addCoins, masterWord, teachPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
-  const { word, digraph } = current;
+  const { word, digraph, phonemeId } = current;
   const rest = word.slice(2);
   const isLast = round >= rounds.length - 1;
 
@@ -86,18 +96,18 @@ export default function DigraphDiscovery({ worldId, onComplete }: Props) {
 
   const celebrate = useCallback(async () => {
     setPhase('won');
-    await speakPhoneme(digraph); // the two letters' ONE sound
+    await speakPhoneme(phonemeId);
     await speakWord(word);
     await speakFeedback(isLast ? 'complete' : 'correct');
     await new Promise((r) => setTimeout(r, 800));
     advance();
-  }, [digraph, word, isLast, advance]);
+  }, [phonemeId, word, isLast, advance]);
 
   useEffect(() => {
     if (shouldReveal && phase === 'pick') {
       (async () => {
-        recordSoundAttempt(digraph, false);
-        await speakReveal(digraph);
+        recordSoundAttempt(phonemeId, false);
+        await speakReveal(phonemeId);
         await celebrate();
       })();
     }
@@ -108,13 +118,14 @@ export default function DigraphDiscovery({ worldId, onComplete }: Props) {
     (d: Digraph) => {
       if (phase !== 'pick') return;
       if (d === digraph) {
-        recordSoundAttempt(digraph, true);
+        recordSoundAttempt(phonemeId, true);
+        teachPhoneme(phonemeId);
         incrementStreak();
         masterWord(word);
         playSoundEffect('coin');
         celebrate();
       } else {
-        recordSoundAttempt(digraph, false);
+        recordSoundAttempt(phonemeId, false);
         recordWrong();
         resetStreak();
         playSoundEffect('wrong');
@@ -127,7 +138,7 @@ export default function DigraphDiscovery({ worldId, onComplete }: Props) {
         })();
       }
     },
-    [phase, digraph, word, celebrate, incrementStreak, masterWord, resetStreak, recordWrong, recordSoundAttempt],
+    [phase, digraph, phonemeId, word, celebrate, incrementStreak, masterWord, teachPhoneme, resetStreak, recordWrong, recordSoundAttempt],
   );
 
   return (
@@ -160,13 +171,6 @@ export default function DigraphDiscovery({ worldId, onComplete }: Props) {
             </span>
             <span className="text-7xl font-bold font-[Fredoka] text-gray-800 lowercase">{rest}</span>
           </div>
-          <AnimatePresence>
-            {phase === 'won' && ITEM_ART.has(word) && (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-2 shadow-xl">
-                <WordCard word={word} size={110} />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
         {/* The digraph teams */}

@@ -18,6 +18,8 @@ async function identify(file: string, target: string): Promise<string> {
     ? 'It should be the American short-o vowel in top/pot, not the long-o letter name.'
     : target === 'u'
       ? 'It should be the short-u vowel in cup/mug.'
+      : target.startsWith('th-voiced')
+        ? 'It should be only the isolated voiced th phoneme /ð/ in this/that: no following vowel, schwa, or whole word, and not the unvoiced /θ/ in thin.'
       : `It should be the English phoneme written ${target}.`;
   const prompt = `Listen to this short audio clip from a children's phonics app. ${targetHint} Transcribe EXACTLY what you hear and judge whether it matches the target. Reply ONLY compact JSON: {"hear":"<phonetic transcription>","type":"sound|letter-name|silence","matches_target":true|false,"note":"<8 words>"}`;
   const res = await fetch(

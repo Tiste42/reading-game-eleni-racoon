@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { speak, speakInstruction, speakPhoneme, stopSpeaking } from './speech';
+import { canAutomaticallyRevealAnswer } from '@/content/learningIntegrity';
 
 export function useInstructionSpeech(gameId: string, active = true, deps: unknown[] = []) {
   useEffect(() => {
@@ -60,6 +61,7 @@ export function useGameSpeechWithOptions(
   deps: unknown[] = [],
 ) {
   const [activeOption, setActiveOption] = useState<number>(-1);
+  const [doneSpeaking, setDoneSpeaking] = useState(true);
   const cancelledRef = useRef(false);
   const runIdRef = useRef(0);
 
@@ -67,12 +69,14 @@ export function useGameSpeechWithOptions(
 
   useEffect(() => {
     if (!instruction) {
+      setDoneSpeaking(true);
       return;
     }
 
     const thisRun = ++runIdRef.current;
     cancelledRef.current = false;
     setActiveOption(-1);
+    setDoneSpeaking(false);
 
     const run = async () => {
       if (cancelledRef.current || thisRun !== runIdRef.current) return;
@@ -89,12 +93,14 @@ export function useGameSpeechWithOptions(
 
       if (cancelledRef.current || thisRun !== runIdRef.current) return;
       setActiveOption(-1);
+      setDoneSpeaking(true);
     };
 
     const timer = setTimeout(run, 500);
     return () => {
       clearTimeout(timer);
       cancelledRef.current = true;
+      setDoneSpeaking(true);
       stopSpeaking();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,6 +118,7 @@ export function useGameSpeechWithOptions(
     const thisRun = ++runIdRef.current;
     cancelledRef.current = false;
     setActiveOption(-1);
+    setDoneSpeaking(false);
     stopSpeaking();
 
     const run = async () => {
@@ -126,13 +133,22 @@ export function useGameSpeechWithOptions(
       }
       if (cancelledRef.current || thisRun !== runIdRef.current) return;
       setActiveOption(-1);
+      setDoneSpeaking(true);
     };
 
     run();
   }, [instruction, options]);
 
-  // Never block interaction — speech is assistive, not gating
-  return { activeOption, doneSpeaking: true, replay };
+  // Cancel any in-flight option sequence before feedback or a new round.
+  const cancel = useCallback(() => {
+    cancelledRef.current = true;
+    runIdRef.current += 1;
+    setActiveOption(-1);
+    setDoneSpeaking(true);
+    stopSpeaking();
+  }, []);
+
+  return { activeOption, doneSpeaking, replay, cancel };
 }
 
 export type SpeechPart =
@@ -210,7 +226,12 @@ export function useWrongAttempts(roundKey: unknown, maxAttempts = 3) {
 
   return {
     attempts,
-    shouldReveal: attempts >= maxAttempts,
+    // Learning-integrity safety rail: a wrong answer may replay the prompt or
+    // model the child's selected option, but it must never identify, insert,
+    // accept, or advance through the correct answer. Existing games still
+    // consume this field, so keeping it permanently false disables every old
+    // answer-reveal path from one auditable policy point.
+    shouldReveal: canAutomaticallyRevealAnswer(attempts, maxAttempts),
     recordWrong,
   };
 }

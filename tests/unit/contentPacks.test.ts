@@ -14,6 +14,8 @@ import {
 import { getPracticedPhonemes } from '../../src/content/progression';
 import { buildRhymeCandidates, buildSoundPictureCandidates } from '../../src/content/earlyRoundBuilders';
 import { getRhymeFamilies } from '../../src/content/registry';
+import { hasChildIdentifiablePicture } from '../../src/content/pictureQuality';
+import { canSharePictureChoices } from '../../src/content/pictureConflicts';
 
 test('core stays active while optional packs can be removed', () => {
   assert.deepEqual(getEnabledPacks([]).map((pack) => pack.id), ['core']);
@@ -50,8 +52,9 @@ test('optional later-sound packs never leak into World 2 or World 3 pools', () =
 
 test('enabled packs expand only progression-safe later-world activities', () => {
   const all = ['continuous-bridge', 'cvc-grid', 'longer-words'];
-  assert.ok(getWordChains(all).some((chain) => chain.to.text === 'rat'));
-  assert.ok(getStories(all).some((story) => story.pictureWord === 'lamp'));
+  assert.ok(getWordChains(all).some((chain) => chain.id === 'core:pin-pen'));
+  assert.ok(getWordChains(all).some((chain) => chain.id === 'cvc:bug-mug'));
+  assert.ok(getStories(all).some((story) => story.id === 'longer:story-ship' && story.correct === 'ship'));
   assert.ok(getPostcards(all).some((postcard) => postcard.correct === 'ship'));
 });
 
@@ -73,7 +76,8 @@ test('new World 3 words stay locked until every sound has been taught', () => {
   const expandedWords = getWordsForActivity(enabled, 'blend-to-picture', allTaught).map((word) => word.text);
   assert.equal(expandedWords.includes('dog'), true);
   assert.equal(expandedWords.includes('fox'), true);
-  assert.ok(expandedWords.length >= 40);
+  assert.ok(expandedWords.length >= 25);
+  assert.ok(expandedWords.every(hasChildIdentifiablePicture));
 });
 
 test('early round builders provide broad valid rotating pools', () => {
@@ -82,11 +86,20 @@ test('early round builders provide broad valid rotating pools', () => {
   assert.ok(soundRounds.length >= 20);
   assert.ok(soundRounds.every((round) => round.targetWords.length >= 2));
   assert.ok(soundRounds.every((round) => new Set([...round.targetWords, ...round.distractorWords]).size === round.targetWords.length + round.distractorWords.length));
+  assert.ok(soundRounds.every((round) => {
+    const choices = [...round.targetWords, ...round.distractorWords];
+    return choices.every((word, index) => choices.slice(index + 1).every((other) => canSharePictureChoices(word, other)));
+  }));
   const cRound = soundRounds.find((round) => round.targetLetter === 'c');
   assert.ok(cRound);
   assert.equal(cRound.distractorWords.includes('kite'), false);
 
   const rhymeRounds = buildRhymeCandidates(getRhymeFamilies(['alphabet-adventure']));
-  assert.ok(rhymeRounds.length >= 35);
+  assert.ok(rhymeRounds.length >= 18);
   assert.ok(rhymeRounds.every((round) => round.match !== round.target && round.distractors.length === 2));
+  assert.ok(rhymeRounds.every((round) => {
+    const choices = [round.target, round.match, ...round.distractors];
+    return choices.every(hasChildIdentifiablePicture) &&
+      choices.every((word, index) => choices.slice(index + 1).every((other) => canSharePictureChoices(word, other)));
+  }));
 });

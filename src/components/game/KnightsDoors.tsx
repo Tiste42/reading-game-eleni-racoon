@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,16 +10,7 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-// Targets all have recorded "Find the door that says X!" lines + real art
-const DOOR_ROUNDS: Array<{ target: string; doors: string[] }> = [
-  { target: 'cat', doors: ['cat', 'hat', 'bat'] },
-  { target: 'dog', doors: ['log', 'dog', 'fog'] },
-  { target: 'cup', doors: ['pup', 'cut', 'cup'] },
-  { target: 'hen', doors: ['hen', 'pen', 'ten'] },
-  { target: 'bed', doors: ['red', 'bed', 'fed'] },
-  { target: 'van', doors: ['man', 'fan', 'van'] },
-];
+import { WORLD_4_DOOR_ROUNDS, isWorld4RoundDecodable } from '@/content/world4Content';
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -38,7 +29,11 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
   const [openDoor, setOpenDoor] = useState<string | null>(null);
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(DOOR_ROUNDS).map((r) => ({ ...r, doors: shuffle(r.doors) })));
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
+  const rounds = useMemo(() => shuffle(WORLD_4_DOOR_ROUNDS.filter((candidate) =>
+    isWorld4RoundDecodable(candidate, taughtPhonemeSet),
+  )).slice(0, 6).map((candidate) => ({ ...candidate, doors: shuffle(candidate.doors) })), [taughtPhonemeSet]);
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const { target, doors } = rounds[round];
@@ -138,12 +133,9 @@ export default function KnightsDoors({ worldId, onComplete }: Props) {
         <div className="flex flex-col items-center">
           <EleniCharacter costume="knight" pose={phase === 'won' ? 'celebrating' : 'excited'} size={130} animate={false} />
           <p className="text-emerald-900 font-[Fredoka] font-bold text-2xl text-center">
-            Find the door that says...
+            Listen, then read each door!
           </p>
-          {/* Target word big — she compares by READING the doors */}
-          <div className="bg-white rounded-2xl px-7 py-2 shadow-lg mt-1">
-            <span className="text-6xl font-bold font-[Fredoka] text-emerald-700 lowercase">{target}</span>
-          </div>
+          <div className="bg-white rounded-full px-6 py-3 shadow-lg mt-1 text-4xl" aria-hidden="true">🔊</div>
         </div>
 
         {/* The doors */}

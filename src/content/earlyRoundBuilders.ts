@@ -1,6 +1,7 @@
 import type { ResolvedSoundGroup } from './registry';
 import type { RhymeFamily } from './types';
 import { canShareSoundChoices } from './phonemeConflicts';
+import { canSharePictureChoices } from './pictureConflicts';
 
 export interface RhymeCandidate {
   id: string;
@@ -16,17 +17,36 @@ export interface SoundPictureCandidate {
   distractorWords: string[];
 }
 
-const cycle = <T>(items: T[], start: number, count: number): T[] => {
+const rotate = <T>(items: T[], start: number): T[] => {
   if (items.length === 0) return [];
-  return Array.from({ length: Math.min(count, items.length) }, (_, index) => items[(start + index) % items.length]);
+  const offset = ((start % items.length) + items.length) % items.length;
+  return [...items.slice(offset), ...items.slice(0, offset)];
+};
+
+const takeCompatible = (words: string[], selected: string[], count: number): string[] => {
+  const result: string[] = [];
+  for (const word of words) {
+    if (selected.includes(word) || result.includes(word)) continue;
+    if ([...selected, ...result].every((other) => canSharePictureChoices(word, other))) {
+      result.push(word);
+      if (result.length === count) break;
+    }
+  }
+  return result;
 };
 
 export function buildRhymeCandidates(families: RhymeFamily[]): RhymeCandidate[] {
-  return families.flatMap((family, familyIndex) => family.words.map((target, wordIndex) => {
-    const match = family.words[(wordIndex + 1) % family.words.length];
+  return families.flatMap((family, familyIndex) => family.words.flatMap((target, wordIndex) => {
+    const match = rotate(family.words, wordIndex + 1)
+      .find((word) => word !== target && canSharePictureChoices(target, word));
+    if (!match) return [];
     const otherFamilies = families.filter((entry) => entry.id !== family.id);
-    const distractors = cycle(otherFamilies, familyIndex + wordIndex, 2)
-      .map((entry, index) => entry.words[(wordIndex + index) % entry.words.length]);
+    const distractorPool = rotate(
+      otherFamilies.flatMap((entry) => entry.words),
+      familyIndex + wordIndex,
+    );
+    const distractors = takeCompatible(distractorPool, [target, match], 2);
+    if (distractors.length < 2) return [];
     return {
       id: `${family.id}:${target}`,
       target,
@@ -46,21 +66,27 @@ export function buildSoundPictureCandidates(
   return eligible.flatMap((group, groupIndex) => {
     const variants = Math.max(1, Math.ceil(group.words.length / Math.max(1, targetCount)));
     return Array.from({ length: variants }, (_, variant) => {
-      const targets = cycle(group.words, variant * targetCount, targetCount).map((word) => word.text);
+      const targetPool = rotate(group.words.map((word) => word.text), variant * targetCount);
+      const targets = takeCompatible(targetPool, [], targetCount);
+      if (targets.length < minimumTargets) return null;
       const otherGroups = groups.filter((entry) =>
         entry.id !== group.id &&
         entry.words.length > 0 &&
         canShareSoundChoices(group.phonemeId, entry.phonemeId),
       );
-      const distractors = cycle(otherGroups, groupIndex + variant, distractorCount)
-        .map((entry, index) => entry.words[(groupIndex + variant + index) % entry.words.length].text);
+      const distractorPool = rotate(
+        otherGroups.flatMap((entry) => entry.words.map((word) => word.text)),
+        groupIndex + variant,
+      );
+      const distractors = takeCompatible(distractorPool, targets, distractorCount);
+      if (distractors.length < distractorCount) return null;
       return {
         id: `${group.id}:set-${variant}`,
         targetLetter: group.phonemeId,
         targetWords: targets,
         distractorWords: distractors,
       };
-    });
+    }).filter((round): round is SoundPictureCandidate => round !== null);
   });
 }
 

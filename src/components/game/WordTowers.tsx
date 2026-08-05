@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -9,19 +9,7 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-// Each round: pick the word that belongs to the family (recorded lines exist)
-const FAMILIES: Array<{ pattern: string; member: string; outsiders: string[] }> = [
-  { pattern: '-at', member: 'cat', outsiders: ['dog', 'pen'] },
-  { pattern: '-at', member: 'hat', outsiders: ['bug', 'net'] },
-  { pattern: '-an', member: 'van', outsiders: ['hen', 'log'] },
-  { pattern: '-an', member: 'pan', outsiders: ['cup', 'win'] },
-  { pattern: '-in', member: 'pin', outsiders: ['bat', 'mug'] },
-  { pattern: '-og', member: 'dog', outsiders: ['rat', 'ten'] },
-  { pattern: '-og', member: 'log', outsiders: ['fan', 'bed'] },
-  { pattern: '-ug', member: 'bug', outsiders: ['hat', 'fin'] },
-  { pattern: '-ug', member: 'mug', outsiders: ['jet', 'van'] },
-];
+import { WORLD_4_FAMILY_ROUNDS, isWorld4RoundDecodable } from '@/content/world4Content';
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -41,7 +29,11 @@ export default function WordTowers({ worldId, onComplete }: Props) {
   const [choices, setChoices] = useState<string[]>([]);
   const [tower, setTower] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(FAMILIES).slice(0, 6));
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
+  const rounds = useMemo(() => shuffle(WORLD_4_FAMILY_ROUNDS.filter((candidate) =>
+    isWorld4RoundDecodable(candidate, taughtPhonemeSet),
+  )).slice(0, 6), [taughtPhonemeSet]);
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const { pattern, member } = rounds[round];

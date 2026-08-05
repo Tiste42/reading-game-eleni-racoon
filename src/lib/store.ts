@@ -5,6 +5,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { ContentPackId } from '@/content/types';
 import { normalizeEnabledPackIds, updateEnabledPackIds } from '@/content/registry';
 import { ALPHABET_PHONEMES, CORE_FOUNDATION_PHONEMES } from '@/content/progression';
+import { REQUIRED_DIGRAPHS, REQUIRED_HEART_WORDS } from '@/content/learningIntegrity';
 import type { ContentHistory } from './roundSelector';
 
 export interface SessionEntry {
@@ -288,7 +289,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'eleni-sound-safari',
-      version: 3,
+      version: 4,
       migrate: (persistedState, persistedVersion) => {
         const legacy = (persistedState || {}) as Partial<GameState>;
         const advanced = Boolean(
@@ -307,15 +308,41 @@ export const useGameStore = create<GameState>()(
         const migratedPacks = persistedVersion < 3
           ? normalizeEnabledPackIds(['alphabet-adventure', ...previousPacks])
           : previousPacks;
-        const taughtPhonemes = persistedVersion < 3
+        const baseTaughtPhonemes = persistedVersion < 3
           ? advanced
             ? [...ALPHABET_PHONEMES]
             : [...new Set([...CORE_FOUNDATION_PHONEMES, ...(legacy.masteredPhonemes || [])])]
           : legacy.taughtPhonemes || [...CORE_FOUNDATION_PHONEMES];
+        const world5Games = legacy.worldProgress?.[5]?.gamesCompleted || [];
+        const hasWorld6Progress = Boolean(
+          legacy.worldProgress?.[6]?.gamesCompleted?.length || legacy.worldProgress?.[6]?.bossCompleted,
+        );
+        const hasWorld5Progress = Boolean(world5Games.length || legacy.worldProgress?.[5]?.bossCompleted);
+        const completedDigraphTeaching = Boolean(
+          world5Games.some((gameId) => ['digraph-discovery', 'ruin-decoder', 'treasure-memory', 'souk-sentences'].includes(gameId)) ||
+          legacy.worldProgress?.[5]?.bossCompleted ||
+          hasWorld6Progress,
+        );
+        const completedHeartTeaching = Boolean(
+          world5Games.some((gameId) => ['heart-word-map', 'treasure-memory', 'souk-sentences'].includes(gameId)) ||
+          legacy.worldProgress?.[5]?.bossCompleted ||
+          hasWorld6Progress,
+        );
+        const taughtPhonemes = persistedVersion < 4
+          ? [...new Set([
+              ...baseTaughtPhonemes,
+              ...(hasWorld5Progress || hasWorld6Progress ? ALPHABET_PHONEMES : []),
+              ...(completedDigraphTeaching ? REQUIRED_DIGRAPHS : []),
+            ])]
+          : baseTaughtPhonemes;
+        const masteredWords = persistedVersion < 4 && completedHeartTeaching
+          ? [...new Set([...(legacy.masteredWords || []), ...REQUIRED_HEART_WORDS])]
+          : legacy.masteredWords || [];
         return {
           ...legacy,
           enabledContentPackIds: migratedPacks,
           taughtPhonemes,
+          masteredWords,
           contentSeed: legacy.contentSeed || 'eleni-v2',
           contentRunCounter: legacy.contentRunCounter || 0,
           recentContentByGame: legacy.recentContentByGame || {},

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { WORLDS } from '../../src/lib/constants';
 import { allPacks, captureRuntimeFailures, seedFreePlay } from './helpers';
+import { BLOCKED_PICTURE_WORDS } from '../../src/content/pictureQuality';
 
 const gameRoutes = WORLDS.flatMap((world) =>
   [...world.games, world.bossGame].map((game) => `/world/${world.id}/${game.id}`),
@@ -27,6 +28,13 @@ test('every existing game boots with its visible pictures intact', async ({ page
           .map((image) => (image as HTMLImageElement).src),
       ),
       { message: `${route} showed a broken image`, timeout: 5_000 },
+    ).toEqual([]);
+    const visiblePictureWords = await page.locator('[data-picture-word]:visible').evaluateAll((pictures) =>
+      pictures.map((picture) => picture.getAttribute('data-picture-word') || ''),
+    );
+    expect(
+      visiblePictureWords.filter((word) => BLOCKED_PICTURE_WORDS.has(word)),
+      `${route} rendered a picture that has not passed the blind audit`,
     ).toEqual([]);
   }
 
