@@ -11,6 +11,7 @@ import { useGameStore } from '@/lib/store';
 import { speak, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { CONNECTED_COMPREHENSION_ROUNDS } from '@/content/connectedText';
 
 interface ComicPanel {
   sentence: string; // SHE reads this — never spoken before she answers
@@ -21,14 +22,12 @@ interface ComicPanel {
   // understanding the question does
 }
 
-const STORY: ComicPanel[] = [
-  { sentence: 'The cat sat on a mat.', question: 'Who sat on the mat?', answer: 'cat', choices: ['cat', 'mat', 'dog'] },
-  { sentence: 'A dog ran to the cat.', question: 'Who ran?', answer: 'dog', choices: ['dog', 'cat', 'bus'] },
-  { sentence: 'A bug sat on a log.', question: 'What did the bug sit on?', answer: 'log', choices: ['log', 'bug', 'bed'] },
-  { sentence: 'He got a red hat.', question: 'What did he get?', answer: 'hat', choices: ['hat', 'red', 'cup'] },
-  { sentence: 'The bug fell in the pot.', question: 'What fell in the pot?', answer: 'bug', choices: ['bug', 'pot', 'fish'] },
-  { sentence: 'A pig sat in the van.', question: 'Who sat in the van?', answer: 'pig', choices: ['pig', 'van', 'hen'] },
-];
+const STORY: ComicPanel[] = CONNECTED_COMPREHENSION_ROUNDS.map((round) => ({
+  sentence: round.sentence,
+  question: round.question,
+  answer: round.correct,
+  choices: round.options,
+}));
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -95,8 +94,7 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
   const startAnswer = useCallback(() => {
     playSoundEffect('tap');
     setPhase('answer');
-    speak(current.question);
-  }, [current.question]);
+  }, []);
 
   const pick = useCallback(
     (w: string) => {

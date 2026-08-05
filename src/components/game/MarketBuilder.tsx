@@ -32,7 +32,6 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [placed, setPlaced] = useState(0);
   const [wrongTile, setWrongTile] = useState<number | null>(null);
-  const [showHint, setShowHint] = useState(false);
   const [done, setDone] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
@@ -63,12 +62,6 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
     setUsedTileIds(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
-
-  // Never reveal the next letter just because time passed. A hint appears only
-  // after a wrong attempt, then clears when she places the correct tile.
-  useEffect(() => {
-    setShowHint(false);
-  }, [placed, round]);
 
   // Generic recorded directions preserve the picture-to-word contract: the
   // target word is never pronounced before Eleni builds it.
@@ -117,9 +110,8 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
       } else {
         // Foolproof: a wrong tap never traps her — shake + play the sound she needs
         playSoundEffect('wrong');
-        speakPhoneme(needed.phonemeId);
+        speakPhoneme(tile.unit.phonemeId);
         recordSoundAttempt(needed.phonemeId, false);
-        setShowHint(true);
         setWrongTile(bankIdx);
         setTimeout(() => setWrongTile(null), 500);
       }
@@ -182,7 +174,6 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
         <div className="flex gap-2 sm:gap-4">
           {bank.map((tile, bankIdx) => {
             const used = usedTileIds.has(tile.id);
-            const isNeeded = tile.unit.text === units[placed]?.text && !done;
             return (
               <motion.button
                 key={tile.id}
@@ -196,9 +187,7 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
                       : { scale: 1, opacity: 1 }
                 }
                 whileTap={{ scale: 0.9 }}
-                className={`w-[84px] h-[92px] sm:w-[104px] sm:h-[104px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-6xl sm:text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
-                  isNeeded && showHint ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
-                }`}
+                className="w-[84px] h-[92px] sm:w-[104px] sm:h-[104px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-6xl sm:text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d"
               >
                 {tile.unit.text}
               </motion.button>

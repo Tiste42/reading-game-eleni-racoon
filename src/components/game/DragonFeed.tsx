@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -10,25 +10,7 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-interface CVCWord {
-  word: string;
-  distractors: string[];
-}
-
-// All words picturable (in ITEM_ART) — same word family so she must READ
-const CVC_WORDS: CVCWord[] = [
-  { word: 'cat', distractors: ['hat', 'bat'] },
-  { word: 'dog', distractors: ['log', 'fog'] },
-  { word: 'bug', distractors: ['rug', 'mug'] },
-  { word: 'hen', distractors: ['pen', 'ten'] },
-  { word: 'cup', distractors: ['pup', 'cut'] },
-  { word: 'pot', distractors: ['hot', 'dot'] },
-  { word: 'bed', distractors: ['red', 'fed'] },
-  { word: 'van', distractors: ['man', 'fan'] },
-  { word: 'fin', distractors: ['bin', 'win'] },
-  { word: 'jet', distractors: ['net', 'wet'] },
-];
+import { WORLD_4_PICTURE_ROUNDS, isWorld4PictureRoundSafe, isWorld4RoundDecodable } from '@/content/world4Content';
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -48,7 +30,11 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
   const [mood, setMood] = useState<'hungry' | 'happy' | 'oops'>('hungry');
   const [choices, setChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(CVC_WORDS).slice(0, 6));
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
+  const rounds = useMemo(() => shuffle(WORLD_4_PICTURE_ROUNDS.filter((candidate) =>
+    isWorld4PictureRoundSafe(candidate) && isWorld4RoundDecodable(candidate, taughtPhonemeSet),
+  )).slice(0, 6), [taughtPhonemeSet]);
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];

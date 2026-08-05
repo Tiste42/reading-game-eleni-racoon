@@ -14,6 +14,8 @@ import { getWordChains, type ResolvedWordChain } from '@/content/registry';
 import type { GraphemeUnit } from '@/content/types';
 import { shuffleSeeded } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
+import { isWordDecodable } from '@/content/progression';
+import { hasChildIdentifiablePicture } from '@/content/pictureQuality';
 
 interface BankTile {
   id: string;
@@ -34,13 +36,20 @@ export default function PotionLab({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('build');
   const [placed, setPlaced] = useState(0);
   const [wrongTile, setWrongTile] = useState<string | null>(null);
-  const [showHint, setShowHint] = useState(false);
   const [bank, setBank] = useState<BankTile[]>([]);
   const [usedTileIds, setUsedTileIds] = useState<Set<string>>(new Set());
   const [swapChoices, setSwapChoices] = useState<GraphemeUnit[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
-  const chainPool = useMemo(() => getWordChains(enabledContentPackIds), [enabledContentPackIds]);
+  const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
+  const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
+  const chainPool = useMemo(() => getWordChains(enabledContentPackIds).filter((chain) =>
+    isWordDecodable(chain.from, taughtPhonemeSet) &&
+    isWordDecodable(chain.to, taughtPhonemeSet) &&
+    chain.distractorUnits.every((unit) => taughtPhonemeSet.has(unit.phonemeId)) &&
+    hasChildIdentifiablePicture(chain.from.text) &&
+    hasChildIdentifiablePicture(chain.to.text),
+  ), [enabledContentPackIds, taughtPhonemeSet]);
   const session = useContentSession({ gameId: 'potion-lab', candidates: chainPool, count: 5, getId: chainId });
   const rounds = session.items;
   const { completeGame, addCoins, masterWord, recordSoundAttempt } = useGameStore();
@@ -64,12 +73,6 @@ export default function PotionLab({ worldId, onComplete }: Props) {
     setSwapChoices(shuffleSeeded([newUnit, ...current.distractorUnits], `${session.seed}:${current.id}:swap`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
-
-  // Never reveal the next letter just because time passed. A hint appears only
-  // after a wrong attempt, then clears when she places the correct tile.
-  useEffect(() => {
-    setShowHint(false);
-  }, [placed, round]);
 
   // Recorded line tells her to sound the word out, not just tap what glows.
   const { replay } = useInstructionSpeech('potion-lab', phase === 'build', [round]);
@@ -116,9 +119,8 @@ export default function PotionLab({ worldId, onComplete }: Props) {
         }
       } else {
         playSoundEffect('wrong');
-        speakPhoneme(needed.phonemeId);
+        speakPhoneme(tile.unit.phonemeId);
         recordSoundAttempt(needed.phonemeId, false);
-        setShowHint(true);
         setWrongTile(`bank-${idx}`);
         setTimeout(() => setWrongTile(null), 500);
       }
@@ -147,7 +149,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
         recordSoundAttempt(newUnit.phonemeId, false);
         setWrongTile(`swap-${choice.text}`);
         (async () => {
-          await speakPhoneme(newUnit.phonemeId); // hint: the sound we need
+          await speakPhoneme(choice.phonemeId);
           setWrongTile(null);
         })();
       }
@@ -232,7 +234,6 @@ export default function PotionLab({ worldId, onComplete }: Props) {
           {phase === 'build' &&
             bank.map((tile, idx) => {
               const used = usedTileIds.has(tile.id);
-              const isNeeded = tile.unit.text === units[placed]?.text;
               return (
                 <motion.button
                   key={tile.id}
@@ -246,9 +247,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
                         : { scale: 1, opacity: 1 }
                   }
                   whileTap={{ scale: 0.9 }}
-                  className={`w-[84px] h-[92px] sm:w-[100px] sm:h-[108px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-6xl sm:text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d ${
-                    isNeeded && showHint ? 'ring-4 ring-yellow-300 animate-hint-pulse' : ''
-                  }`}
+                  className="w-[84px] h-[92px] sm:w-[100px] sm:h-[108px] rounded-3xl bg-white shadow-xl flex items-center justify-center text-6xl sm:text-7xl font-bold font-[Fredoka] text-gray-800 lowercase press-3d"
                 >
                   {tile.unit.text}
                 </motion.button>

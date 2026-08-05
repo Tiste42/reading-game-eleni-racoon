@@ -1,3 +1,18 @@
+# V2.2 Learning Integrity Repair (2026-08-05)
+
+Success: every game requires the intended reading/phonics skill before revealing
+an answer; sentence tasks require comprehension; every picture answer is readily
+identifiable; existing progress and working mechanics remain intact.
+
+- [x] Inventory every game’s visible and spoken pre-answer cues
+- [x] Remove automatic answer highlights, flashes, eliminations, and spoken reveals
+- [x] Repair sentence and phrase tasks that can be solved by copying the prompt
+- [x] Audit rhyme and picture-choice assets for child-identifiable meaning
+- [x] Add semantic answer-integrity tests for every game family and boss
+- [x] Complete independent phonics and child-facing QA review
+- [x] Verify saves, all game routes, phone/tablet behavior, and production build
+- [ ] Publish only after preview and live learning-quality checks pass
+
 # V2.1 Early-World Expansion (2026-08-03)
 
 Success: preserve every working World 1-3 mechanic while making repeat sessions

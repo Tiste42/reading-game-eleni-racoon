@@ -17,3 +17,8 @@ export function getPracticedPhonemes(
 export function isWordDecodable(word: ContentWord, allowedPhonemes: ReadonlySet<string>): boolean {
   return word.units.every((unit) => allowedPhonemes.has(unit.phonemeId));
 }
+
+/** World 4's legacy CVC pools are plain strings rather than ContentWord records. */
+export function isTextDecodable(text: string, allowedPhonemes: ReadonlySet<string>): boolean {
+  return [...text.toLowerCase()].every((letter) => !/[a-z]/.test(letter) || allowedPhonemes.has(letter));
+}

@@ -21,6 +21,7 @@ export default function WordCard({ word, size = 64, className = '' }: Props) {
   if (!ITEM_ART.has(key) || imgFailed) {
     return (
       <span
+        data-picture-word={key}
         className={`inline-block select-none ${className}`}
         style={{ fontSize: size * 0.78, lineHeight: `${size}px`, width: size, height: size }}
         role="img"
@@ -33,6 +34,7 @@ export default function WordCard({ word, size = 64, className = '' }: Props) {
 
   return (
     <img
+      data-picture-word={key}
       src={`/images/generated/items/${key}.png`}
       alt={word}
       width={size}

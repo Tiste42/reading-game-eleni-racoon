@@ -4,7 +4,6 @@ import { captureRuntimeFailures } from './helpers';
 test('optional packs toggle with dependency-safe persistence', async ({ page }) => {
   const errors = captureRuntimeFailures(page);
   await page.goto('/parent');
-  await page.waitForLoadState('networkidle');
 
   const alphabet = page.getByRole('button', { name: 'Toggle Alphabet Adventure' });
   const continuous = page.getByRole('button', { name: 'Toggle Stretchy Sounds' });
@@ -26,6 +25,33 @@ test('optional packs toggle with dependency-safe persistence', async ({ page }) 
   await expect(cvc).toHaveAttribute('aria-pressed', 'false');
   await expect(longer).toHaveAttribute('aria-pressed', 'false');
   expect(errors).toEqual([]);
+});
+
+test('a disabled alphabet pack can be restored from the later-world prerequisite', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', 'One persisted prerequisite check is sufficient.');
+  await page.addInitScript(() => {
+    const worldProgress = Object.fromEntries(
+      [1, 2, 3, 4, 5, 6].map((world) => [world, { gamesCompleted: [], bossCompleted: false, stars: 0 }]),
+    );
+    localStorage.setItem('eleni-sound-safari', JSON.stringify({
+      version: 4,
+      state: {
+        worldProgress,
+        freePlay: true,
+        enabledContentPackIds: [],
+        taughtPhonemes: ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l'],
+        masteredWords: [],
+      },
+    }));
+  });
+
+  await page.goto('/world/5/digraph-discovery');
+  const restore = page.getByRole('button', { name: 'Turn on Alphabet Adventure' });
+  await expect(restore).toBeVisible();
+  await restore.click();
+  await expect(page).toHaveURL(/\/world\/2\/letter-intro$/);
+  const enabled = await page.evaluate(() => JSON.parse(localStorage.getItem('eleni-sound-safari') || '{}').state.enabledContentPackIds);
+  expect(enabled).toContain('alphabet-adventure');
 });
 
 test('legacy progress migrates without losing child data', async ({ page }) => {
@@ -59,7 +85,7 @@ test('legacy progress migrates without losing child data', async ({ page }) => {
   await expect(page.getByText('ant')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Toggle Longer Word Challenge' })).toHaveAttribute('aria-pressed', 'true');
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('eleni-sound-safari') || '{}'));
-  expect(persisted.version).toBe(3);
+  expect(persisted.version).toBe(4);
   expect(persisted.state.coins).toBe(47);
   expect(persisted.state.masteredWords).toContain('nap');
   expect(persisted.state.enabledContentPackIds).toContain('alphabet-adventure');
@@ -74,7 +100,7 @@ test('Letter Intro rotates to a fresh alphabet batch on the next visit', async (
       [1, 2, 3, 4, 5, 6].map((world) => [world, { gamesCompleted: [], bossCompleted: false, stars: 0 }]),
     );
     localStorage.setItem('eleni-sound-safari', JSON.stringify({
-      version: 3,
+      version: 4,
       state: {
         worldProgress,
         freePlay: true,

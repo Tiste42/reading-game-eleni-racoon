@@ -86,8 +86,7 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
   const startAnswer = useCallback(() => {
     playSoundEffect('tap');
     setPhase('answer');
-    speak(current.question);
-  }, [current.question]);
+  }, []);
 
   const pick = useCallback(
     (opt: string) => {
@@ -143,7 +142,7 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
           </div>
           {phase === 'won' && (
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="bg-white rounded-3xl p-2 shadow-xl">
-              <WordCard word={current.pictureWord} size={104} />
+              <WordCard word={current.correct} size={104} />
             </motion.div>
           )}
         </div>
@@ -164,15 +163,16 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
               return (
                 <motion.button
                   key={`${round}-${opt}`}
+                  data-testid="story-picture-choice"
                   onClick={() => pick(opt)}
                   disabled={phase !== 'answer'}
                   animate={wrongPick === opt ? { x: [-8, 8, -8, 8, 0] } : {}}
                   whileTap={{ scale: 0.92 }}
-                  className={`px-6 py-5 rounded-3xl shadow-xl bg-white press-3d transition-all ${
+                  className={`p-3 rounded-3xl shadow-xl bg-white press-3d transition-all ${
                     highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                   }`}
                 >
-                  <span className="text-3xl font-bold font-[Fredoka] text-gray-800 lowercase">{opt}</span>
+                  <WordCard word={opt} size={96} />
                 </motion.button>
               );
             })}

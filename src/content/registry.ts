@@ -1,6 +1,15 @@
 import { CORE_PACK } from './packs/core';
 import { ALPHABET_ADVENTURE_PACK } from './packs/alphabet';
 import { CONTINUOUS_BRIDGE_PACK, CVC_GRID_PACK, LONGER_WORDS_PACK } from './packs/v2';
+import { REQUIRED_GAMEPLAY_NARRATION } from './learningIntegrity';
+import { WORLD_4_DOOR_ROUNDS, WORLD_4_FAMILY_ROUNDS } from './world4Content';
+import {
+  BEACH_COMPREHENSION_ROUNDS,
+  CONNECTED_COMPREHENSION_ROUNDS,
+  MANATEE_COMPREHENSION_ROUNDS,
+  WORLD_5_BOSS_SENTENCES,
+  WORLD_6_BOSS_SENTENCES,
+} from './connectedText';
 import type {
   ContentActivity,
   ContentPack,
@@ -173,10 +182,24 @@ export const CONTENT_AUDIO_WORDS = [...new Set([
 
 export const CONTENT_SYLLABLE_CLIPS = CONTENT_PACKS.flatMap((pack) => pack.syllableWords);
 
-export const CONTENT_NARRATION_PHRASES = [...new Set(CONTENT_PACKS.flatMap((pack) => [
-  ...pack.stories.flatMap((story) => [story.question, ...story.options.filter((option) => option.trim().includes(' '))]),
-  ...pack.postcards.map((postcard) => postcard.spoken),
-]))];
+const connectedQuestions = [
+  ...CONNECTED_COMPREHENSION_ROUNDS,
+  ...MANATEE_COMPREHENSION_ROUNDS,
+  ...BEACH_COMPREHENSION_ROUNDS,
+  ...WORLD_5_BOSS_SENTENCES,
+  ...WORLD_6_BOSS_SENTENCES,
+].map((round) => round.question);
+
+export const CONTENT_NARRATION_PHRASES = [...new Set([
+  ...CONTENT_PACKS.flatMap((pack) => [
+    ...pack.stories.flatMap((story) => [story.question, ...story.options.filter((option) => option.trim().includes(' '))]),
+    ...pack.postcards.map((postcard) => postcard.spoken),
+  ]),
+  ...connectedQuestions,
+  ...WORLD_4_FAMILY_ROUNDS.map((round) => `Find words in the ${round.pattern} family! Which word belongs?`),
+  ...WORLD_4_DOOR_ROUNDS.map((round) => `Find the door that says ${round.target}!`),
+  ...REQUIRED_GAMEPLAY_NARRATION,
+])];
 
 const narrationSlug = (text: string) => text.toLowerCase().trim()
   .replace(/[^a-z0-9 ]/g, '')

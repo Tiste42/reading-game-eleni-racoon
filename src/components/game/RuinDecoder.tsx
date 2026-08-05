@@ -10,16 +10,7 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
-
-// Digraph-aware letter units (sh/ch tapped as ONE tile = one sound).
-// All targets and distractors have real art.
-const DECODER_ROUNDS: Array<{ word: string; units: string[]; distractors: string[] }> = [
-  { word: 'ship', units: ['sh', 'i', 'p'], distractors: ['chip', 'shed'] },
-  { word: 'chip', units: ['ch', 'i', 'p'], distractors: ['ship', 'chop'] },
-  { word: 'shop', units: ['sh', 'o', 'p'], distractors: ['chop', 'shed'] },
-  { word: 'chop', units: ['ch', 'o', 'p'], distractors: ['shop', 'chip'] },
-  { word: 'shed', units: ['sh', 'e', 'd'], distractors: ['ship', 'bed'] },
-];
+import { WORLD_5_DECODER_ROUNDS } from '@/content/world5Content';
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -39,7 +30,7 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
   const [choices, setChoices] = useState<string[]>([]);
   const [decoded, setDecoded] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(DECODER_ROUNDS));
+  const [rounds] = useState(() => shuffle(WORLD_5_DECODER_ROUNDS));
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];

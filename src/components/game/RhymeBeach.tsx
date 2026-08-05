@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -8,7 +8,7 @@ import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
 import { useGameStore } from '@/lib/store';
 import { speak, speakClip, speakWord, speakFeedback } from '@/lib/speech';
-import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
+import { useGameSpeechWithOptions } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { getRhymeFamilies } from '@/content/registry';
 import { buildRhymeCandidates } from '@/content/earlyRoundBuilders';
@@ -30,8 +30,8 @@ interface Props {
 
 export default function RhymeBeach({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
-  const [phase, setPhase] = useState<'play' | 'burst' | 'model'>('play');
-  const [fallen, setFallen] = useState<string[]>([]);
+  const [phase, setPhase] = useState<'play' | 'burst'>('play');
+  const [isRetrying, setIsRetrying] = useState(false);
   const [candies, setCandies] = useState(0);
   const [burstAt, setBurstAt] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -54,17 +54,14 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
   const current = rounds[round];
   const isLastRound = round >= rounds.length - 1;
 
-  const { activeOption, replay } = useGameSpeechWithOptions(
+  const { activeOption, doneSpeaking, replay, cancel } = useGameSpeechWithOptions(
     `What rhymes with ${current.target}?`,
     current.choices,
     [round],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
-
   const advance = useCallback(() => {
     setPhase('play');
-    setFallen([]);
     setBurstAt(null);
     if (isLastRound) {
       completeGame(worldId, 'rhyme-match');
@@ -75,24 +72,10 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
     }
   }, [isLastRound, worldId, completeGame, addCoins]);
 
-  // After 2 misses: Leni models the rhyme pair, then we move on (no dead ends)
-  const modeling = useRef(false);
-  useEffect(() => {
-    if (shouldReveal && phase === 'play' && !modeling.current) {
-      modeling.current = true;
-      setPhase('model');
-      (async () => {
-        await speak(`${current.target} and ${current.match} rhyme! Listen: ${current.target}... ${current.match}!`);
-        await new Promise((r) => setTimeout(r, 700));
-        modeling.current = false;
-        advance();
-      })();
-    }
-  }, [shouldReveal, phase, current, advance]);
-
   const handleChoice = useCallback(
     (word: string, index: number) => {
-      if (phase !== 'play' || fallen.includes(word)) return;
+      if (phase !== 'play' || !doneSpeaking || isRetrying) return;
+      cancel();
 
       if (word === current.match) {
         recordSoundAttempt('rhyme', true);
@@ -108,30 +91,21 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
         })();
       } else {
         recordSoundAttempt('rhyme', false);
-        recordWrong();
         resetStreak();
         playSoundEffect('wrong');
-        // Scaffold down: the wrong piñata falls off its rope, fewer choices remain
-        const newFallen = [...fallen, word];
-        setFallen(newFallen);
-        // Re-say the words she's comparing — the target, then the piñatas still
-        // hanging — so "listen and say again" actually gives her something to hear.
-        // On the LAST miss only the answer is left and the model effect takes
-        // over (it speaks the rhyme pair), so don't double-talk over it.
-        const remaining = current.choices.filter((c) => !newFallen.includes(c));
-        if (remaining.length > 1) {
-          (async () => {
-            await speakClip('rhyme-hint', 'Listen! Rhyming words sound the same at the end!');
-            await speakWord(current.target);
-            for (const w of remaining) {
-              await speakWord(w);
-            }
-            await speak(`What rhymes with ${current.target}?`);
-          })();
-        }
+        setIsRetrying(true);
+        // Re-say only the target and the child's selection. The correct option
+        // remains available and is never singled out during retry feedback.
+        (async () => {
+          await speakClip('rhyme-hint', 'Listen! Rhyming words sound the same at the end!');
+          await speakWord(current.target);
+          await speakWord(word);
+          await speak(`What rhymes with ${current.target}?`);
+          setIsRetrying(false);
+        })();
       }
     },
-    [phase, fallen, current, isLastRound, advance, recordWrong, resetStreak, incrementStreak, recordSoundAttempt],
+    [phase, doneSpeaking, isRetrying, cancel, current, isLastRound, advance, resetStreak, incrementStreak, recordSoundAttempt],
   );
 
   return (
@@ -160,7 +134,8 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
           <button
             data-testid="rhyme-target"
             onClick={() => speak(current.target)}
-            className="inline-flex items-center gap-3 bg-white/90 rounded-2xl px-6 py-3 shadow-lg press-3d"
+            disabled={!doneSpeaking || isRetrying}
+            className="inline-flex items-center gap-3 bg-white/90 rounded-2xl px-6 py-3 shadow-lg press-3d disabled:cursor-wait"
           >
             <WordCard word={current.target} size={64} />
             {phase !== 'play' && (
@@ -181,16 +156,13 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
 
           <div className="grid grid-cols-3 gap-4 pt-2">
             {current.choices.map((word, index) => {
-              const hasFallen = fallen.includes(word);
-              const isCorrect = word === current.match;
               const isBurst = phase === 'burst' && burstAt === index;
               const isBeingSpoken = activeOption === index;
-              const revealThis = phase === 'model' && isCorrect;
 
               return (
                 <div key={`${round}-${word}`} className="relative flex flex-col items-center">
                   {/* string */}
-                  <div className={`w-0.5 h-6 bg-amber-800/60 ${hasFallen ? 'opacity-0' : ''}`} />
+                  <div className="w-0.5 h-6 bg-amber-800/60" />
 
                   <AnimatePresence>
                     {isBurst && (
@@ -219,27 +191,23 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
                   <motion.button
                     data-testid="rhyme-choice"
                     onClick={() => handleChoice(word, index)}
-                    disabled={phase !== 'play' || hasFallen}
+                    disabled={phase !== 'play' || !doneSpeaking || isRetrying}
                     initial={{ y: -60, opacity: 0 }}
                     animate={
-                      hasFallen
-                        ? { y: 220, rotate: 35, opacity: 0 }
-                        : isBurst
+                      isBurst
                           ? { scale: [1, 1.35, 0], rotate: [0, -12, 12] }
                           : {
                               y: 0,
                               opacity: 1,
-                              rotate: isBeingSpoken ? [0, -5, 5, 0] : [0, -2.5, 2.5, 0],
+                              rotate: isBeingSpoken ? [0, -5, 5, 0] : 0,
                             }
                     }
                     transition={
-                      hasFallen
-                        ? { duration: 0.7, ease: 'easeIn' }
-                        : isBurst
+                      isBurst
                           ? { duration: 0.55 }
                           : {
                               y: { type: 'spring', stiffness: 200, damping: 16, delay: index * 0.12 },
-                              rotate: { duration: isBeingSpoken ? 0.5 : 2.4, repeat: Infinity, ease: 'easeInOut' },
+                              rotate: { duration: 0.5, ease: 'easeInOut' },
                             }
                     }
                     whileTap={{ scale: 0.92 }}
@@ -247,7 +215,7 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
                       relative w-full min-h-[150px] rounded-3xl p-3 shadow-xl flex flex-col items-center justify-center gap-1
                       bg-gradient-to-br ${PINATA_STYLES[index % PINATA_STYLES.length]}
                       ${isBeingSpoken ? 'ring-4 ring-white' : ''}
-                      ${revealThis ? 'ring-4 ring-green-400 animate-hint-pulse' : ''}
+                      ${!doneSpeaking || isRetrying ? 'cursor-wait' : ''}
                     `}
                     style={{ transformOrigin: 'top center' }}
                   >

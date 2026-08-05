@@ -51,6 +51,28 @@ test('minimal and corrupt persisted values get safe content defaults', async () 
   assert.deepEqual(migrated.recentContentByGame, {});
 });
 
+test('v3 later-world saves recover the prerequisites their completed games imply', async () => {
+  const migrate = useGameStore.persist.getOptions().migrate;
+  assert.ok(migrate);
+  const worldProgress = Object.fromEntries(
+    [1, 2, 3, 4, 5, 6].map((world) => [world, {
+      gamesCompleted: world === 5 ? ['digraph-discovery', 'heart-word-map', 'treasure-memory'] : [],
+      bossCompleted: false,
+      stars: world === 5 ? 3 : 0,
+    }]),
+  );
+  const migrated = await migrate({
+    worldProgress,
+    taughtPhonemes: ['s', 'a', 't', 'p', 'i', 'n', 'e', 'l'],
+    masteredWords: ['the'],
+    enabledContentPackIds: ['alphabet-adventure'],
+  }, 3) as { taughtPhonemes: string[]; masteredWords: string[] };
+
+  assert.ok('abcdefghijklmnopqrstuvwxyz'.split('').every((sound) => migrated.taughtPhonemes.includes(sound)));
+  assert.ok(['sh', 'ch', 'th'].every((sound) => migrated.taughtPhonemes.includes(sound)));
+  assert.ok(['the', 'was', 'said', 'is', 'to', 'he', 'she'].every((word) => migrated.masteredWords.includes(word)));
+});
+
 test('re-seen content moves to the newest end of recent history', () => {
   const original = useGameStore.getState().recentContentByGame;
   useGameStore.setState({ recentContentByGame: { test: { targetIds: ['a', 'b', 'c'] } } });

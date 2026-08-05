@@ -41,6 +41,8 @@ import PostcardWriter from '@/components/game/PostcardWriter';
 import BossLevel from '@/components/game/BossLevel';
 import GameWrapper from '@/components/game/GameWrapper';
 import { WorldProvider } from '@/lib/WorldContext';
+import { ALPHABET_PHONEMES } from '@/content/progression';
+import { REQUIRED_DIGRAPHS, REQUIRED_HEART_WORDS } from '@/content/learningIntegrity';
 
 type GameComponent = React.ComponentType<{ worldId: number; onComplete: () => void }>;
 
@@ -88,6 +90,10 @@ export default function GamePage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const setCurrentWorld = useGameStore((s) => s.setCurrentWorld);
+  const taughtPhonemes = useGameStore((s) => s.taughtPhonemes);
+  const masteredWords = useGameStore((s) => s.masteredWords);
+  const enabledContentPackIds = useGameStore((s) => s.enabledContentPackIds);
+  const setContentPackEnabled = useGameStore((s) => s.setContentPackEnabled);
   const worldId = Number(params.worldId);
   const gameId = params.gameId as string;
 
@@ -110,6 +116,61 @@ export default function GamePage() {
 
   if (!GameComponent) {
     return <ComingSoon worldId={worldId} gameName={game?.name || gameId} onBack={handleComplete} />;
+  }
+
+  const needsDigraphs = worldId >= 6 || (worldId === 5 && gameId !== 'digraph-discovery');
+  const needsHeartWords = worldId >= 6 || (worldId === 5 && ['treasure-memory', 'souk-sentences', 'boss-5'].includes(gameId));
+  const requiredSounds = worldId >= 5
+    ? [...ALPHABET_PHONEMES, ...(needsDigraphs ? REQUIRED_DIGRAPHS : [])]
+    : [];
+  const missingSounds = requiredSounds.filter((phoneme) => !taughtPhonemes.includes(phoneme));
+  const missingHeartWords = needsHeartWords
+    ? REQUIRED_HEART_WORDS.filter((word) => !masteredWords.includes(word))
+    : [];
+
+  if (missingSounds.length > 0 || missingHeartWords.length > 0) {
+    const needsAlphabetPractice = missingSounds.some((phoneme) => ALPHABET_PHONEMES.includes(phoneme));
+    const destination = needsAlphabetPractice
+      ? '/world/2/letter-intro'
+      : missingSounds.length > 0
+        ? '/world/5/digraph-discovery'
+        : '/world/5/heart-word-map';
+    const destinationName = needsAlphabetPractice
+      ? 'Sound Spotter'
+      : missingSounds.length > 0
+        ? 'Digraph Discovery'
+        : 'Heart Word Map';
+    const needsAlphabetPack = needsAlphabetPractice && !enabledContentPackIds.includes('alphabet-adventure');
+    const handlePrerequisite = () => {
+      if (needsAlphabetPack) setContentPackEnabled('alphabet-adventure', true);
+      router.push(destination);
+    };
+    const missingLabels = missingSounds.map((phoneme) => phoneme === 'th-voiced' ? 'buzzy th' : phoneme);
+    return (
+      <div className={`min-h-screen bg-gradient-to-b ${world?.bgGradient || 'from-red-300 to-amber-200'} flex items-center justify-center px-6`}>
+        <div className="bg-white/95 rounded-3xl p-8 shadow-xl text-center max-w-md">
+          <span className="text-6xl block mb-4">🌱</span>
+          <h2 className="text-3xl font-bold font-[Fredoka] text-emerald-700 mb-3">Practice a few more sounds first!</h2>
+          <p className="text-lg text-gray-700 font-[Nunito] mb-3">
+            This game will only use sounds and heart words that have already been taught. {destinationName} has the next practice you need.
+          </p>
+          <p className="text-base text-gray-500 font-[Nunito] mb-6">
+            Still to practice: {[...missingLabels, ...missingHeartWords].join(', ')}
+          </p>
+          {needsAlphabetPack && (
+            <p className="text-base text-amber-700 font-bold font-[Nunito] mb-4">
+              Alphabet Adventure is off. Turn it back on to practice these letters.
+            </p>
+          )}
+          <button
+            onClick={handlePrerequisite}
+            className="game-button bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-8 py-4 rounded-full shadow-lg mx-auto"
+          >
+            {needsAlphabetPack ? 'Turn on Alphabet Adventure' : `Go to ${destinationName}`}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const bgImage = WORLD_BACKGROUNDS[worldId];

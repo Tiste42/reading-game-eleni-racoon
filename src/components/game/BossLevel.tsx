@@ -17,6 +17,9 @@ import { getInitialSoundGroups, getWordsForActivity } from '@/content/registry';
 import { getPracticedPhonemes } from '@/content/progression';
 import { canSharePictureChoices } from '@/content/pictureConflicts';
 import { canShareSoundChoices } from '@/content/phonemeConflicts';
+import { WORLD_4_PICTURE_ROUNDS, isWorld4PictureRoundSafe, isWorld4RoundDecodable } from '@/content/world4Content';
+import { WORLD_5_BOSS_SENTENCES, WORLD_6_BOSS_SENTENCES } from '@/content/connectedText';
+import { WORLD_1_BOSS_CHALLENGES } from '@/content/bossContent';
 
 interface BossChallenge {
   type: 'picture-match' | 'word-read' | 'sentence';
@@ -30,16 +33,7 @@ interface BossChallenge {
 }
 
 const BOSS_DATA: Record<number, { name: string; challenges: BossChallenge[] }> = {
-  1: { name: 'Fiesta Finale', challenges: [
-    { type: 'picture-match', prompt: 'Which one rhymes with cat?', icon: '\uD83D\uDC31', correct: 'hat', options: ['hat', 'dog', 'cup'] },
-    { type: 'picture-match', prompt: 'Which starts with "s"?', icon: '', correct: 'sun', options: ['sun', 'cat', 'pen'] },
-    { type: 'picture-match', prompt: 'Which one rhymes with log?', icon: '\uD83E\uDEB5', correct: 'dog', options: ['hat', 'dog', 'cup'] },
-    { type: 'picture-match', prompt: 'Which starts with "m"?', icon: '', correct: 'moon', options: ['red', 'moon', 'fan'] },
-    { type: 'picture-match', prompt: 'Clap the beats: "banana" has...', icon: '\uD83C\uDF4C', correct: '3', options: ['1', '2', '3'] },
-    { type: 'picture-match', prompt: 'Which doesn\'t start with "b"?', icon: '\uD83D\uDD0D', correct: 'cat', options: ['bat', 'bug', 'cat'] },
-    { type: 'picture-match', prompt: 'Which starts with "p"?', icon: '', correct: 'penguin', options: ['sun', 'penguin', 'hat'] },
-    { type: 'picture-match', prompt: 'Which one rhymes with pin?', icon: '\uD83D\uDCCC', correct: 'bin', options: ['cup', 'bin', 'hat'] },
-  ]},
+  1: { name: 'Fiesta Finale', challenges: WORLD_1_BOSS_CHALLENGES },
   2: { name: 'The Garden Party', challenges: [
     { type: 'picture-match', prompt: 'What sound does "s" make?', icon: '', correct: 'snake', options: ['snake', 'tiger', 'egg'] },
     { type: 'picture-match', prompt: 'What sound does "t" make?', icon: '', correct: 'tiger', options: ['ant', 'tiger', 'lemon'] },
@@ -61,33 +55,19 @@ const BOSS_DATA: Record<number, { name: string; challenges: BossChallenge[] }> =
     { type: 'word-read', prompt: 'What word is this?', icon: '', correct: 'ten', options: ['pen', 'ten', 'sit'] },
   ]},
   4: { name: "Dragon's Library", challenges: [
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'cat', options: ['cat', 'hat', 'bat'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'dog', options: ['log', 'dog', 'fog'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'bug', options: ['mug', 'rug', 'bug'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'cup', options: ['cup', 'pup', 'cut'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'hen', options: ['pen', 'den', 'hen'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'bed', options: ['bed', 'red', 'fed'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'van', options: ['fan', 'man', 'van'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'fin', options: ['fin', 'bin', 'win'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'jet', options: ['jet', 'net', 'wet'] },
-    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'pot', options: ['pot', 'hot', 'dot'] },
+    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'pan', options: ['pan', 'pen', 'pin'] },
+    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'pen', options: ['pen', 'pan', 'pin'] },
+    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'pin', options: ['pin', 'pan', 'pen'] },
+    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'ten', options: ['ten', 'pen', 'net'] },
+    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'net', options: ['net', 'ten', 'pen'] },
+    { type: 'word-read', prompt: 'Read the word:', icon: '', correct: 'lip', options: ['lip', 'net', 'pan'] },
   ]},
-  5: { name: 'Atlas Mountain Riddle', challenges: [
-    { type: 'sentence', prompt: 'The ship is big.', question: 'What is big?', icon: '', correct: 'the ship', options: ['the ship', 'the shop', 'the shed'] },
-    { type: 'sentence', prompt: 'She said no.', question: 'What did she say?', icon: '', correct: 'no', options: ['yes', 'no', 'go'] },
-    { type: 'sentence', prompt: 'He was sad.', question: 'How did he feel?', icon: '', correct: 'sad', options: ['sad', 'happy', 'mad'] },
-    { type: 'sentence', prompt: 'I have a thin cat.', question: 'What kind of cat?', icon: '', correct: 'thin', options: ['fat', 'thin', 'big'] },
-    { type: 'sentence', prompt: 'We can go to the shop.', question: 'Where can we go?', icon: '', correct: 'the shop', options: ['the shop', 'the ship', 'the shed'] },
-    { type: 'sentence', prompt: 'The dog is in the shed.', question: 'Where is the dog?', icon: '', correct: 'in the shed', options: ['in the shop', 'on the ship', 'in the shed'] },
-  ]},
-  6: { name: 'The Sunset Story', challenges: [
-    { type: 'sentence', prompt: 'Sam sat on a mat.', question: 'What did Sam sit on?', icon: '', correct: 'a mat', options: ['a mat', 'a cat', 'a hat'] },
-    { type: 'sentence', prompt: 'The cat is big.', question: 'Is the cat big or small?', icon: '', correct: 'big', options: ['big', 'small', 'red'] },
-    { type: 'sentence', prompt: 'A bug is on the log.', question: 'Where is the bug?', icon: '', correct: 'on the log', options: ['on the log', 'in the cup', 'on the hat'] },
-    { type: 'sentence', prompt: 'He got a red hat.', question: 'What color is the hat?', icon: '', correct: 'red', options: ['red', 'blue', 'green'] },
-    { type: 'sentence', prompt: 'The fish is in the net.', question: 'Where is the fish?', icon: '', correct: 'in the net', options: ['on the bed', 'in the net', 'in the cup'] },
-    { type: 'sentence', prompt: 'I have a pet dog.', question: 'What pet do I have?', icon: '', correct: 'a dog', options: ['a dog', 'a cat', 'a fish'] },
-  ]},
+  5: { name: 'Atlas Mountain Riddle', challenges: WORLD_5_BOSS_SENTENCES.map((round) => ({
+    type: 'sentence', prompt: round.prompt, question: round.question, icon: '', correct: round.correct, options: round.options,
+  })) },
+  6: { name: 'The Sunset Story', challenges: WORLD_6_BOSS_SENTENCES.map((round) => ({
+    type: 'sentence', prompt: round.prompt, question: round.question, icon: '', correct: round.correct, options: round.options,
+  })) },
 };
 
 const optionId = (option: string) => option;
@@ -107,6 +87,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
     () => getPracticedPhonemes(enabledContentPackIds, taughtPhonemes),
     [enabledContentPackIds, taughtPhonemes],
   );
+  const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
   const earlyChallenges = useMemo(() => {
     if (worldId === 2) {
       const groups = getInitialSoundGroups(enabledContentPackIds, practicedPhonemes);
@@ -123,8 +104,24 @@ export default function BossLevel({ worldId, onComplete }: Props) {
           .filter(Boolean),
       }));
     }
+    if (worldId === 4) {
+      return WORLD_4_PICTURE_ROUNDS
+        .filter((round) => isWorld4PictureRoundSafe(round) && isWorld4RoundDecodable(round, taughtPhonemeSet))
+        .map((wordRound): BossChallenge => ({
+          type: 'word-read',
+          prompt: 'What word is this?',
+          icon: '',
+          contentId: `world4:${wordRound.word}`,
+          correct: wordRound.word,
+          options: [wordRound.word, ...wordRound.distractors],
+        }));
+    }
     if (worldId === 3) {
-      const words = getWordsForActivity(enabledContentPackIds, 'blend-to-picture', practicedPhonemes);
+      const words = getWordsForActivity(
+        enabledContentPackIds,
+        'blend-to-picture',
+        practicedPhonemes,
+      );
       const optionWords = words.map((word) => word.text);
       return words.map((word): BossChallenge => ({
         type: 'word-read',
@@ -136,7 +133,7 @@ export default function BossLevel({ worldId, onComplete }: Props) {
       }));
     }
     return boss.challenges;
-  }, [boss.challenges, enabledContentPackIds, practicedPhonemes, worldId]);
+  }, [boss.challenges, enabledContentPackIds, practicedPhonemes, taughtPhonemeSet, worldId]);
   const session = useContentSession({
     gameId: `boss-${worldId}`,
     historyKey: worldId === 3 ? 'world3-blending-words' : `boss-${worldId}`,
@@ -168,14 +165,14 @@ export default function BossLevel({ worldId, onComplete }: Props) {
       : [],
     [round],
   );
-  const assessmentPrompt = useInstructionSpeech(
-    current.type === 'word-read' ? 'dragon-feed' : 'story-stroll',
-    current.type !== 'picture-match',
+  const wordReadPrompt = useInstructionSpeech('dragon-feed', current.type === 'word-read', [round]);
+  const sentenceQuestionPrompt = useGameSpeech(
+    current.type === 'sentence' ? current.question || null : null,
     [round],
   );
   const replay = current.type === 'picture-match'
     ? current.phonemeId ? soundPicturePrompt.replay : picturePrompt.replay
-    : assessmentPrompt.replay;
+    : current.type === 'sentence' ? sentenceQuestionPrompt.replay : wordReadPrompt.replay;
 
   const { shouldReveal, recordWrong } = useWrongAttempts(round);
 
@@ -282,10 +279,10 @@ export default function BossLevel({ worldId, onComplete }: Props) {
                 : (feedback === 'correct' && isRight) ? 'ring-4 ring-green-400'
                   : '';
             return (
-              <motion.button key={opt} whileTap={{ scale: 0.92 }} onClick={() => handleAnswer(opt)}
+              <motion.button key={opt} data-testid="boss-answer-choice" whileTap={{ scale: 0.92 }} onClick={() => handleAnswer(opt)}
                 disabled={feedback !== null || shouldReveal}
                 className={`rounded-3xl shadow-xl bg-white press-3d transition-all ${highlight}`}>
-                {current.type === 'word-read' ? (
+                {current.type === 'word-read' || current.type === 'sentence' ? (
                   <span className="flex items-center justify-center p-3">
                     <WordCard word={opt} size={96} />
                   </span>

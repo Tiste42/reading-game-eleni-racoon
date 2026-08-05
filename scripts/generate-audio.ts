@@ -37,7 +37,7 @@ const PHONEME_TEXT: Record<string, string> = {
   q: cmu('q', 'K W'), r: cmu('r', 'R'), s: cmu('s', 'S'), t: cmu('t', 'T'),
   u: cmu('u', 'AH1'), v: cmu('v', 'V'), w: cmu('w', 'W'), x: cmu('x', 'K S'),
   y: cmu('y', 'Y'), z: cmu('z', 'Z'), sh: cmu('sh', 'SH'),
-  ch: cmu('ch', 'CH'), th: cmu('th', 'TH'),
+  ch: cmu('ch', 'CH'), th: cmu('th', 'TH'), 'th-voiced': cmu('th', 'DH'),
 };
 
 
@@ -48,7 +48,7 @@ function buildManifest(): AudioClip[] {
   const phonemeLetters = [
     's', 'a', 't', 'p', 'i', 'n', 'e', 'l', 'c', 'k',
     'h', 'r', 'm', 'd', 'g', 'o', 'u', 'f', 'b', 'j',
-    'q', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th',
+    'q', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th', 'th-voiced',
   ];
 
   for (const ph of phonemeLetters) {
@@ -430,29 +430,32 @@ function buildManifest(): AudioClip[] {
     { text: 'The word is this. Which two letters make the special sound? Is it sh, ch, or th?' },
     { text: 'The word is that. Which two letters make the special sound? Is it sh, ch, or th?' },
     // World 5: HeartWordMap
-    { text: 'The heart word is the. Tap each letter to learn it!' },
-    { text: 'The heart word is was. Tap each letter to learn it!' },
-    { text: 'The heart word is said. Tap each letter to learn it!' },
-    { text: 'The heart word is is. Tap each letter to learn it!' },
-    { text: 'The heart word is to. Tap each letter to learn it!' },
-    { text: 'The heart word is he. Tap each letter to learn it!' },
-    { text: 'The heart word is she. Tap each letter to learn it!' },
-    { text: 'The heart word is we. Tap each letter to learn it!' },
-    { text: 'The heart word is you. Tap each letter to learn it!' },
-    { text: 'The heart word is are. Tap each letter to learn it!' },
-    { text: 'The heart word is have. Tap each letter to learn it!' },
-    { text: 'The heart word is do. Tap each letter to learn it!' },
-    { text: 'The heart word is no. Tap each letter to learn it!' },
-    { text: 'The heart word is go. Tap each letter to learn it!' },
-    { text: 'The heart word is my. Tap each letter to learn it!' },
+    { text: 'The heart word is the. Tap the part we learn by heart!' },
+    { text: 'The heart word is said. Tap the part we learn by heart!' },
+    { text: 'The heart word is is. Tap the part we learn by heart!' },
+    { text: 'The heart word is to. Tap the part we learn by heart!' },
+    { text: 'The heart word is he. Tap the part we learn by heart!' },
+    { text: 'The heart word is she. Tap the part we learn by heart!' },
+    { text: 'The heart word is we. Tap the part we learn by heart!' },
+    { text: 'The heart word is you. Tap the part we learn by heart!' },
+    { text: 'The heart word is no. Tap the part we learn by heart!' },
+    { text: 'The heart word is go. Tap the part we learn by heart!' },
+    { text: 'The heart word is my. Tap the part we learn by heart!' },
     // World 5: TreasureMemory
-    { text: 'Match the word pairs! Tap a card to flip it!' },
+    { text: 'Match each printed word to its sound!' },
     // World 5: RuinDecoder — generic (child reads word, picks picture)
     { text: 'Read the ancient word! Which picture matches?' },
     // World 5: SoukSentences — generic (child reads phrase, answers question)
     { text: 'Read the sign! What does it say?' },
     // World 6: StoryStroll — generic (child reads sentence, answers spoken question)
     { text: 'Read the sentence!' },
+    { text: 'What should we do?' },
+    { text: 'How do we help?' },
+    { text: 'Who heard no?' },
+    { text: 'Where was he?' },
+    { text: 'What do I have?' },
+    { text: 'Where can we go?' },
+    { text: 'Who is in the shed?' },
     // World 6: StoryStroll — per-question narrations (spoken after child taps "I read it!")
     { text: 'What did Sam sit on?' },
     { text: 'Is the cat big or small?' },

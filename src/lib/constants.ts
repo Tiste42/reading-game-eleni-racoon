@@ -115,8 +115,8 @@ export const WORLDS: WorldConfig[] = [
     description: 'Learn special words and new letter pairs!',
     skills: ['Sight words', 'Digraphs (sh, ch, th)', 'Simple phrases'],
     games: [
-      { id: 'heart-word-map', name: 'Heart Word Map', icon: '💖', description: 'Learn special words by heart!' },
       { id: 'digraph-discovery', name: 'Digraph Discovery', icon: '🔮', description: 'Two letters, one sound!' },
+      { id: 'heart-word-map', name: 'Heart Word Map', icon: '💖', description: 'Learn special words by heart!' },
       { id: 'ruin-decoder', name: 'Ruin Decoder', icon: '🏺', description: 'Read the ancient words!' },
       { id: 'treasure-memory', name: 'Treasure Memory', icon: '🃏', description: 'Match the word pairs!' },
       { id: 'souk-sentences', name: 'Souk Sentences', icon: '📜', description: 'Read short phrases!' },

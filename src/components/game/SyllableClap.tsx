@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -8,7 +8,7 @@ import GameShell from '@/components/ui/GameShell';
 import WordCard from '@/components/ui/WordCard';
 import PressButton from '@/components/ui/PressButton';
 import { useGameStore } from '@/lib/store';
-import { speak, speakFeedback, speakSyllables } from '@/lib/speech';
+import { speakFeedback, speakWord } from '@/lib/speech';
 import { useGameSpeechWithOptions, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { getSyllableWords } from '@/content/registry';
@@ -16,10 +16,6 @@ import type { SyllableWord } from '@/content/types';
 import { useContentSession } from '@/lib/useContentSession';
 
 const syllableId = (entry: SyllableWord) => entry.id;
-
-function beatsText(word: string, n: number): string {
-  return `${word} has ${n} ${n === 1 ? 'beat' : 'beats'}`;
-}
 
 interface Props {
   worldId: number;
@@ -29,8 +25,7 @@ interface Props {
 export default function SyllableClap({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [claps, setClaps] = useState(0);
-  const [phase, setPhase] = useState<'play' | 'checking' | 'model'>('play');
-  const [bouncing, setBouncing] = useState(false);
+  const [phase, setPhase] = useState<'play' | 'checking'>('play');
   const [showCelebration, setShowCelebration] = useState(false);
   const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt, enabledContentPackIds } = useGameStore();
   const candidates = getSyllableWords(enabledContentPackIds);
@@ -46,7 +41,7 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
     [round],
   );
 
-  const { shouldReveal, recordWrong } = useWrongAttempts(round, 2);
+  const { recordWrong } = useWrongAttempts(round, 2);
 
   const advance = useCallback(() => {
     setPhase('play');
@@ -59,29 +54,6 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
       setRound((r) => r + 1);
     }
   }, [isLast, worldId, completeGame, addCoins]);
-
-  // Bounce the picture once per syllable while the segmented audio plays
-  const playBeats = useCallback(async () => {
-    setBouncing(true);
-    await speakSyllables(current.word);
-    setBouncing(false);
-  }, [current]);
-
-  // After 2 misses: model the beats, say the answer, move on
-  const modeling = useRef(false);
-  useEffect(() => {
-    if (shouldReveal && phase !== 'model' && !modeling.current) {
-      modeling.current = true;
-      setPhase('model');
-      (async () => {
-        await playBeats();
-        await speak(`${beatsText(current.word, current.syllables)}!`);
-        await new Promise((r) => setTimeout(r, 600));
-        modeling.current = false;
-        advance();
-      })();
-    }
-  }, [shouldReveal, phase, current, playBeats, advance]);
 
   const handleClap = useCallback(() => {
     if (phase !== 'play') return;
@@ -107,14 +79,14 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
       recordWrong();
       resetStreak();
       playSoundEffect('wrong');
-      // Corrective modeling: replay the segmented beats so she can recount
+      // Replay the whole word. Separated beats would give away the answer.
       (async () => {
-        await playBeats();
+        await speakWord(current.word);
         setClaps(0);
         setPhase('play');
       })();
     }
-  }, [phase, claps, current, isLast, advance, playBeats, recordWrong, resetStreak, incrementStreak, recordSoundAttempt]);
+  }, [phase, claps, current, isLast, advance, recordWrong, resetStreak, incrementStreak, recordSoundAttempt]);
 
   return (
     <GameShell
@@ -137,11 +109,7 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
               exit={{ scale: 0.5, opacity: 0 }}
               className="text-center"
             >
-              <motion.div
-                animate={bouncing ? { y: [0, -22, 0] } : { y: 0 }}
-                transition={bouncing ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut' } : {}}
-                className="bg-white rounded-3xl p-3 shadow-lg inline-block"
-              >
+              <motion.div className="bg-white rounded-3xl p-3 shadow-lg inline-block">
                 <WordCard word={current.word} size={190} />
               </motion.div>
               <p className="text-4xl font-bold font-[Fredoka] text-purple-700 lowercase mt-2">
@@ -150,15 +118,8 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
             </motion.div>
           </AnimatePresence>
 
-        {/* Middle: hear-the-beats + the beat dots */}
+        {/* These dots reflect only Eleni's own claps. */}
         <div className="flex flex-col items-center gap-3">
-          <PressButton
-            silent
-            onClick={() => { if (phase === 'play') playBeats(); }}
-            className="bg-white rounded-full px-6 py-3 flex items-center gap-2 font-[Fredoka] text-purple-600 text-xl shadow-md"
-          >
-            🔊 Hear the beats
-          </PressButton>
           <div className="flex gap-3 min-h-[52px] items-center justify-center">
             {Array.from({ length: Math.max(claps, 1) }).map((_, i) =>
               i < claps ? (
@@ -221,20 +182,7 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
             </PressButton>
           </div>
 
-          <div className="min-h-[28px]">
-            <AnimatePresence>
-              {phase === 'model' && (
-                <motion.p
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-2xl text-orange-600 font-bold font-[Fredoka]"
-                >
-                  {beatsText(current.word, current.syllables)}!
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </div>
+          <div className="min-h-[28px]" />
         </div>
       </div>
 
