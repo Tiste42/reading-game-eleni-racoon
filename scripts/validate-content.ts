@@ -22,6 +22,12 @@ const allWords = new Map(CONTENT_PACKS.flatMap((pack) => pack.words).map((word) 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 const WORLD_2_PHONEMES = new Set(ALPHABET);
 const WORLD_3_ACTIVITIES = new Set(['blend-to-picture', 'picture-to-build']);
+const MUSIC_TRACKS = ['menu', 'world-1', 'world-2', 'world-3', 'world-4', 'world-5', 'world-6'];
+const REQUIRED_AUDIBLE_RUNTIME_AUDIO = [
+  ...MUSIC_TRACKS.map((track) => `/audio/music/${track}.mp3`),
+  ...MUSIC_TRACKS.map((track) => `/audio/music/apple/${track}.mp3`),
+  ...['correct', 'wrong', 'celebrate', 'coin', 'tap'].map((effect) => `/audio/sfx/${effect}.mp3`),
+];
 
 function fail(message: string) {
   errors.push(message);
@@ -51,6 +57,7 @@ async function main() {
   for (const phoneme of REQUIRED_DIGRAPHS) {
     referencedAudio.add(`/audio/phonemes/${phoneme}.mp3`);
   }
+  REQUIRED_AUDIBLE_RUNTIME_AUDIO.forEach((audioPath) => referencedAudio.add(audioPath));
   const letterExamples = new Map<string, string>();
   const connectedTextPhonemes = new Set([...ALPHABET_PHONEMES, ...REQUIRED_DIGRAPHS]);
   const connectedTextHeartWords = new Set<string>(REQUIRED_HEART_WORDS);
@@ -333,6 +340,21 @@ async function main() {
     });
     if (probe.status !== 0 || !Number.isFinite(Number(probe.stdout.trim()))) {
       fail(`invalid audio: ${audioPath}`);
+    }
+  }
+
+  // A valid MP3 can still contain near-silence. Guard the always-on music and
+  // feedback channels that make an audio regression most obvious to a child.
+  for (const audioPath of REQUIRED_AUDIBLE_RUNTIME_AUDIO) {
+    const file = diskPath(audioPath);
+    if (!fs.existsSync(file)) continue;
+    const volume = spawnSync('ffmpeg', ['-hide_banner', '-i', file, '-af', 'volumedetect', '-f', 'null', '-'], {
+      encoding: 'utf8',
+    });
+    const match = volume.stderr.match(/max_volume:\s*(-?\d+(?:\.\d+)?) dB/);
+    const maxVolume = match ? Number(match[1]) : Number.NEGATIVE_INFINITY;
+    if (volume.status !== 0 || !Number.isFinite(maxVolume) || maxVolume < -45) {
+      fail(`silent or inaudible runtime audio: ${audioPath}`);
     }
   }
 

@@ -8,7 +8,7 @@ export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks)
       [1, 2, 3, 4, 5, 6].map((world) => [world, { gamesCompleted: [], bossCompleted: false, stars: 0 }]),
     );
     localStorage.setItem('eleni-sound-safari', JSON.stringify({
-      version: 4,
+      version: 5,
       state: {
         currentWorld: 0,
         worldProgress,
@@ -39,9 +39,20 @@ export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks)
 
 export function captureRuntimeFailures(page: Page) {
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+  page.on('pageerror', (error) => {
+    // Firefox can report this browser-owned cancellation during an intentional
+    // reload even though the new document loads normally.
+    if (!error.message.includes('InvalidStateError: Navigated away from page')) {
+      errors.push(`pageerror: ${error.message}`);
+    }
+  });
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+    if (
+      message.type() === 'error' &&
+      !message.text().includes('InvalidStateError: Navigated away from page')
+    ) {
+      errors.push(`console: ${message.text()}`);
+    }
   });
   return errors;
 }

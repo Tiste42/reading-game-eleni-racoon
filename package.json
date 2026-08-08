@@ -7,7 +7,7 @@
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "validate:content": "tsx scripts/validate-content.ts",
-    "test:unit": "tsx --test tests/unit/roundSelector.test.ts tests/unit/contentPacks.test.ts tests/unit/storeMigration.test.ts tests/unit/learningIntegrity.test.ts",
+    "test:unit": "tsx --test tests/unit/roundSelector.test.ts tests/unit/contentPacks.test.ts tests/unit/storeMigration.test.ts tests/unit/learningIntegrity.test.ts tests/unit/audioPlatform.test.ts",
     "test:e2e": "playwright test",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",

@@ -1,3 +1,18 @@
+# V2.2 Audio Hotfix (2026-08-07)
+
+Success: background music, narration, letter sounds, and effects are audible
+after a real start gesture on desktop and Apple mobile/PWA paths; settings
+actually control playback; a silent playback engine cannot pass release QA.
+
+- [x] Reproduce production audio and identify the device-specific failure
+- [x] Replace the broken Apple WebAudio path with resilient media playback
+- [x] Wire sound/music toggles and zero-volume recovery to the audio engine
+- [x] Recover audio cleanly after an installed PWA returns from the background
+- [x] Add non-silent playback, real-start, toggle, and resume regression tests
+- [x] Run typecheck, lint, unit, content, build, and cross-browser gameplay QA
+- [x] Complete independent audio/code review
+- [ ] Merge, deploy, and verify the exact production version
+
 # V2.2 Learning Integrity Repair (2026-08-05)
 
 Success: every game requires the intended reading/phonics skill before revealing

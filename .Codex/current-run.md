@@ -1,27 +1,30 @@
-# V2.2 learning-integrity release candidate — 2026-08-05
+# V2.2 Apple audio hotfix candidate - 2026-08-07
 
-## Scope
+## Incident
 
-- Preserve existing saves and working game mechanics.
-- Expand early-world rotating letter, sound, word, and picture pools.
-- Remove pre-answer highlights, flashes, eliminations, spoken answers, and automatic reveals.
-- Make sentence games require comprehension with picture-only answers.
-- Block unclear pictures and untaught child-readable content at build time.
+- Production MP3 files were valid, but the iPhone/iPad installed-PWA path forced
+  every channel through WebAudio. WebKit can leave that AudioContext reporting
+  `running` while routing no sound to the speakers after launch or resume.
+- The voice/sound switch was not connected to speech or effects, and the
+  one-shot recovery path could permanently believe audio was unlocked.
 
-## Verified candidate
+## Candidate repair
 
-- Typecheck and lint: pass.
-- Unit contracts: 27 passed.
-- Content/assets: 5 packs, 124 word records, 99 pictures, 244 audio files.
-- Production build: pass.
-- Playwright: 43 passed, 26 intentional cross-project skips, 0 failed across Chromium, iPad/WebKit, and Firefox.
-- Independent architecture review: GO.
-- Independent phonics/content review: GO.
-- Voiced `th` audio: separately identified as an isolated /ð/ with no following vowel.
+- Apple mobile/PWAs use three reusable native media channels for music, speech,
+  and effects. Sources are refreshed after foreground/session loss and every
+  later trusted gesture can recover playback.
+- Speech ducking pauses/resumes music at its existing position. Music enable is
+  started inside the toggle tap. Apple settings use device volume controls.
+- Desktop browsers retain Howler/WebAudio. Existing progress migrates to store
+  version 5 without resetting learning history.
+- Regression coverage checks non-silent decoded playback, advancing native
+  playback time, real Play, voice/music/effect toggles, foreground recovery,
+  audio warnings, and all runtime music/effect files.
 
 ## Release authority
 
-Do not infer production status from this file. A release is complete only when
-the candidate commit is on `origin/main`, Vercel reports the matching production
-deployment `READY`, `/version.json` reports that commit, and public mobile and
-desktop game journeys pass without console or asset failures.
+Do not infer production status from this file. Release requires clean lint,
+typecheck, unit, content, production build, full browser QA, independent review,
+the candidate commit on `origin/main`, a matching Vercel `READY` production
+deployment, and public-route verification. A physical Apple speaker check is a
+separate final confirmation and must not be claimed from emulation.

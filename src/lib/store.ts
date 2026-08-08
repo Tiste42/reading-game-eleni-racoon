@@ -217,8 +217,20 @@ export const useGameStore = create<GameState>()(
         set((state) => ({
           sessionHistory: [...state.sessionHistory, session],
         })),
-      toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
-      toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
+      toggleSound: () => set((state) => {
+        const soundEnabled = !state.soundEnabled;
+        return {
+          soundEnabled,
+          volume: soundEnabled && state.volume <= 0.01 ? 0.9 : state.volume,
+        };
+      }),
+      toggleMusic: () => set((state) => {
+        const musicEnabled = !state.musicEnabled;
+        return {
+          musicEnabled,
+          musicVolume: musicEnabled && state.musicVolume <= 0.01 ? 0.08 : state.musicVolume,
+        };
+      }),
       // Leni's voice must always sit above the music: music is capped at 60%
       // of the voice volume, and lowering the voice pulls the music down too.
       setVolume: (volume) =>
@@ -289,7 +301,7 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'eleni-sound-safari',
-      version: 4,
+      version: 5,
       migrate: (persistedState, persistedVersion) => {
         const legacy = (persistedState || {}) as Partial<GameState>;
         const advanced = Boolean(
@@ -338,8 +350,20 @@ export const useGameStore = create<GameState>()(
         const masteredWords = persistedVersion < 4 && completedHeartTeaching
           ? [...new Set([...(legacy.masteredWords || []), ...REQUIRED_HEART_WORDS])]
           : legacy.masteredWords || [];
+        const soundEnabled = legacy.soundEnabled ?? true;
+        const musicEnabled = legacy.musicEnabled ?? true;
+        const volume = soundEnabled && (!Number.isFinite(legacy.volume) || (legacy.volume ?? 0) <= 0.01)
+          ? 0.9
+          : legacy.volume ?? 0.9;
+        const musicVolume = musicEnabled && (!Number.isFinite(legacy.musicVolume) || (legacy.musicVolume ?? 0) <= 0.01)
+          ? 0.08
+          : legacy.musicVolume ?? 0.08;
         return {
           ...legacy,
+          soundEnabled,
+          musicEnabled,
+          volume,
+          musicVolume,
           enabledContentPackIds: migratedPacks,
           taughtPhonemes,
           masteredWords,

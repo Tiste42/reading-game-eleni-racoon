@@ -80,3 +80,37 @@ test('re-seen content moves to the newest end of recent history', () => {
   assert.deepEqual(useGameStore.getState().recentContentByGame.test.targetIds, ['b', 'c', 'a']);
   useGameStore.setState({ recentContentByGame: original });
 });
+
+test('v4 enabled audio settings recover from persisted zero volumes', async () => {
+  const migrate = useGameStore.persist.getOptions().migrate;
+  assert.ok(migrate);
+  const migrated = await migrate({
+    soundEnabled: true,
+    musicEnabled: true,
+    volume: 0,
+    musicVolume: 0,
+  }, 4) as { volume: number; musicVolume: number };
+
+  assert.equal(migrated.volume, 0.9);
+  assert.equal(migrated.musicVolume, 0.08);
+});
+
+test('turning audio back on restores an audible level', () => {
+  const original = useGameStore.getState();
+  useGameStore.setState({
+    soundEnabled: false,
+    musicEnabled: false,
+    volume: 0,
+    musicVolume: 0,
+  });
+
+  useGameStore.getState().toggleSound();
+  useGameStore.getState().toggleMusic();
+
+  assert.equal(useGameStore.getState().soundEnabled, true);
+  assert.equal(useGameStore.getState().musicEnabled, true);
+  assert.equal(useGameStore.getState().volume, 0.9);
+  assert.equal(useGameStore.getState().musicVolume, 0.08);
+
+  useGameStore.setState(original);
+});

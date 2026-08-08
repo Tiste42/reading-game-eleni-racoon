@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
 import { WORLDS } from '@/lib/constants';
 import { OPTIONAL_CONTENT_PACKS } from '@/content/registry';
+import { shouldUseNativeMediaAudio } from '@/lib/audioPlatform';
+import { startBackgroundMusic, stopBackgroundMusic } from '@/lib/audio';
 
 export default function ParentDashboard() {
   const router = useRouter();
   const {
     worldProgress,
+    currentWorld,
     coins,
     masteredPhonemes,
     masteredWords,
@@ -32,6 +35,21 @@ export default function ParentDashboard() {
   } = useGameStore();
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [usesDeviceVolume, setUsesDeviceVolume] = useState(false);
+
+  useEffect(() => {
+    setUsesDeviceVolume(shouldUseNativeMediaAudio());
+  }, []);
+
+  const handleMusicToggle = () => {
+    // Keep native-media playback in the trusted tap on Apple mobile/PWAs.
+    if (musicEnabled) {
+      stopBackgroundMusic();
+    } else {
+      startBackgroundMusic(currentWorld >= 1 && currentWorld <= 6 ? `world-${currentWorld}` : 'menu');
+    }
+    toggleMusic();
+  };
 
   const totalStars = Object.values(worldProgress).reduce((sum, wp) => sum + wp.stars, 0);
   const totalGames = Object.values(worldProgress).reduce(
@@ -198,9 +216,9 @@ export default function ParentDashboard() {
             onToggle={toggleFreePlay}
           />
 
-          {/* Sound Toggle */}
+          {/* Voice and sound effects master toggle */}
           <ToggleRow
-            label="Sound Effects"
+            label="Voice & Sound Effects"
             enabled={soundEnabled}
             onToggle={toggleSound}
           />
@@ -209,42 +227,53 @@ export default function ParentDashboard() {
           <ToggleRow
             label="Background Music"
             enabled={musicEnabled}
-            onToggle={toggleMusic}
+            onToggle={handleMusicToggle}
           />
 
-          {/* Voice Volume */}
-          <div className="py-3 border-b border-gray-100">
-            <div className="flex justify-between mb-2">
-              <p className="font-semibold text-gray-700">Voice Volume</p>
-              <span className="text-sm text-gray-400">{Math.round(volume * 100)}%</span>
+          {usesDeviceVolume ? (
+            <div className="py-3 border-b border-gray-100">
+              <p className="font-semibold text-gray-700">Volume</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Use the iPhone or iPad volume buttons. Music is already mixed quietly under Leni&apos;s voice.
+              </p>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
+          ) : (
+            <>
+              {/* Voice Volume */}
+              <div className="py-3 border-b border-gray-100">
+                <div className="flex justify-between mb-2">
+                  <p className="font-semibold text-gray-700">Voice Volume</p>
+                  <span className="text-sm text-gray-400">{Math.round(volume * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={volume}
+                  onChange={(e) => setVolume(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
 
-          {/* Music Volume */}
-          <div className="py-3 border-b border-gray-100">
-            <div className="flex justify-between mb-2">
-              <p className="font-semibold text-gray-700">Music Volume</p>
-              <span className="text-sm text-gray-400">{Math.round(musicVolume * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={musicVolume}
-              onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
-              className="w-full"
-            />
-          </div>
+              {/* Music Volume */}
+              <div className="py-3 border-b border-gray-100">
+                <div className="flex justify-between mb-2">
+                  <p className="font-semibold text-gray-700">Music Volume</p>
+                  <span className="text-sm text-gray-400">{Math.round(musicVolume * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={musicVolume}
+                  onChange={(e) => setMusicVolume(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            </>
+          )}
 
           {/* Reset */}
           <div className="py-3">

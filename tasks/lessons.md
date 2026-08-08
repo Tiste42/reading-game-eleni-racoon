@@ -1,5 +1,13 @@
 # Durable Lessons
 
+## Audio requests are not audible-playback proof
+
+- Validate the real child journey: open the title screen, tap Play, hear music, enter a game, replay a phoneme, use an effect, toggle both channels, and return from the background.
+- On Apple mobile/PWAs, prefer a small fixed set of HTML media channels and reassign the source immediately before playback after a lost session. Keep desktop WebAudio where overlapping low-latency sounds work reliably.
+- A music duck should pause and resume at the same playback position. Source recreation is reserved for track changes or foreground/session recovery.
+- Audio probes must separate automatic narration from the specific control under test and fail on playback warnings, silent decoded buffers, missing assets, and media whose playback time does not advance.
+- Browser automation cannot prove that a physical iPhone or iPad speaker produced sound. Report that last device check separately instead of overstating the automated result.
+
 ## Loading and asset smoke tests do not prove learning quality
 
 - Never describe route, image, audio, save, or layout smoke tests as a full gameplay review.

@@ -85,7 +85,7 @@ test('legacy progress migrates without losing child data', async ({ page }) => {
   await expect(page.getByText('ant')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Toggle Longer Word Challenge' })).toHaveAttribute('aria-pressed', 'true');
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('eleni-sound-safari') || '{}'));
-  expect(persisted.version).toBe(4);
+  expect(persisted.version).toBe(5);
   expect(persisted.state.coins).toBe(47);
   expect(persisted.state.masteredWords).toContain('nap');
   expect(persisted.state.enabledContentPackIds).toContain('alphabet-adventure');
