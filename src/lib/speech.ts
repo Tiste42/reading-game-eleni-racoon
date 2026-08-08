@@ -1,7 +1,14 @@
 'use client';
 
 import { Howl, Howler } from 'howler';
-import { duckMusic, unduckMusic, AUDIO_VERSION } from './audio';
+import {
+  duckMusic,
+  unduckMusic,
+  AUDIO_VERSION,
+  playNativeAudio,
+  stopNativeAudio,
+} from './audio';
+import { shouldUseNativeMediaAudio } from './audioPlatform';
 import { useGameStore } from './store';
 import { CONTENT_AUDIO_WORDS, CONTENT_NARRATION_SLUGS, CONTENT_SYLLABLE_CLIPS } from '@/content/registry';
 
@@ -11,6 +18,14 @@ function voiceVolume(): number {
     return useGameStore.getState().volume;
   } catch {
     return 0.9;
+  }
+}
+
+function voiceIsEnabled(): boolean {
+  try {
+    return useGameStore.getState().soundEnabled;
+  } catch {
+    return true;
   }
 }
 
@@ -399,7 +414,9 @@ const KNOWN_NARRATION_SLUGS = new Set([
  * fallback via browser TTS instead of failing silently.
  * Background music is ducked while speech plays.
  */
-function playStatic(path: string, fallbackText?: string): Promise<void> {
+async function playStatic(path: string, fallbackText?: string): Promise<void> {
+  if (!voiceIsEnabled()) return;
+
   const thisGen = ++speakGeneration;
 
   // Stop any current speech
@@ -414,10 +431,24 @@ function playStatic(path: string, fallbackText?: string): Promise<void> {
   if (thisGen !== speakGeneration) return Promise.resolve();
 
   duckMusic();
+  if (shouldUseNativeMediaAudio()) {
+    try {
+      await playNativeAudio(`/audio/${path}`, 'speech', { waitForEnd: true });
+    } catch (error) {
+      console.warn(`[speech] native playback failed: /audio/${path}`, error);
+      if (fallbackText && thisGen === speakGeneration) {
+        await browserSpeak(fallbackText);
+      }
+    } finally {
+      unduckMusic();
+    }
+    return;
+  }
+
   // iOS suspends the WebAudio context during silence (the music kept it awake);
   // with music OFF that made speech go silent. Wake it before every clip.
   if (Howler.ctx && Howler.ctx.state !== 'running') {
-    try { Howler.ctx.resume(); } catch { /* ignore */ }
+    try { await Howler.ctx.resume(); } catch { /* Howler retries after unlock below */ }
   }
   return new Promise<void>((resolve) => {
     // WebAudio (html5:false): iOS only allows a handful of live HTML5 audio
@@ -440,7 +471,17 @@ function playStatic(path: string, fallbackText?: string): Promise<void> {
           finish();
         }
       },
-      onplayerror: () => finish(),
+      onplayerror: (id, error) => {
+        if (thisGen !== speakGeneration) {
+          finish();
+          return;
+        }
+        sound.once('unlock', () => {
+          if (thisGen === speakGeneration) sound.play(id);
+          else finish();
+        });
+        console.warn(`[speech] waiting for audio unlock: /audio/${path}`, error);
+      },
     });
 
     let done = false;
@@ -470,6 +511,7 @@ function playStatic(path: string, fallbackText?: string): Promise<void> {
 // --- Browser speech fallback for dynamic text ---
 
 function browserSpeak(text: string, rate = 0.85): Promise<void> {
+  if (!voiceIsEnabled()) return Promise.resolve();
   duckMusic();
   return new Promise<void>((resolve) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
@@ -656,6 +698,7 @@ export async function speakReveal(correctWord: string): Promise<void> {
  */
 export function stopSpeaking(): void {
   speakGeneration++;
+  stopNativeAudio('speech');
   if (currentSpeechHowl) {
     currentSpeechHowl.stop();
     currentSpeechHowl = null;

@@ -1,80 +1,197 @@
 'use client';
 
 import { Howl, Howler } from 'howler';
+import { useGameStore } from './store';
+import { shouldUseNativeMediaAudio } from './audioPlatform';
 
 // Bump this whenever pre-generated audio files are regenerated so browsers
 // fetch the new versions instead of stale cached ones.
-export const AUDIO_VERSION = '5-alphabet-phonemes';
+export const AUDIO_VERSION = '6-apple-audio-recovery';
 
 const audioCache = new Map<string, Howl>();
 let audioUnlocked = false;
 
-let playbackSessionReady = false;
-let silentKeepAlive: HTMLAudioElement | null = null;
+let unlockInFlight: Promise<boolean> | null = null;
+let unlockListenersInstalled = false;
+
+type NativeAudioChannel = 'speech' | 'sfx' | 'music';
+
+interface NativeChannelState {
+  element: HTMLAudioElement;
+  finishPending?: () => void;
+}
+
+const nativeChannels = new Map<NativeAudioChannel, NativeChannelState>();
+let nativeMediaEpoch = 0;
+
+function soundIsEnabled(): boolean {
+  try {
+    return useGameStore.getState().soundEnabled;
+  } catch {
+    return true;
+  }
+}
+
+function versionedAudioPath(path: string): string {
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}v=${AUDIO_VERSION}&session=${nativeMediaEpoch}`;
+}
+
+function nativeChannel(channel: NativeAudioChannel): NativeChannelState {
+  const existing = nativeChannels.get(channel);
+  if (existing) return existing;
+
+  const element = new Audio();
+  element.preload = 'auto';
+  element.setAttribute('playsinline', '');
+  element.setAttribute('webkit-playsinline', '');
+  element.dataset.audioChannel = channel;
+  const state = { element };
+  nativeChannels.set(channel, state);
+  return state;
+}
+
+export function stopNativeAudio(channel: NativeAudioChannel): void {
+  const state = nativeChannels.get(channel);
+  if (!state) return;
+
+  state.finishPending?.();
+  state.finishPending = undefined;
+  state.element.pause();
+}
 
 /**
- * THE iPhone-silence fix. iOS routes WebAudio through the "ambient" audio
- * session, which the physical mute/silent switch SILENCES. The app used to
- * have an HTML5 <audio> element (the background music) that forced a
- * playback session, so everything was audible; once all audio moved to
- * WebAudio, a phone on silent killed ALL sound (speech, music, effects).
- *
- * Restore audibility two independent ways (must run inside a user gesture):
- *  1) navigator.audioSession = 'playback' — iOS 16.4+, ignores the mute switch
- *  2) a silent looping <audio> element — version-independent session holder
+ * Apple mobile/PWA playback intentionally bypasses WebAudio. iOS/iPadOS 26
+ * can leave a "running" AudioContext permanently silent after a Home Screen
+ * app resumes. Reassigning src immediately before HTML media playback avoids
+ * that dead context and routes through the audible media session.
  */
-export function enablePlaybackAudio(): void {
-  if (playbackSessionReady) return;
-  playbackSessionReady = true;
+export function playNativeAudio(
+  path: string,
+  channel: NativeAudioChannel,
+  options: { loop?: boolean; waitForEnd?: boolean } = {},
+): Promise<void> {
+  if (typeof Audio === 'undefined') return Promise.resolve();
+  if (channel !== 'music' && !soundIsEnabled()) return Promise.resolve();
 
-  try {
-    const navAny = navigator as unknown as { audioSession?: { type: string } };
-    if (navAny.audioSession) navAny.audioSession.type = 'playback';
-  } catch {
-    /* API not supported on this device — the keep-alive below covers it */
-  }
+  const state = nativeChannel(channel);
+  stopNativeAudio(channel);
 
-  try {
-    silentKeepAlive = new Audio(`/audio/silence.mp3?v=${AUDIO_VERSION}`);
-    silentKeepAlive.loop = true;
-    silentKeepAlive.setAttribute('playsinline', '');
-    void silentKeepAlive.play().catch(() => {});
-  } catch {
-    /* ignore — best effort */
-  }
+  const element = state.element;
+  element.loop = options.loop ?? false;
+  element.removeAttribute('src');
+  element.load();
+  element.src = versionedAudioPath(path);
+  element.load();
+
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      element.removeEventListener('ended', onEnded);
+      element.removeEventListener('error', onError);
+      if (state.finishPending === finish) state.finishPending = undefined;
+    };
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+    const onEnded = () => finish();
+    const onError = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error(`Native audio failed: ${path}`));
+    };
+
+    state.finishPending = finish;
+    element.addEventListener('ended', onEnded);
+    element.addEventListener('error', onError);
+
+    element.play().then(() => {
+      audioUnlocked = true;
+      if (!options.waitForEnd) finish();
+    }).catch((error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    });
+  });
 }
 
-// Self-installing: the very first user gesture ANYWHERE wakes the audio context
-// and switches iOS into the playback session, no matter which page we land on.
-if (typeof document !== 'undefined') {
-  const kick = () => {
-    if (Howler.ctx && Howler.ctx.state === 'suspended') Howler.ctx.resume();
-    enablePlaybackAudio();
-    audioUnlocked = true;
-    document.removeEventListener('touchstart', kick);
-    document.removeEventListener('pointerdown', kick);
-    document.removeEventListener('click', kick);
-  };
-  document.addEventListener('touchstart', kick, { once: true });
-  document.addEventListener('pointerdown', kick, { once: true });
-  document.addEventListener('click', kick, { once: true });
-}
+/** Wake the active audio backend from a trusted gesture when required. */
+async function activateAudio(): Promise<boolean> {
+  if (unlockInFlight) return unlockInFlight;
 
-export function unlockAudio() {
-  if (audioUnlocked) return;
-
-  const unlock = () => {
-    if (Howler.ctx && Howler.ctx.state === 'suspended') {
-      Howler.ctx.resume();
+  unlockInFlight = (async () => {
+    try {
+      const navAny = navigator as unknown as { audioSession?: { type: string } };
+      if (navAny.audioSession) navAny.audioSession.type = 'playback';
+    } catch {
+      // The native media fallback does not require this optional API.
     }
-    enablePlaybackAudio();
-    audioUnlocked = true;
-    document.removeEventListener('touchstart', unlock);
-    document.removeEventListener('click', unlock);
-  };
 
-  document.addEventListener('touchstart', unlock, { once: true });
-  document.addEventListener('click', unlock, { once: true });
+    if (shouldUseNativeMediaAudio()) {
+      audioUnlocked = true;
+      tryPlayBgMusic();
+      return true;
+    }
+
+    if (Howler.ctx && Howler.ctx.state !== 'running') {
+      try {
+        await Howler.ctx.resume();
+      } catch {
+        audioUnlocked = false;
+        return false;
+      }
+    }
+
+    audioUnlocked = !Howler.ctx || Howler.ctx.state === 'running';
+    if (audioUnlocked) tryPlayBgMusic();
+    return audioUnlocked;
+  })().finally(() => {
+    unlockInFlight = null;
+  });
+
+  return unlockInFlight;
+}
+
+function handleAudioGesture(): void {
+  void activateAudio();
+}
+
+function installAudioRecovery(): void {
+  if (typeof document === 'undefined' || unlockListenersInstalled) return;
+  unlockListenersInstalled = true;
+
+  // Keep these listeners installed. Apple can silently lose its media session
+  // after backgrounding, so any later real gesture must be able to heal it.
+  document.addEventListener('touchend', handleAudioGesture, { passive: true, capture: true });
+  document.addEventListener('pointerup', handleAudioGesture, { passive: true, capture: true });
+  document.addEventListener('click', handleAudioGesture, { capture: true });
+
+  const recover = () => {
+    if (document.visibilityState === 'hidden') return;
+    audioUnlocked = false;
+    nativeMediaEpoch += 1;
+    if (shouldUseNativeMediaAudio()) {
+      stopNativeAudio('speech');
+      stopNativeAudio('sfx');
+      stopNativeAudio('music');
+      nativeMusicTrack = null;
+    }
+  };
+  document.addEventListener('visibilitychange', recover);
+  window.addEventListener('pageshow', recover);
+}
+
+installAudioRecovery();
+
+export function unlockAudio(): void {
+  installAudioRecovery();
+  // Playback starts from the permanent trusted-gesture listeners above.
 }
 
 export function getAudio(src: string): Howl {
@@ -93,6 +210,10 @@ export function getAudio(src: string): Howl {
     onloaderror: (_id, err) => {
       console.warn(`Failed to load audio: ${path}`, err);
     },
+    onplayerror: (id, err) => {
+      console.warn(`Failed to start audio: ${path}`, err);
+      sound.once('unlock', () => sound.play(id));
+    },
   });
 
   audioCache.set(path, sound);
@@ -100,6 +221,11 @@ export function getAudio(src: string): Howl {
 }
 
 export function playSound(src: string): Promise<void> {
+  if (!soundIsEnabled()) return Promise.resolve();
+  if (shouldUseNativeMediaAudio()) {
+    return playNativeAudio(`/audio/${src}`, 'speech', { waitForEnd: true });
+  }
+
   return new Promise((resolve) => {
     const sound = getAudio(src);
     sound.once('end', () => resolve());
@@ -109,6 +235,8 @@ export function playSound(src: string): Promise<void> {
 }
 
 export function playSoundEffect(type: 'correct' | 'wrong' | 'celebrate' | 'coin' | 'tap'): void {
+  if (!soundIsEnabled()) return;
+
   const sfxMap: Record<string, string> = {
     correct: 'sfx/correct.mp3',
     wrong: 'sfx/wrong.mp3',
@@ -118,11 +246,20 @@ export function playSoundEffect(type: 'correct' | 'wrong' | 'celebrate' | 'coin'
   };
   const src = sfxMap[type];
   if (src) {
-    getAudio(src).play();
+    if (shouldUseNativeMediaAudio()) {
+      void playNativeAudio(`/audio/${src}`, 'sfx', { waitForEnd: false }).catch((error) => {
+        console.warn(`Failed to play sound effect: ${src}`, error);
+      });
+    } else {
+      getAudio(src).play();
+    }
   }
 }
 
 export function preloadWorldAudio(worldId: number): void {
+  // Apple mobile uses fixed HTML media channels and assigns each source only
+  // immediately before playback. Pre-creating many elements exhausts iOS.
+  if (shouldUseNativeMediaAudio()) return;
   // Always preload common feedback clips and SFX
   const common = [
     'narration/great-job.mp3', 'narration/correct.mp3', 'narration/try-again.mp3',
@@ -187,83 +324,107 @@ export function setGlobalVolume(volume: number): void {
 
 export function stopAll(): void {
   Howler.stop();
+  nativeChannels.forEach((_state, channel) => stopNativeAudio(channel));
 }
 
 export function unloadAll(): void {
   audioCache.forEach((sound) => sound.unload());
   audioCache.clear();
+  nativeChannels.forEach((state, channel) => {
+    stopNativeAudio(channel);
+    state.element.removeAttribute('src');
+    state.element.load();
+  });
+  nativeChannels.clear();
 }
 
 let bgMusic: Howl | null = null;
 let currentTrack: string | null = null;
+let desiredTrack: string | null = null;
+let nativeMusicTrack: string | null = null;
 let currentMusicVolume = 0.12;
 
-let pendingTrack: string | null = null;
-
 function tryPlayBgMusic(): void {
-  if (!bgMusic) return;
-  // Don't gate on 'loaded' — Howler queues play() and fires when ready
-  bgMusic.play();
-}
+  const track = desiredTrack;
+  if (!track || !audioUnlocked) return;
 
-function onFirstInteraction(): void {
-  if (Howler.ctx && Howler.ctx.state === 'suspended') {
-    Howler.ctx.resume().then(() => tryPlayBgMusic());
-  } else {
-    tryPlayBgMusic();
+  if (shouldUseNativeMediaAudio()) {
+    const existing = nativeChannels.get('music')?.element;
+    if (nativeMusicTrack === track && existing) {
+      if (!existing.paused) return;
+
+      // Speech ducking pauses the existing native music element. Resume that
+      // element in place so every phoneme does not restart the song at 0:00.
+      void existing.play().then(() => {
+        audioUnlocked = true;
+      }).catch((error) => {
+        console.warn(`Background music could not resume: /audio/music/apple/${track}.mp3`, error);
+      });
+      return;
+    }
+
+    nativeMusicTrack = track;
+    void playNativeAudio(`/audio/music/apple/${track}.mp3`, 'music', {
+      loop: true,
+      waitForEnd: false,
+    }).catch((error) => {
+      if (nativeMusicTrack === track) nativeMusicTrack = null;
+      console.warn(`Background music failed: /audio/music/apple/${track}.mp3`, error);
+    });
+    return;
   }
-  document.removeEventListener('touchstart', onFirstInteraction);
-  document.removeEventListener('click', onFirstInteraction);
-  pendingTrack = null;
-}
 
-export function startBackgroundMusic(track = 'menu'): void {
-  // If same track is already playing, do nothing
-  if (bgMusic && currentTrack === track) return;
+  if (bgMusic && currentTrack === track) {
+    if (!bgMusic.playing()) bgMusic.play();
+    return;
+  }
 
-  // Stop current track with crossfade
   if (bgMusic) {
     const old = bgMusic;
-    old.fade(old.volume(), 0, 500);
-    setTimeout(() => { old.unload(); }, 500);
     bgMusic = null;
+    old.fade(old.volume(), 0, 500);
+    setTimeout(() => old.unload(), 500);
   }
 
-  currentTrack = track;
-  // WebAudio: on iOS, HTML5 audio volume is READ-ONLY (hardware buttons only),
-  // which silently broke the music slider and speech ducking on iPhones.
-  bgMusic = new Howl({
-    src: [`/audio/music/${track}.mp3`],
+  const nextMusic = new Howl({
+    src: [`/audio/music/${track}.mp3?v=${AUDIO_VERSION}`],
     format: ['mp3'],
     html5: false,
     loop: true,
     volume: musicTarget(),
-    onloaderror: () => {
-      console.warn(`Background music not found: /audio/music/${track}.mp3`);
-      bgMusic = null;
-      currentTrack = null;
+    onloaderror: (_id, error) => {
+      console.warn(`Background music not found: /audio/music/${track}.mp3`, error);
+      if (bgMusic === nextMusic) {
+        bgMusic = null;
+        currentTrack = null;
+      }
+    },
+    onplayerror: (id, error) => {
+      console.warn(`Background music could not start: /audio/music/${track}.mp3`, error);
+      nextMusic.once('unlock', () => nextMusic.play(id));
     },
   });
+  bgMusic = nextMusic;
+  currentTrack = track;
+  nextMusic.play();
+}
 
-  // If audio context is suspended (browser autoplay policy), defer playback
-  // to the first user interaction instead of failing silently
-  if (Howler.ctx && Howler.ctx.state === 'suspended') {
-    pendingTrack = track;
-    document.addEventListener('touchstart', onFirstInteraction, { once: true });
-    document.addEventListener('click', onFirstInteraction, { once: true });
-  } else {
-    bgMusic.play();
-  }
+export function startBackgroundMusic(track = 'menu'): void {
+  desiredTrack = track;
+  tryPlayBgMusic();
 }
 
 export function stopBackgroundMusic(): void {
+  desiredTrack = null;
+  nativeMusicTrack = null;
+  stopNativeAudio('music');
+
   if (bgMusic) {
-    bgMusic.fade(bgMusic.volume(), 0, 500);
-    setTimeout(() => {
-      bgMusic?.unload();
-      bgMusic = null;
-      currentTrack = null;
-    }, 500);
+    const old = bgMusic;
+    bgMusic = null;
+    currentTrack = null;
+    old.fade(old.volume(), 0, 500);
+    setTimeout(() => old.unload(), 500);
   }
 }
 
@@ -283,6 +444,9 @@ function musicTarget(): number {
 
 export function setMusicVolume(volume: number): void {
   currentMusicVolume = volume;
+  // Apple HTML media volume is controlled by the device. Those devices use
+  // separately attenuated music masters so narration remains dominant.
+  if (shouldUseNativeMediaAudio()) return;
   if (bgMusic) {
     // Cancel any in-flight duck/fade so the slider change applies immediately.
     bgMusic.fade(bgMusic.volume(), musicTarget(), 80);
@@ -299,7 +463,9 @@ export function duckMusic(): void {
     clearTimeout(unduckTimer);
     unduckTimer = null;
   }
-  if (bgMusic && duckCount === 1) {
+  if (shouldUseNativeMediaAudio() && duckCount === 1) {
+    stopNativeAudio('music');
+  } else if (bgMusic && duckCount === 1) {
     bgMusic.fade(bgMusic.volume(), musicTarget(), 120);
   }
 }
@@ -312,7 +478,9 @@ export function unduckMusic(): void {
   if (unduckTimer) clearTimeout(unduckTimer);
   unduckTimer = setTimeout(() => {
     unduckTimer = null;
-    if (bgMusic && duckCount === 0) {
+    if (shouldUseNativeMediaAudio() && duckCount === 0) {
+      tryPlayBgMusic();
+    } else if (bgMusic && duckCount === 0) {
       bgMusic.fade(bgMusic.volume(), musicTarget(), 400);
     }
   }, 450);

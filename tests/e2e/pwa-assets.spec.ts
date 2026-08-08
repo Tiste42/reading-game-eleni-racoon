@@ -18,3 +18,15 @@ test('PWA manifest and installed-app icons resolve from their declared paths', a
     expect((await response.body()).byteLength, iconPath).toBeGreaterThan(1_000);
   }
 });
+
+test('Apple native-media music masters are all published as non-empty MP3 files', async ({ request }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', 'Static asset contract only needs one browser project.');
+
+  for (const track of ['menu', 'world-1', 'world-2', 'world-3', 'world-4', 'world-5', 'world-6']) {
+    const path = `/audio/music/apple/${track}.mp3`;
+    const response = await request.get(path);
+    expect(response.ok(), path).toBe(true);
+    expect(response.headers()['content-type'], path).toContain('audio/mpeg');
+    expect((await response.body()).byteLength, path).toBeGreaterThan(100_000);
+  }
+});
