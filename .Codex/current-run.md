@@ -1,4 +1,4 @@
-# V2.2 Apple audio hotfix candidate - 2026-08-07
+# V2.2 Apple audio hotfix live - 2026-08-07
 
 ## Incident
 
@@ -21,10 +21,12 @@
   playback time, real Play, voice/music/effect toggles, foreground recovery,
   audio warnings, and all runtime music/effect files.
 
-## Release authority
+## Live release evidence
 
-Do not infer production status from this file. Release requires clean lint,
-typecheck, unit, content, production build, full browser QA, independent review,
-the candidate commit on `origin/main`, a matching Vercel `READY` production
-deployment, and public-route verification. A physical Apple speaker check is a
-separate final confirmation and must not be claimed from emulation.
+- PR #4 merged to `main` as `95e7186ef60cef8c6e4a3d072ddbfb209b025266`.
+- Vercel deployment `dpl_EfvWrKgHeTxVbXHnW7HbC4gMUuUn` is production `READY`.
+- Public `/version.json` reported the exact merge commit.
+- Public Chromium/WebKit audio and route suite: 10 passed, 4 intentional skips,
+  0 failed. Main CI and both independent reviews passed.
+- Physical iPhone/iPad speaker output remains Baptiste's final confirmation;
+  browser automation cannot honestly claim the hardware speaker route.

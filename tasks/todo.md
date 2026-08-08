@@ -11,7 +11,7 @@ actually control playback; a silent playback engine cannot pass release QA.
 - [x] Add non-silent playback, real-start, toggle, and resume regression tests
 - [x] Run typecheck, lint, unit, content, build, and cross-browser gameplay QA
 - [x] Complete independent audio/code review
-- [ ] Merge, deploy, and verify the exact production version
+- [x] Merge, deploy, and verify the exact production version
 
 # V2.2 Learning Integrity Repair (2026-08-05)
 
