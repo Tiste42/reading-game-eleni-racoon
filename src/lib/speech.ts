@@ -33,6 +33,7 @@ function voiceIsEnabled(): boolean {
 
 let speakGeneration = 0;
 let currentSpeechHowl: Howl | null = null;
+let finishCurrentBrowserSpeech: (() => void) | null = null;
 
 // Normalize text to a slug for narration file lookup
 function textToSlug(text: string): string {
@@ -518,11 +519,26 @@ function browserSpeak(text: string, rate = 0.85): Promise<void> {
       resolve();
       return;
     }
+
+    // Browsers (especially installed mobile PWAs) may accept a speech request
+    // without ever firing `end` or `error`. Settle any previous request before
+    // replacing it, and keep a bounded fallback so callers can never deadlock.
+    finishCurrentBrowserSpeech?.();
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     utter.rate = rate;
     utter.pitch = 1.2;
     utter.volume = voiceVolume();
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      if (finishCurrentBrowserSpeech === finish) finishCurrentBrowserSpeech = null;
+      resolve();
+    };
+    finishCurrentBrowserSpeech = finish;
 
     const voices = window.speechSynthesis.getVoices();
     const preferred = voices.find(v =>
@@ -532,9 +548,14 @@ function browserSpeak(text: string, rate = 0.85): Promise<void> {
     ) || voices.find(v => v.lang.startsWith('en'));
     if (preferred) utter.voice = preferred;
 
-    utter.onend = () => resolve();
-    utter.onerror = () => resolve();
-    window.speechSynthesis.speak(utter);
+    utter.onend = finish;
+    utter.onerror = finish;
+    const timeoutId = window.setTimeout(finish, Math.min(8_000, Math.max(2_500, text.length * 120)));
+    try {
+      window.speechSynthesis.speak(utter);
+    } catch {
+      finish();
+    }
   }).finally(() => unduckMusic());
 }
 
@@ -704,6 +725,7 @@ export function stopSpeaking(): void {
     currentSpeechHowl = null;
   }
   if (typeof window !== 'undefined') {
+    finishCurrentBrowserSpeech?.();
     window.speechSynthesis?.cancel();
   }
 }

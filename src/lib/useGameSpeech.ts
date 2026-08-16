@@ -61,7 +61,6 @@ export function useGameSpeechWithOptions(
   deps: unknown[] = [],
 ) {
   const [activeOption, setActiveOption] = useState<number>(-1);
-  const [doneSpeaking, setDoneSpeaking] = useState(true);
   const cancelledRef = useRef(false);
   const runIdRef = useRef(0);
 
@@ -69,14 +68,12 @@ export function useGameSpeechWithOptions(
 
   useEffect(() => {
     if (!instruction) {
-      setDoneSpeaking(true);
       return;
     }
 
     const thisRun = ++runIdRef.current;
     cancelledRef.current = false;
     setActiveOption(-1);
-    setDoneSpeaking(false);
 
     const run = async () => {
       if (cancelledRef.current || thisRun !== runIdRef.current) return;
@@ -93,14 +90,12 @@ export function useGameSpeechWithOptions(
 
       if (cancelledRef.current || thisRun !== runIdRef.current) return;
       setActiveOption(-1);
-      setDoneSpeaking(true);
     };
 
     const timer = setTimeout(run, 500);
     return () => {
       clearTimeout(timer);
       cancelledRef.current = true;
-      setDoneSpeaking(true);
       stopSpeaking();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -118,7 +113,6 @@ export function useGameSpeechWithOptions(
     const thisRun = ++runIdRef.current;
     cancelledRef.current = false;
     setActiveOption(-1);
-    setDoneSpeaking(false);
     stopSpeaking();
 
     const run = async () => {
@@ -133,7 +127,6 @@ export function useGameSpeechWithOptions(
       }
       if (cancelledRef.current || thisRun !== runIdRef.current) return;
       setActiveOption(-1);
-      setDoneSpeaking(true);
     };
 
     run();
@@ -144,11 +137,12 @@ export function useGameSpeechWithOptions(
     cancelledRef.current = true;
     runIdRef.current += 1;
     setActiveOption(-1);
-    setDoneSpeaking(true);
     stopSpeaking();
   }, []);
 
-  return { activeOption, doneSpeaking, replay, cancel };
+  // Speech is assistive, never a gameplay prerequisite. Consumers may use the
+  // active option for animation, but must remain interactive if audio stalls.
+  return { activeOption, replay, cancel };
 }
 
 export type SpeechPart =

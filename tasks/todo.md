@@ -1,3 +1,18 @@
+# Production Incident — World 1 input/audio deadlock (2026-08-16)
+
+Success: World 1 remains playable even when narration is blocked, unavailable,
+or interrupted; upgraded rhyme words use recorded word audio instead of a
+missing dynamic prompt; the full game works on touch input without resetting saves.
+
+- [x] Reproduce the frozen `What rhymes with star?` state from production code
+- [x] Isolate the regression to narration-gated input and missing upgraded prompts
+- [x] Restore touch immediately instead of making speech a gameplay prerequisite
+- [x] Guarantee interrupted or failed speech cannot leave retry/input state locked
+- [x] Route every upgraded rhyme target/choice through existing static word audio
+- [x] Add regression tests for stalled narration, replay, answers, and progression
+- [x] Verify every game and finale on phone/tablet/desktop with automation muted
+- [ ] Commit, publish, and verify the exact production version
+
 # V2.2 Audio Hotfix (2026-08-07)
 
 Success: background music, narration, letter sounds, and effects are audible

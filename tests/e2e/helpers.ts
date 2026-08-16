@@ -2,8 +2,12 @@ import type { Page } from '@playwright/test';
 
 export const allPacks = ['alphabet-adventure', 'continuous-bridge', 'cvc-grid', 'longer-words'];
 
-export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks) {
-  await page.addInitScript((packs) => {
+export async function seedFreePlay(
+  page: Page,
+  enabledContentPackIds = allPacks,
+  contentSeed = 'e2e-seed',
+) {
+  await page.addInitScript(({ packs, seed }) => {
     const worldProgress = Object.fromEntries(
       [1, 2, 3, 4, 5, 6].map((world) => [world, { gamesCompleted: [], bossCompleted: false, stars: 0 }]),
     );
@@ -29,12 +33,12 @@ export async function seedFreePlay(page: Page, enabledContentPackIds = allPacks)
         musicVolume: 0.08,
         freePlay: true,
         enabledContentPackIds: packs,
-        contentSeed: 'e2e-seed',
+        contentSeed: seed,
         contentRunCounter: 0,
         recentContentByGame: {},
       },
     }));
-  }, enabledContentPackIds);
+  }, { packs: enabledContentPackIds, seed: contentSeed });
 }
 
 export function captureRuntimeFailures(page: Page) {

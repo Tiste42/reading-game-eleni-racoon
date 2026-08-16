@@ -1,5 +1,13 @@
 # Durable Lessons
 
+## Narration must never lock a child's input
+
+- Speech is assistance, not a gameplay prerequisite. Keep choices and replay controls tappable while narration is loading or speaking.
+- Every browser-speech fallback must settle on end, error, cancellation, or a bounded timeout; mobile speech callbacks are not reliable enough to gate state.
+- When a content pack adds words, route prompts through existing recorded word clips or add and validate the matching narration assets before release.
+- A World 1 release gate must complete every game from the real menu with touch-sized controls and with audio unavailable, not merely boot each route.
+- Run automated browser checks muted so QA does not unexpectedly play through the user's computer.
+
 ## Audio requests are not audible-playback proof
 
 - Validate the real child journey: open the title screen, tap Play, hear music, enter a game, replay a phoneme, use an effect, toggle both channels, and return from the background.

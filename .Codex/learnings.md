@@ -1,5 +1,10 @@
 # Learning Integrity
 
+- Narration is assistive and must fail open: never disable gameplay controls while waiting for audio or browser speech to finish.
+- Expanded content must either reuse validated static clips or ship complete new audio coverage; a dynamic spoken prompt is not covered merely because all of its individual words exist.
+- For mobile playability, simulate missing audio and a browser speech callback that never fires, then prove the child can still answer and advance.
+- Keep automated browsers muted unless audible playback is the explicit subject of a user-approved device test.
+
 - A route/assets smoke test is not a gameplay-quality review. Audit what Eleni sees and hears before every decision.
 - Wrong retries must keep every choice available and must not identify, highlight, flash, speak, insert, accept, or auto-advance the correct answer. Replay the prompt or the selected wrong choice instead.
 - Sentence games must ask a real comprehension question; the choices cannot repeat the visible sentence as a copyable answer.

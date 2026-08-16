@@ -45,7 +45,7 @@ test('Rhyme Beach keeps every choice and never reveals after repeated misses', a
   }
 });
 
-test('Rhyme Beach locks choices during narration and retry never speaks an unselected answer', async ({ page }, testInfo) => {
+test('Rhyme Beach stays interactive during narration and retry never speaks an unselected answer', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'Covered once in the full interaction browser.');
   const wordRequests: string[] = [];
   page.on('request', (request) => {
@@ -54,8 +54,7 @@ test('Rhyme Beach locks choices during narration and retry never speaks an unsel
 
   await page.goto('/world/1/rhyme-match');
   const choices = page.getByTestId('rhyme-choice');
-  await expect(choices.first()).toBeDisabled();
-  await expect(choices.first()).toBeEnabled({ timeout: 20_000 });
+  await expect(choices.first()).toBeEnabled();
 
   const targetWord = await page.getByTestId('rhyme-target').getByRole('img').getAttribute('alt');
   const words = await choices.getByRole('img').evaluateAll((images) => images.map((image) => image.getAttribute('alt') || ''));
@@ -64,10 +63,18 @@ test('Rhyme Beach locks choices during narration and retry never speaks an unsel
   const selectedWord = words[wrongIndex];
   const unselectedWords = words.filter((_, index) => index !== wrongIndex);
 
+  // Let the initial prompt finish naming the choices. We only want to audit
+  // audio started by the retry after the child's wrong selection.
+  await expect.poll(() => wordRequests.length).toBeGreaterThanOrEqual(4);
   wordRequests.length = 0;
   await choices.nth(wrongIndex).click();
-  await expect(choices.first()).toBeDisabled();
-  await expect(choices.first()).toBeEnabled({ timeout: 20_000 });
+  await expect(choices.first()).toBeEnabled();
+
+  await expect.poll(
+    () => wordRequests.some((url) => url.includes(`/audio/words/${targetWord}.mp3`))
+      && wordRequests.some((url) => url.includes(`/audio/words/${selectedWord}.mp3`)),
+    { timeout: 20_000 },
+  ).toBe(true);
 
   expect(wordRequests.some((url) => url.includes(`/audio/words/${targetWord}.mp3`))).toBe(true);
   expect(wordRequests.some((url) => url.includes(`/audio/words/${selectedWord}.mp3`))).toBe(true);
