@@ -22,7 +22,13 @@ export default defineConfig({
         timeout: 120_000,
       },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: ['--mute-audio'] },
+      },
+    },
     { name: 'webkit-tablet', use: { ...devices['iPad (gen 7)'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
   ],

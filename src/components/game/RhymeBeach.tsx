@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EleniCharacter from '@/components/eleni/EleniCharacter';
 import CelebrationOverlay from '@/components/ui/CelebrationOverlay';
@@ -31,10 +31,10 @@ interface Props {
 export default function RhymeBeach({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
   const [phase, setPhase] = useState<'play' | 'burst'>('play');
-  const [isRetrying, setIsRetrying] = useState(false);
   const [candies, setCandies] = useState(0);
   const [burstAt, setBurstAt] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const feedbackRunRef = useRef(0);
   const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt, enabledContentPackIds } = useGameStore();
   const candidates = useMemo(
     () => buildRhymeCandidates(getRhymeFamilies(enabledContentPackIds)),
@@ -54,11 +54,18 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
   const current = rounds[round];
   const isLastRound = round >= rounds.length - 1;
 
-  const { activeOption, doneSpeaking, replay, cancel } = useGameSpeechWithOptions(
-    `What rhymes with ${current.target}?`,
+  const { activeOption, replay, cancel } = useGameSpeechWithOptions(
+    // Use the already-recorded target word instead of browser TTS for a
+    // dynamically assembled sentence. The screen supplies the question; the
+    // audio reliably speaks the target and each choice on every phone.
+    current.target,
     current.choices,
     [round],
   );
+
+  useEffect(() => () => {
+    feedbackRunRef.current += 1;
+  }, []);
 
   const advance = useCallback(() => {
     setPhase('play');
@@ -74,7 +81,8 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
 
   const handleChoice = useCallback(
     (word: string, index: number) => {
-      if (phase !== 'play' || !doneSpeaking || isRetrying) return;
+      if (phase !== 'play') return;
+      const feedbackRun = ++feedbackRunRef.current;
       cancel();
 
       if (word === current.match) {
@@ -84,34 +92,45 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
         setBurstAt(index);
         playSoundEffect('celebrate');
         setCandies((c) => c + 1);
-        (async () => {
-          await speakFeedback(isLastRound ? 'complete' : 'correct');
-          await new Promise((r) => setTimeout(r, 500));
-          advance();
-        })();
+        // Progression is driven by a bounded UI timer, never by an audio
+        // `ended` event that an iPhone media session may fail to deliver.
+        void speakFeedback(isLastRound ? 'complete' : 'correct');
+        setTimeout(advance, 700);
       } else {
         recordSoundAttempt('rhyme', false);
         resetStreak();
         playSoundEffect('wrong');
-        setIsRetrying(true);
         // Re-say only the target and the child's selection. The correct option
         // remains available and is never singled out during retry feedback.
-        (async () => {
+        void (async () => {
           await speakClip('rhyme-hint', 'Listen! Rhyming words sound the same at the end!');
+          if (feedbackRunRef.current !== feedbackRun) return;
           await speakWord(current.target);
+          if (feedbackRunRef.current !== feedbackRun) return;
           await speakWord(word);
+          if (feedbackRunRef.current !== feedbackRun) return;
           await speak(`What rhymes with ${current.target}?`);
-          setIsRetrying(false);
         })();
       }
     },
-    [phase, doneSpeaking, isRetrying, cancel, current, isLastRound, advance, resetStreak, incrementStreak, recordSoundAttempt],
+    [phase, cancel, current, isLastRound, advance, resetStreak, incrementStreak, recordSoundAttempt],
   );
+
+  const handleReplay = useCallback(() => {
+    feedbackRunRef.current += 1;
+    replay();
+  }, [replay]);
+
+  const handleBack = useCallback(() => {
+    feedbackRunRef.current += 1;
+    cancel();
+    onComplete();
+  }, [cancel, onComplete]);
 
   return (
     <GameShell
-      onBack={onComplete}
-      onReplay={replay}
+      onBack={handleBack}
+      onReplay={handleReplay}
       round={round}
       totalRounds={rounds.length}
       progressIcon="🪅"
@@ -133,9 +152,12 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
           <p className="text-base text-pink-800 font-[Fredoka] font-semibold mb-1">Find what rhymes with...</p>
           <button
             data-testid="rhyme-target"
-            onClick={() => speak(current.target)}
-            disabled={!doneSpeaking || isRetrying}
-            className="inline-flex items-center gap-3 bg-white/90 rounded-2xl px-6 py-3 shadow-lg press-3d disabled:cursor-wait"
+            onClick={() => {
+              feedbackRunRef.current += 1;
+              cancel();
+              void speak(current.target);
+            }}
+            className="inline-flex items-center gap-3 bg-white/90 rounded-2xl px-6 py-3 shadow-lg press-3d"
           >
             <WordCard word={current.target} size={64} />
             {phase !== 'play' && (
@@ -191,7 +213,7 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
                   <motion.button
                     data-testid="rhyme-choice"
                     onClick={() => handleChoice(word, index)}
-                    disabled={phase !== 'play' || !doneSpeaking || isRetrying}
+                    disabled={phase !== 'play'}
                     initial={{ y: -60, opacity: 0 }}
                     animate={
                       isBurst
@@ -215,7 +237,6 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
                       relative w-full min-h-[150px] rounded-3xl p-3 shadow-xl flex flex-col items-center justify-center gap-1
                       bg-gradient-to-br ${PINATA_STYLES[index % PINATA_STYLES.length]}
                       ${isBeingSpoken ? 'ring-4 ring-white' : ''}
-                      ${!doneSpeaking || isRetrying ? 'cursor-wait' : ''}
                     `}
                     style={{ transformOrigin: 'top center' }}
                   >
