@@ -3,6 +3,7 @@
 - Do not gate answer buttons on `speechSynthesis` completion. Mobile browsers can stay silent and never fire `onend` or `onerror`, leaving the game permanently untappable.
 - Do not add dynamic narration strings without matching pre-generated files. The resulting browser-TTS fallback is less reliable on phones and installed PWAs.
 - Do not treat the configured ElevenLabs value as usable until a build-time generation call succeeds; an account key identifier is not a valid secret API key.
+- Do not fail gameplay QA on Chromium's URL-less "Failed to load resource" console message alone; optional cross-origin fonts can emit it. Record first-party response and request failures by URL instead.
 
 - Do not approve a release from route booting, asset counts, or CI alone; those checks previously missed direct-answer mechanics and unclear picture choices.
 - Do not use Playwright `networkidle` as a readiness signal on the Next.js development server; assert the specific interactive control instead.

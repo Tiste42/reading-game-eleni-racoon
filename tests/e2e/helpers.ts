@@ -43,6 +43,14 @@ export async function seedFreePlay(
 
 export function captureRuntimeFailures(page: Page) {
   const errors: string[] = [];
+  const isCurrentOrigin = (url: string) => {
+    try {
+      return new URL(url).origin === new URL(page.url()).origin;
+    } catch {
+      return false;
+    }
+  };
+
   page.on('pageerror', (error) => {
     // Firefox can report this browser-owned cancellation during an intentional
     // reload even though the new document loads normally.
@@ -50,10 +58,25 @@ export function captureRuntimeFailures(page: Page) {
       errors.push(`pageerror: ${error.message}`);
     }
   });
+  page.on('response', (response) => {
+    if (response.status() >= 400 && isCurrentOrigin(response.url())) {
+      errors.push(`response: ${response.status()} ${response.url()}`);
+    }
+  });
+  page.on('requestfailed', (request) => {
+    const failure = request.failure()?.errorText || '';
+    if (isCurrentOrigin(request.url()) && !failure.includes('ERR_ABORTED')) {
+      errors.push(`requestfailed: ${failure} ${request.url()}`);
+    }
+  });
   page.on('console', (message) => {
     if (
       message.type() === 'error' &&
-      !message.text().includes('InvalidStateError: Navigated away from page')
+      !message.text().includes('InvalidStateError: Navigated away from page') &&
+      // Chromium's generic resource message does not identify the URL and can
+      // be caused by an optional cross-origin font. First-party failures are
+      // recorded precisely by the response/request listeners above.
+      !message.text().startsWith('Failed to load resource:')
     ) {
       errors.push(`console: ${message.text()}`);
     }
