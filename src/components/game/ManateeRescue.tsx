@@ -12,6 +12,9 @@ import { speak, speakWord, speakFeedback } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { MANATEE_COMPREHENSION_ROUNDS } from '@/content/connectedText';
+import { useContentSession } from '@/lib/useContentSession';
+
+const manateeRoundId = (candidate: (typeof MANATEE_COMPREHENSION_ROUNDS)[number]) => `${candidate.sentence}:${candidate.question}`;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -30,7 +33,13 @@ export default function ManateeRescue({ worldId, onComplete }: Props) {
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [choices, setChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(MANATEE_COMPREHENSION_ROUNDS));
+  const session = useContentSession({
+    gameId: 'manatee-rescue',
+    candidates: MANATEE_COMPREHENSION_ROUNDS,
+    count: 5,
+    getId: manateeRoundId,
+  });
+  const rounds = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
@@ -133,8 +142,7 @@ export default function ManateeRescue({ worldId, onComplete }: Props) {
 
         {phase === 'read' ? (
           <PressButton
-            silent
-            onClick={() => { playSoundEffect('tap'); setPhase('answer'); }}
+            onClick={() => { setPhase('answer'); }}
             className="bg-gradient-to-br from-cyan-500 to-blue-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka]"
           >
             ✋ I read it!

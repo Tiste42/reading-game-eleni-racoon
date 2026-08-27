@@ -35,14 +35,14 @@ interface BossChallenge {
 const BOSS_DATA: Record<number, { name: string; challenges: BossChallenge[] }> = {
   1: { name: 'Fiesta Finale', challenges: WORLD_1_BOSS_CHALLENGES },
   2: { name: 'The Garden Party', challenges: [
-    { type: 'picture-match', prompt: 'What sound does "s" make?', icon: '', correct: 'snake', options: ['snake', 'tiger', 'egg'] },
-    { type: 'picture-match', prompt: 'What sound does "t" make?', icon: '', correct: 'tiger', options: ['ant', 'tiger', 'lemon'] },
-    { type: 'picture-match', prompt: 'What sound does "a" make?', icon: '', correct: 'apple', options: ['nut', 'apple', 'egg'] },
-    { type: 'picture-match', prompt: 'What sound does "p" make?', icon: '', correct: 'penguin', options: ['iguana', 'penguin', 'snake'] },
-    { type: 'picture-match', prompt: 'What sound does "n" make?', icon: '', correct: 'nut', options: ['nut', 'lemon', 'apple'] },
-    { type: 'picture-match', prompt: 'What sound does "e" make?', icon: '', correct: 'egg', options: ['egg', 'tiger', 'snake'] },
-    { type: 'picture-match', prompt: 'What sound does "l" make?', icon: '', correct: 'lemon', options: ['iguana', 'nut', 'lemon'] },
-    { type: 'picture-match', prompt: 'What sound does "i" make?', icon: '', correct: 'iguana', options: ['iguana', 'penguin', 'apple'] },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'snake', options: ['snake', 'tiger', 'egg'], phonemeId: 's' },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'tiger', options: ['ant', 'tiger', 'lemon'], phonemeId: 't' },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'apple', options: ['nut', 'apple', 'egg'], phonemeId: 'a' },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'penguin', options: ['iguana', 'penguin', 'snake'], phonemeId: 'p' },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'nut', options: ['nut', 'lemon', 'apple'], phonemeId: 'n' },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'egg', options: ['egg', 'tiger', 'snake'], phonemeId: 'e' },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'lemon', options: ['iguana', 'nut', 'lemon'], phonemeId: 'l' },
+    { type: 'picture-match', prompt: 'Which picture starts with this sound?', icon: '', correct: 'iguana', options: ['iguana', 'penguin', 'apple'], phonemeId: 'i' },
   ]},
   3: { name: 'The Regatta', challenges: [
     { type: 'word-read', prompt: 'What word is this?', icon: '', correct: 'sat', options: ['sat', 'pin', 'net'] },

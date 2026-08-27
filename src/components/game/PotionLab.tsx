@@ -100,7 +100,6 @@ export default function PotionLab({ worldId, onComplete }: Props) {
       if (phase !== 'build') return;
       const needed = units[placed];
       if (tile.unit.text === needed.text) {
-        playSoundEffect('tap');
         recordSoundAttempt(needed.phonemeId, true);
         setUsedTileIds((currentIds) => new Set(currentIds).add(tile.id));
         const np = placed + 1;

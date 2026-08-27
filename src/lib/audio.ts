@@ -6,7 +6,7 @@ import { shouldUseNativeMediaAudio } from './audioPlatform';
 
 // Bump this whenever pre-generated audio files are regenerated so browsers
 // fetch the new versions instead of stale cached ones.
-export const AUDIO_VERSION = '6-apple-audio-recovery';
+export const AUDIO_VERSION = '7-sound-semantics';
 
 const audioCache = new Map<string, Howl>();
 let audioUnlocked = false;
@@ -43,6 +43,9 @@ function nativeChannel(channel: NativeAudioChannel): NativeChannelState {
 
   const element = new Audio();
   element.preload = 'auto';
+  // Browser QA verifies decoded signal and playback progress. Keep automation
+  // silent so an exhaustive test run never plays game audio on the computer.
+  if (typeof navigator !== 'undefined' && navigator.webdriver) element.muted = true;
   element.setAttribute('playsinline', '');
   element.setAttribute('webkit-playsinline', '');
   element.dataset.audioChannel = channel;
@@ -234,7 +237,7 @@ export function playSound(src: string): Promise<void> {
   });
 }
 
-export function playSoundEffect(type: 'correct' | 'wrong' | 'celebrate' | 'coin' | 'tap'): void {
+export function playSoundEffect(type: 'correct' | 'wrong' | 'celebrate' | 'coin'): void {
   if (!soundIsEnabled()) return;
 
   const sfxMap: Record<string, string> = {
@@ -242,7 +245,6 @@ export function playSoundEffect(type: 'correct' | 'wrong' | 'celebrate' | 'coin'
     wrong: 'sfx/wrong.mp3',
     celebrate: 'sfx/celebrate.mp3',
     coin: 'sfx/coin.mp3',
-    tap: 'sfx/tap.mp3',
   };
   const src = sfxMap[type];
   if (src) {
@@ -266,7 +268,7 @@ export function preloadWorldAudio(worldId: number): void {
     'narration/you-did-it.mp3', 'narration/keep-trying.mp3', 'narration/amazing.mp3',
     'narration/well-done.mp3', 'narration/think-again.mp3', 'narration/first-try.mp3',
     'narration/level-complete.mp3',
-    'sfx/correct.mp3', 'sfx/wrong.mp3', 'sfx/celebrate.mp3', 'sfx/coin.mp3', 'sfx/tap.mp3',
+    'sfx/correct.mp3', 'sfx/wrong.mp3', 'sfx/celebrate.mp3', 'sfx/coin.mp3',
   ];
 
   const worldAudioPaths: Record<number, string[]> = {

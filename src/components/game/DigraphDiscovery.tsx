@@ -9,21 +9,27 @@ import { useGameStore } from '@/lib/store';
 import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
+import { useContentSession } from '@/lib/useContentSession';
+import { selectTargets, shuffleSeeded } from '@/lib/roundSelector';
 
 type Digraph = 'sh' | 'ch' | 'th';
 type DigraphPhoneme = Digraph | 'th-voiced';
+type DigraphWord = { word: string; digraph: Digraph; phonemeId: DigraphPhoneme };
 
 // Per-word "The word is X. Which two letters..." lines are recorded for all
-const DIGRAPH_WORDS: Array<{ word: string; digraph: Digraph; phonemeId: DigraphPhoneme }> = [
+const DIGRAPH_WORDS: DigraphWord[] = [
   { word: 'ship', digraph: 'sh', phonemeId: 'sh' },
   { word: 'shop', digraph: 'sh', phonemeId: 'sh' },
   { word: 'shed', digraph: 'sh', phonemeId: 'sh' },
+  { word: 'shin', digraph: 'sh', phonemeId: 'sh' },
   { word: 'chip', digraph: 'ch', phonemeId: 'ch' },
   { word: 'chop', digraph: 'ch', phonemeId: 'ch' },
   { word: 'chat', digraph: 'ch', phonemeId: 'ch' },
+  { word: 'chin', digraph: 'ch', phonemeId: 'ch' },
   { word: 'thin', digraph: 'th', phonemeId: 'th' },
   { word: 'this', digraph: 'th', phonemeId: 'th-voiced' },
   { word: 'that', digraph: 'th', phonemeId: 'th-voiced' },
+  { word: 'them', digraph: 'th', phonemeId: 'th-voiced' },
 ];
 
 const OPTIONS: Digraph[] = ['sh', 'ch', 'th'];
@@ -34,19 +40,24 @@ const DIGRAPH_STYLE: Record<Digraph, string> = {
   th: 'bg-violet-100 text-violet-800 ring-violet-300',
 };
 
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
+const digraphWordId = (entry: DigraphWord) => entry.word;
 
-function buildBalancedRounds() {
-  const shAndCh = (['sh', 'ch'] as const).flatMap((digraph) =>
-    shuffle(DIGRAPH_WORDS.filter((entry) => entry.digraph === digraph)).slice(0, 2),
-  );
-  const th = [
-    ...shuffle(DIGRAPH_WORDS.filter((entry) => entry.phonemeId === 'th')).slice(0, 1),
-    ...shuffle(DIGRAPH_WORDS.filter((entry) => entry.phonemeId === 'th-voiced')).slice(0, 1),
+function selectBalancedRounds(
+  candidates: readonly DigraphWord[],
+  options: { count: number; seed: string; recentIds?: string[]; getId: (item: DigraphWord) => string },
+) {
+  const pick = (label: string, pool: DigraphWord[], count: number) => selectTargets(pool, {
+    ...options,
+    count,
+    seed: `${options.seed}:${label}`,
+  });
+  const rounds = [
+    ...pick('sh', candidates.filter((entry) => entry.phonemeId === 'sh'), 2),
+    ...pick('ch', candidates.filter((entry) => entry.phonemeId === 'ch'), 2),
+    ...pick('th-unvoiced', candidates.filter((entry) => entry.phonemeId === 'th'), 1),
+    ...pick('th-voiced', candidates.filter((entry) => entry.phonemeId === 'th-voiced'), 1),
   ];
-  return shuffle([...shAndCh, ...th]);
+  return shuffleSeeded(rounds, `${options.seed}:balanced`).slice(0, options.count);
 }
 
 interface Props {
@@ -61,8 +72,15 @@ export default function DigraphDiscovery({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('pick');
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(buildBalancedRounds);
   const { completeGame, addCoins, masterWord, teachPhoneme, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
+  const session = useContentSession({
+    gameId: 'digraph-discovery',
+    candidates: DIGRAPH_WORDS,
+    count: 6,
+    getId: digraphWordId,
+    selectItems: selectBalancedRounds,
+  });
+  const rounds = session.items;
 
   const current = rounds[round];
   const { word, digraph, phonemeId } = current;

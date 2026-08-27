@@ -1,3 +1,35 @@
+# Whole-game sound semantics and variety release candidate - 2026-08-27
+
+## Scope repaired
+
+- Removed the shared tap SFX that made every neutral selection sound wrong.
+- Sound/phoneme controls now use only the static human phoneme files and never
+  fall back to browser TTS saying a letter name or artificial pseudo-phoneme.
+- Rewired World 1 and fallback World 2 boss sound questions to compose the
+  instruction with a real phoneme clip.
+- Added recent-history-aware target selection to remaining Worlds 4-6 games,
+  expanded connected-reading/boss pools, and added recorded digraph words.
+- Preserved save schema/version and existing game/progression identifiers.
+
+## Verified release candidate
+
+- `npm run typecheck`, `npm run lint`, and `npm run build`: passed.
+- `npm run validate:content`: 5 packs, 124 word records, 99 pictures, 262 audio files.
+- `npm run test:unit`: 35 passed.
+- Muted Chromium: 30 passed, 1 intentional Apple-only skip.
+- Muted iPad/WebKit: 15 applicable passed, 16 intentional project-specific skips.
+- Every game route boots; primary touch actions survive stalled narration; saves
+  migrate; automatic answer reveal stays disabled; all 30 phoneme assets decode
+  to non-silent signal.
+
+## Remaining release boundary
+
+- Commit/merge and verify the exact public `version.json` commit.
+- Automated runs are intentionally silent. Physical iPad/phone speaker output
+  still requires one human listening check after the public build is live.
+
+---
+
 # V2.2 Apple audio hotfix live - 2026-08-07
 
 ## Incident

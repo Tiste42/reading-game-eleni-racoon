@@ -10,9 +10,20 @@ interface Options<T> {
   candidates: readonly T[];
   count: number;
   getId: (item: T) => string;
+  selectItems?: (
+    candidates: readonly T[],
+    options: { count: number; seed: string; recentIds?: string[]; getId: (item: T) => string },
+  ) => T[];
 }
 
-export function useContentSession<T>({ gameId, historyKey = gameId, candidates, count, getId }: Options<T>) {
+export function useContentSession<T>({
+  gameId,
+  historyKey = gameId,
+  candidates,
+  count,
+  getId,
+  selectItems = selectTargets,
+}: Options<T>) {
   const seedBase = useGameStore((state) => state.contentSeed);
   const runCounter = useGameStore((state) => state.contentRunCounter);
   const history = useGameStore((state) => state.recentContentByGame[historyKey]);
@@ -22,7 +33,7 @@ export function useContentSession<T>({ gameId, historyKey = gameId, candidates, 
 
   const [session] = useState(() => {
     const seed = `${seedBase}:${gameId}:${runCounter}`;
-    const items = selectTargets(candidates, {
+    const items = selectItems(candidates, {
       count: Math.min(count, candidates.length),
       seed,
       recentIds: history?.targetIds,

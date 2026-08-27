@@ -1,5 +1,10 @@
 # Learning Integrity
 
+- Audio intent is part of the learning contract: letter-name prompts may say a letter name, but phoneme/sound prompts must play the verified isolated phoneme recording.
+- A whole-game content upgrade cannot be certified from one anchor world. Audit all games and all child-facing audio call sites before release, including worlds the current child save has not reached.
+- A neutral tap effect must be perceptually neutral. If a child or parent hears it as the wrong-answer buzzer, remove it from selection paths rather than debating the filename or implementation intent.
+- Expanding a pool is not enough: measure immediate repeats, within-session variety, and cross-session cooldown behavior using the actual round selectors.
+
 - Narration is assistive and must fail open: never disable gameplay controls while waiting for audio or browser speech to finish.
 - Expanded content must either reuse validated static clips or ship complete new audio coverage; a dynamic spoken prompt is not covered merely because all of its individual words exist.
 - For mobile playability, simulate missing audio and a browser speech callback that never fires, then prove the child can still answer and advance.

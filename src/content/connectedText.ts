@@ -31,6 +31,12 @@ export const CONNECTED_COMPREHENSION_ROUNDS: PictureComprehensionRound[] = [
   { sentence: 'He got the red hat.', question: 'What did he get?', correct: 'hat', options: ['hat', 'cup', 'net'] },
   { sentence: 'The bug is in the pot.', question: 'What is in the pot?', correct: 'bug', options: ['bug', 'pot', 'fish'] },
   { sentence: 'The pig sat in the van.', question: 'Who sat in the van?', correct: 'pig', options: ['pig', 'van', 'hen'] },
+  { sentence: 'Sam sat on the bed.', question: 'What did Sam sit on?', correct: 'bed', options: ['bed', 'cat', 'hat'] },
+  { sentence: 'The cat is big.', question: 'What is big?', correct: 'cat', options: ['cat', 'dog', 'bug'] },
+  { sentence: 'The fish is in the net.', question: 'Where is the fish?', correct: 'net', options: ['net', 'bed', 'cup'] },
+  { sentence: 'He got the pet dog.', question: 'What pet did he get?', correct: 'dog', options: ['dog', 'cat', 'fish'] },
+  { sentence: 'The hen is in the nest.', question: 'Where is the hen?', correct: 'nest', options: ['nest', 'hat', 'ship'] },
+  { sentence: 'The pot is hot.', question: 'What is hot?', correct: 'pot', options: ['pot', 'cup', 'hat'] },
 ];
 
 export const MANATEE_COMPREHENSION_ROUNDS: PictureComprehensionRound[] = [
@@ -39,6 +45,11 @@ export const MANATEE_COMPREHENSION_ROUNDS: PictureComprehensionRound[] = [
   { sentence: 'The cup is in the pond.', question: 'What is in the pond?', correct: 'cup', options: ['cup', 'log', 'net'] },
   { sentence: 'The can is on the sand.', question: 'What is on the sand?', correct: 'can', options: ['can', 'cup', 'hat'] },
   { sentence: 'The fish is in the net.', question: 'Who is in the net?', correct: 'fish', options: ['fish', 'cat', 'dog'] },
+  { sentence: 'The hat is on the fin.', question: 'What is on the fin?', correct: 'hat', options: ['hat', 'net', 'cup'] },
+  { sentence: 'The cup is in the path.', question: 'What is in the path?', correct: 'cup', options: ['cup', 'log', 'hat'] },
+  { sentence: 'The log is in the pond.', question: 'What is in the pond?', correct: 'log', options: ['log', 'cup', 'net'] },
+  { sentence: 'The net is on the sand.', question: 'What is on the sand?', correct: 'net', options: ['net', 'can', 'hat'] },
+  { sentence: 'The cat is in the net.', question: 'Who is in the net?', correct: 'cat', options: ['cat', 'fish', 'dog'] },
 ];
 
 export const BEACH_COMPREHENSION_ROUNDS: IconComprehensionRound[] = [
@@ -72,6 +83,36 @@ export const BEACH_COMPREHENSION_ROUNDS: IconComprehensionRound[] = [
     correct: 'a net',
     options: [{ label: 'a net', icon: '🥅' }, { label: 'a hat', icon: '🧢' }, { label: 'a cup', icon: '🥤' }],
   },
+  {
+    sentence: 'The cup is on the log.',
+    question: 'What is on the log?',
+    correct: 'a cup',
+    options: [{ label: 'a cup', icon: '🥤' }, { label: 'a net', icon: '🥅' }, { label: 'a hat', icon: '🧢' }],
+  },
+  {
+    sentence: 'The dog got the net.',
+    question: 'Who got the net?',
+    correct: 'a dog',
+    options: [{ label: 'a dog', icon: '🐶' }, { label: 'a man', icon: '👨' }, { label: 'a cat', icon: '🐱' }],
+  },
+  {
+    sentence: 'The dog is on the ship.',
+    question: 'Where is the dog?',
+    correct: 'on the ship',
+    options: [{ label: 'on the ship', icon: '🚢' }, { label: 'on the sand', icon: '🏖️' }, { label: 'on a bed', icon: '🛏️' }],
+  },
+  {
+    sentence: 'The cup is on the ship.',
+    question: 'What is on the ship?',
+    correct: 'a cup',
+    options: [{ label: 'a cup', icon: '🥤' }, { label: 'a net', icon: '🥅' }, { label: 'a hat', icon: '🧢' }],
+  },
+  {
+    sentence: 'The cat got the net.',
+    question: 'Who got the net?',
+    correct: 'a cat',
+    options: [{ label: 'a cat', icon: '🐱' }, { label: 'a dog', icon: '🐶' }, { label: 'a man', icon: '👨' }],
+  },
 ];
 
 export const WORLD_5_BOSS_SENTENCES: BossSentenceRound[] = [
@@ -81,6 +122,10 @@ export const WORLD_5_BOSS_SENTENCES: BossSentenceRound[] = [
   { prompt: 'The thin cat is on the bed.', question: 'Who is on the bed?', correct: 'cat', options: ['cat', 'dog', 'bug'] },
   { prompt: 'She is at the shop.', question: 'Where is she?', correct: 'shop', options: ['shop', 'ship', 'tent'] },
   { prompt: 'The dog is on the ship.', question: 'Who is on the ship?', correct: 'dog', options: ['dog', 'cat', 'fish'] },
+  { prompt: 'The fish is in the net.', question: 'Where is the fish?', correct: 'net', options: ['net', 'bed', 'cup'] },
+  { prompt: 'The hen is in the nest.', question: 'Where is the hen?', correct: 'nest', options: ['nest', 'hat', 'ship'] },
+  { prompt: 'The pot is hot.', question: 'What is hot?', correct: 'pot', options: ['pot', 'cup', 'hat'] },
+  { prompt: 'The bug is on the log.', question: 'Where is the bug?', correct: 'log', options: ['log', 'cup', 'hat'] },
 ];
 
 export const WORLD_6_BOSS_SENTENCES: BossSentenceRound[] = [
@@ -90,6 +135,10 @@ export const WORLD_6_BOSS_SENTENCES: BossSentenceRound[] = [
   { prompt: 'He got the red hat.', question: 'What did he get?', correct: 'hat', options: ['hat', 'cup', 'net'] },
   { prompt: 'The fish is in the net.', question: 'Where is the fish?', correct: 'net', options: ['net', 'bed', 'cup'] },
   { prompt: 'He got the pet dog.', question: 'What pet did he get?', correct: 'dog', options: ['dog', 'cat', 'fish'] },
+  { prompt: 'The hen is in the nest.', question: 'Where is the hen?', correct: 'nest', options: ['nest', 'hat', 'ship'] },
+  { prompt: 'The pot is hot.', question: 'What is hot?', correct: 'pot', options: ['pot', 'cup', 'hat'] },
+  { prompt: 'The pig sat in the van.', question: 'Who sat in the van?', correct: 'pig', options: ['pig', 'van', 'hen'] },
+  { prompt: 'The dog ran to the cat.', question: 'Who ran?', correct: 'dog', options: ['dog', 'cat', 'bus'] },
 ];
 
 const DECODABLE_LEXICON: Record<string, string[]> = {

@@ -172,7 +172,6 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
 
         {/* Big hear-the-sound button */}
         <PressButton
-          silent
           onClick={() => speakPhoneme(current.phonemeId)}
           className="w-32 h-32 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-xl flex items-center justify-center"
           aria-label="Hear the sound"

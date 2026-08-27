@@ -84,7 +84,6 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
   }, [shouldReveal, phase]);
 
   const startAnswer = useCallback(() => {
-    playSoundEffect('tap');
     setPhase('answer');
   }, []);
 
@@ -150,7 +149,6 @@ export default function StoryStroll({ worldId, onComplete }: Props) {
         {/* Read-it gate, then the answer options */}
         {phase === 'read' ? (
           <PressButton
-            silent
             onClick={startAnswer}
             className="bg-gradient-to-br from-cyan-500 to-green-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka]"
           >

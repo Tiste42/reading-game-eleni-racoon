@@ -156,7 +156,6 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
 
         {/* Big hear-the-sound button */}
         <PressButton
-          silent
           onClick={() => speakPhoneme(current.phonemeId)}
           className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center"
           aria-label="Hear the sound"

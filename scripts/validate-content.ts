@@ -26,7 +26,7 @@ const MUSIC_TRACKS = ['menu', 'world-1', 'world-2', 'world-3', 'world-4', 'world
 const REQUIRED_AUDIBLE_RUNTIME_AUDIO = [
   ...MUSIC_TRACKS.map((track) => `/audio/music/${track}.mp3`),
   ...MUSIC_TRACKS.map((track) => `/audio/music/apple/${track}.mp3`),
-  ...['correct', 'wrong', 'celebrate', 'coin', 'tap'].map((effect) => `/audio/sfx/${effect}.mp3`),
+  ...['correct', 'wrong', 'celebrate', 'coin'].map((effect) => `/audio/sfx/${effect}.mp3`),
 ];
 
 function fail(message: string) {

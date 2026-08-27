@@ -11,6 +11,14 @@ import {
 } from '../../src/content/learningIntegrity';
 import { getStories } from '../../src/content/registry';
 import { hasChildIdentifiablePicture } from '../../src/content/pictureQuality';
+import {
+  BEACH_COMPREHENSION_ROUNDS,
+  CONNECTED_COMPREHENSION_ROUNDS,
+  MANATEE_COMPREHENSION_ROUNDS,
+  WORLD_5_BOSS_SENTENCES,
+  WORLD_6_BOSS_SENTENCES,
+} from '../../src/content/connectedText';
+import { WORLD_1_BOSS_CHALLENGES } from '../../src/content/bossContent';
 
 const root = process.cwd();
 const source = (relativePath: string) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -89,4 +97,85 @@ test('direct-answer helpers and duplicate read-gate narration stay removed', () 
   assert.ok(source('src/components/game/PotionLab.tsx').includes('chain.distractorUnits.every'));
   assert.ok(source('src/components/game/RuinDecoder.tsx').includes('WORLD_5_DECODER_ROUNDS'));
   assert.equal(source('src/components/game/RhymeBeach.tsx').includes('repeat: Infinity'), false);
+});
+
+test('neutral selections never play an outcome-like tap sound', () => {
+  const pressButton = source('src/components/ui/PressButton.tsx');
+  assert.equal(pressButton.includes('playSoundEffect'), false);
+
+  const sourceRoots = ['src/components', 'src/app'];
+  const visit = (directory: string): string[] => fs.readdirSync(path.join(root, directory), { withFileTypes: true })
+    .flatMap((entry) => entry.isDirectory()
+      ? visit(path.join(directory, entry.name))
+      : /\.(ts|tsx)$/.test(entry.name) ? [path.join(directory, entry.name)] : []);
+  for (const file of sourceRoots.flatMap(visit)) {
+    assert.equal(source(file).includes("playSoundEffect('tap')"), false, file);
+  }
+});
+
+test('phoneme playback can never fall back to browser letter-name speech', () => {
+  const speech = source('src/lib/speech.ts');
+  const start = speech.indexOf('export async function speakPhoneme');
+  const end = speech.indexOf('export async function speakWord', start);
+  const phonemeBody = speech.slice(start, end);
+
+  assert.ok(start >= 0 && end > start);
+  assert.equal(phonemeBody.includes('browserSpeak'), false);
+  assert.match(phonemeBody, /playStatic\(`phonemes\/\$\{key\}\.mp3`\)/);
+  assert.doesNotMatch(phonemeBody, /playStatic\(`phonemes\/\$\{key\}\.mp3`,/);
+});
+
+test('every sound-assessment prompt is wired to phoneme playback', () => {
+  const boss = source('src/components/game/BossLevel.tsx');
+  assert.equal(boss.includes('What sound does "'), false);
+  assert.ok(boss.includes("{ phoneme: current.phonemeId }"));
+
+  for (const file of [
+    'LetterIntro.tsx',
+    'LetterMatch.tsx',
+    'LetterTrace.tsx',
+    'OddSoundOut.tsx',
+    'SoundHunt.tsx',
+    'SoundSafari.tsx',
+    'SoundSort.tsx',
+    'SoundSorting.tsx',
+  ]) {
+    assert.ok(source(`src/components/game/${file}`).includes('speakPhoneme'), file);
+  }
+});
+
+test('authored pools exceed a visit and later games use saved rotation history', () => {
+  assert.ok(WORLD_1_BOSS_CHALLENGES.length > 6);
+  assert.ok(CONNECTED_COMPREHENSION_ROUNDS.length > 6);
+  assert.ok(MANATEE_COMPREHENSION_ROUNDS.length > 5);
+  assert.ok(BEACH_COMPREHENSION_ROUNDS.length > 5);
+  assert.ok(WORLD_5_BOSS_SENTENCES.length > 6);
+  assert.ok(WORLD_6_BOSS_SENTENCES.length > 6);
+  assert.ok(HEART_WORDS.length > 5);
+
+  for (const file of [
+    'WordTowers.tsx',
+    'KnightsDoors.tsx',
+    'DragonFeed.tsx',
+    'GardenGrow.tsx',
+    'DigraphDiscovery.tsx',
+    'RuinDecoder.tsx',
+    'HeartWordMap.tsx',
+    'TreasureMemory.tsx',
+    'SoukSentences.tsx',
+    'BeachDetective.tsx',
+    'ManateeRescue.tsx',
+    'ComicCreator.tsx',
+  ]) {
+    assert.ok(source(`src/components/game/${file}`).includes('useContentSession'), file);
+  }
+
+  const digraph = source('src/components/game/DigraphDiscovery.tsx');
+  for (const word of ['shin', 'chin', 'them']) {
+    assert.ok(digraph.includes(`word: '${word}'`));
+    assert.ok(fs.statSync(path.join(root, `public/audio/words/${word}.mp3`)).size > 1_000, word);
+    const narration = `public/audio/narration/inst-the-word-is-${word}-which-two-letters-make-the-special-sound-is-it-sh-ch-or-th.mp3`;
+    assert.ok(fs.statSync(path.join(root, narration)).size > 1_000, narration);
+  }
+  assert.ok(digraph.includes('selectBalancedRounds'));
 });

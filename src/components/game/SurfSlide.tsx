@@ -118,7 +118,6 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
   const surfTo = useCallback(
     (i: number) => {
       if (phase !== 'blend' || i !== step) return; // only the next glowing letter responds
-      playSoundEffect('tap');
       speakPhoneme(units[i].phonemeId);
       const ns = i + 1;
       setStep(ns);

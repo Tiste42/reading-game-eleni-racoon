@@ -52,6 +52,9 @@ async function installAudioProbe(page: Page) {
     const play = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function playProbedMedia(...args) {
       const media = this as HTMLMediaElement;
+      // Automated verification measures decoded signal and playback progress;
+      // it must never make noise on the user's computer.
+      media.muted = true;
       const entry = {
         channel: media.dataset.audioChannel || 'unknown',
         src: media.currentSrc || media.src,
@@ -254,7 +257,7 @@ test('letter replay is audible, the sound switch suppresses it, and turning it o
   expect(warnings).toEqual([]);
 });
 
-test('the voice and sound switch suppresses and restores tap effects', async ({ page }, testInfo) => {
+test('neutral selections stay silent while wrong-answer feedback remains distinct', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'firefox', 'Critical Apple and Chromium audio backends are covered');
   const warnings = captureAudioWarnings(page);
 
@@ -270,7 +273,9 @@ test('the voice and sound switch suppresses and restores tap effects', async ({ 
   await resetPlaybackProbe(page);
   await clap.click();
   await page.waitForTimeout(500);
-  expect((await probe(page)).bufferStarts).toHaveLength(0);
+  expect((await probe(page)).bufferStarts.filter((entry) =>
+    entry.duration > 0.05 && entry.maxSample > 0.001,
+  )).toHaveLength(0);
   expect((await probe(page)).mediaPlays.filter((entry) => entry.channel === 'sfx')).toHaveLength(0);
 
   await page.getByRole('button', { name: 'Settings' }).click();
@@ -280,9 +285,18 @@ test('the voice and sound switch suppresses and restores tap effects', async ({ 
   await resetPlaybackProbe(page);
 
   await page.getByRole('button', { name: 'Clap' }).click();
+  await page.waitForTimeout(500);
+  expect((await probe(page)).bufferStarts.filter((entry) =>
+    entry.duration > 0.05 && entry.maxSample > 0.001,
+  )).toHaveLength(0);
+  expect((await probe(page)).mediaPlays.filter((entry) => entry.channel === 'sfx')).toHaveLength(0);
+
+  await page.getByRole('button', { name: 'Start over' }).click();
+  for (let index = 0; index < 6; index += 1) await page.getByRole('button', { name: 'Clap' }).click();
+  await page.getByRole('button', { name: 'Check answer' }).click();
   if (testInfo.project.name === 'webkit-tablet') {
     await expect.poll(async () => (await probe(page)).mediaPlays.some((entry) =>
-      entry.channel === 'sfx' && entry.resolved && entry.currentTime > 0.02 && entry.src.includes('/audio/sfx/tap.mp3'),
+      entry.channel === 'sfx' && entry.resolved && entry.src.includes('/audio/sfx/wrong.mp3'),
     )).toBe(true);
   } else {
     await expect.poll(async () => (await probe(page)).bufferStarts.some((entry) =>
@@ -292,6 +306,41 @@ test('the voice and sound switch suppresses and restores tap effects', async ({ 
 
   expect(unexpectedAudioErrors(await probe(page))).toEqual([]);
   expect(warnings).toEqual([]);
+});
+
+test('every referenced phoneme file decodes to non-silent audio without playing it', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', 'One silent decode pass is sufficient');
+  await page.goto('/');
+  const results = await page.evaluate(async () => {
+    const phonemes = [
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+      'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th', 'th-voiced',
+    ];
+    const context = new AudioContext();
+    const checked = [] as Array<{ phoneme: string; duration: number; maxSample: number }>;
+    for (const phoneme of phonemes) {
+      const response = await fetch(`/audio/phonemes/${phoneme}.mp3`);
+      if (!response.ok) throw new Error(`${phoneme}: HTTP ${response.status}`);
+      const buffer = await context.decodeAudioData(await response.arrayBuffer());
+      let maxSample = 0;
+      for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+        const samples = buffer.getChannelData(channel);
+        const stride = Math.max(1, Math.floor(samples.length / 8_000));
+        for (let index = 0; index < samples.length; index += stride) {
+          maxSample = Math.max(maxSample, Math.abs(samples[index]));
+        }
+      }
+      checked.push({ phoneme, duration: buffer.duration, maxSample });
+    }
+    await context.close();
+    return checked;
+  });
+
+  expect(results).toHaveLength(30);
+  for (const result of results) {
+    expect(result.duration, `${result.phoneme} duration`).toBeGreaterThan(0.03);
+    expect(result.maxSample, `${result.phoneme} signal`).toBeGreaterThan(0.001);
+  }
 });
 
 test('Apple media playback is recreated after a simulated PWA foreground return', async ({ page }, testInfo) => {

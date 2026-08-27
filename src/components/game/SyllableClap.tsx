@@ -57,7 +57,6 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
 
   const handleClap = useCallback(() => {
     if (phase !== 'play') return;
-    playSoundEffect('tap');
     setClaps((c) => Math.min(c + 1, 6));
   }, [phase]);
 
@@ -143,7 +142,6 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
         <div className="flex flex-col items-center gap-2">
           <div className="flex items-center gap-5">
             <PressButton
-              silent
               onClick={handleClap}
               disabled={phase !== 'play'}
               className="w-36 h-36 rounded-full bg-gradient-to-br from-yellow-300 to-orange-400 shadow-xl text-8xl flex items-center justify-center"
@@ -160,7 +158,6 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
             </PressButton>
 
             <PressButton
-              silent
               onClick={handleSubmit}
               disabled={phase !== 'play' || claps === 0}
               className={`w-28 h-28 rounded-full shadow-xl text-6xl flex items-center justify-center font-bold transition-colors ${
@@ -172,7 +169,6 @@ export default function SyllableClap({ worldId, onComplete }: Props) {
             </PressButton>
 
             <PressButton
-              silent
               onClick={() => { if (phase === 'play') setClaps(0); }}
               disabled={phase !== 'play'}
               className="w-20 h-20 rounded-full bg-white/80 shadow-lg text-3xl flex items-center justify-center text-purple-500"

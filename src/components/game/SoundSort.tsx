@@ -228,7 +228,6 @@ export default function SoundSort({ worldId, onComplete }: Props) {
             className="relative z-30"
           >
             <PressButton
-              silent
               onClick={() => speakWord(item.word)}
               className="bg-white rounded-3xl p-4 shadow-xl flex items-center justify-center"
               aria-label={`Hear ${item.word}`}

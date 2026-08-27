@@ -10,6 +10,9 @@ import { speakWord, speakFeedback } from '@/lib/speech';
 import { useGameSpeech } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { REQUIRED_HEART_WORDS, buildPrintAudioCards } from '@/content/learningIntegrity';
+import { useContentSession } from '@/lib/useContentSession';
+
+const heartWordId = (word: string) => word;
 
 function shuffle<T>(items: T[]): T[] {
   return [...items].sort(() => Math.random() - 0.5);
@@ -22,9 +25,16 @@ interface Props {
 
 export default function TreasureMemory({ worldId, onComplete }: Props) {
   const masteredWords = useGameStore((state) => state.masteredWords);
-  const selectedWords = useMemo(() => shuffle(
+  const masteredHeartWords = useMemo(() =>
     REQUIRED_HEART_WORDS.filter((word) => masteredWords.includes(word)),
-  ).slice(0, 4), [masteredWords]);
+  [masteredWords]);
+  const session = useContentSession({
+    gameId: 'treasure-memory',
+    candidates: masteredHeartWords,
+    count: 4,
+    getId: heartWordId,
+  });
+  const selectedWords = session.items;
   const cards = useMemo(() => shuffle(buildPrintAudioCards(selectedWords)), [selectedWords]);
   const [flipped, setFlipped] = useState<string[]>([]);
   const [matched, setMatched] = useState<Set<string>>(new Set());
@@ -38,7 +48,6 @@ export default function TreasureMemory({ worldId, onComplete }: Props) {
     const card = cards.find((candidate) => candidate.id === id);
     if (!card || flipped.includes(id) || matched.has(card.word)) return;
 
-    playSoundEffect('tap');
     const next = [...flipped, id];
     setFlipped(next);
     if (card.kind === 'audio') speakWord(card.word);

@@ -12,6 +12,7 @@ import { speak, speakWord, speakFeedback, speakReveal } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { CONNECTED_COMPREHENSION_ROUNDS } from '@/content/connectedText';
+import { useContentSession } from '@/lib/useContentSession';
 
 interface ComicPanel {
   sentence: string; // SHE reads this — never spoken before she answers
@@ -28,6 +29,7 @@ const STORY: ComicPanel[] = CONNECTED_COMPREHENSION_ROUNDS.map((round) => ({
   answer: round.correct,
   choices: round.options,
 }));
+const comicPanelId = (panel: ComicPanel) => `${panel.sentence}:${panel.question}`;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -47,7 +49,14 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
   const [choices, setChoices] = useState<string[]>([]);
   const [panels, setPanels] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(STORY).slice(0, 5));
+  const session = useContentSession({
+    gameId: 'comic-creator',
+    historyKey: 'connected-comprehension',
+    candidates: STORY,
+    count: 5,
+    getId: comicPanelId,
+  });
+  const rounds = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
@@ -92,7 +101,6 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
   }, [shouldReveal, phase]);
 
   const startAnswer = useCallback(() => {
-    playSoundEffect('tap');
     setPhase('answer');
   }, []);
 
@@ -154,7 +162,6 @@ export default function ComicCreator({ worldId, onComplete }: Props) {
         {/* Read gate, then the question's picture choices */}
         {phase === 'read' ? (
           <PressButton
-            silent
             onClick={startAnswer}
             className="bg-gradient-to-br from-cyan-500 to-green-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka]"
           >

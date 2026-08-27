@@ -55,7 +55,6 @@ export default function ShopPage() {
         setTimeout(() => { setShowCelebration(false); setJustBought(null); }, 2600);
       } else {
         // Not enough coins: gentle wiggle, nothing scary, nothing lost
-        playSoundEffect('tap');
         setCantAfford(item.id);
         setTimeout(() => setCantAfford(null), 700);
       }

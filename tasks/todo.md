@@ -1,3 +1,21 @@
+# Production Incident — Whole-game sound semantics and variety (2026-08-27)
+
+Success: all six worlds distinguish letter-name prompts from phoneme prompts;
+every phoneme control plays the verified static sound recording; neutral selections
+never sound like an incorrect answer; existing progress/mechanics remain intact;
+and repeated sessions rotate through meaningfully different valid rounds.
+
+- [x] Inventory every game and classify each spoken control as letter name, phoneme, word, narration, or outcome feedback
+- [x] Remove the error-like neutral-selection sound from every game and shared button
+- [x] Prohibit browser TTS fallbacks for phonemes and validate every referenced phoneme ID/file
+- [x] Decode every live phoneme recording and verify non-silent signal and source mapping
+- [x] Verify every authored prompt, answer, distractor, picture, and retry behavior across Worlds 1-6
+- [x] Measure within-session and cross-session repetition for every round pool
+- [x] Preserve and regression-test existing saved progress, game rules, and touch behavior
+- [x] Run silent phone/tablet/desktop gameplay QA for every game and finale
+- [ ] Commit, merge, deploy, and verify the exact public production version
+- [ ] Confirm physical speaker output by ear on the public iPad/phone build
+
 # Production Incident — World 1 input/audio deadlock (2026-08-16)
 
 Success: World 1 remains playable even when narration is blocked, unavailable,
