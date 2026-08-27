@@ -11,6 +11,7 @@ import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speec
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { WORLD_5_DECODER_ROUNDS } from '@/content/world5Content';
+import { useContentSession } from '@/lib/useContentSession';
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -22,6 +23,7 @@ interface Props {
 }
 
 type Phase = 'read' | 'won';
+const decoderRoundId = (round: (typeof WORLD_5_DECODER_ROUNDS)[number]) => round.word;
 
 export default function RuinDecoder({ worldId, onComplete }: Props) {
   const [round, setRound] = useState(0);
@@ -30,8 +32,14 @@ export default function RuinDecoder({ worldId, onComplete }: Props) {
   const [choices, setChoices] = useState<string[]>([]);
   const [decoded, setDecoded] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(WORLD_5_DECODER_ROUNDS));
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
+  const session = useContentSession({
+    gameId: 'ruin-decoder',
+    candidates: WORLD_5_DECODER_ROUNDS,
+    count: 3,
+    getId: decoderRoundId,
+  });
+  const rounds = session.items;
 
   const current = rounds[round];
   const { word, units } = current;

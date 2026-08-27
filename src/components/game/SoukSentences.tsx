@@ -12,6 +12,9 @@ import { speak, speakFeedback } from '@/lib/speech';
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { CONNECTED_COMPREHENSION_ROUNDS } from '@/content/connectedText';
+import { useContentSession } from '@/lib/useContentSession';
+
+const comprehensionId = (candidate: (typeof CONNECTED_COMPREHENSION_ROUNDS)[number]) => `${candidate.sentence}:${candidate.question}`;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -30,7 +33,14 @@ export default function SoukSentences({ worldId, onComplete }: Props) {
   const [wrongPick, setWrongPick] = useState<string | null>(null);
   const [choices, setChoices] = useState<string[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(CONNECTED_COMPREHENSION_ROUNDS));
+  const session = useContentSession({
+    gameId: 'souk-sentences',
+    historyKey: 'connected-comprehension',
+    candidates: CONNECTED_COMPREHENSION_ROUNDS,
+    count: 6,
+    getId: comprehensionId,
+  });
+  const rounds = session.items;
   const { completeGame, addCoins, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];
@@ -129,8 +139,7 @@ export default function SoukSentences({ worldId, onComplete }: Props) {
 
         {phase === 'read' ? (
           <PressButton
-            silent
-            onClick={() => { playSoundEffect('tap'); setPhase('answer'); }}
+            onClick={() => { setPhase('answer'); }}
             className="bg-gradient-to-br from-red-500 to-amber-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka]"
           >
             ✋ I read it!

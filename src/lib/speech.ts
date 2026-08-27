@@ -571,7 +571,7 @@ export async function speak(text: string): Promise<void> {
 
   // Single phoneme letter?
   if (KNOWN_PHONEMES.has(lower)) {
-    return playStatic(`phonemes/${lower}.mp3`, PHONEME_PRONUNCIATIONS[lower] || text);
+    return playStatic(`phonemes/${lower}.mp3`);
   }
 
   // Known word with static file?
@@ -603,11 +603,13 @@ export async function speak(text: string): Promise<void> {
  */
 export async function speakPhoneme(letter: string): Promise<void> {
   const key = letter.toLowerCase();
-  const pronunciation = PHONEME_PRONUNCIATIONS[key] || letter;
   if (KNOWN_PHONEMES.has(key)) {
-    return playStatic(`phonemes/${key}.mp3`, pronunciation);
+    return playStatic(`phonemes/${key}.mp3`);
   }
-  return browserSpeak(pronunciation);
+  // Browser voices pronounce isolated graphemes inconsistently (often as a
+  // letter name or with a schwa). Silence is safer than teaching a false sound.
+  console.warn(`[speech] unknown phoneme id: "${letter}"`);
+  return Promise.resolve();
 }
 
 /**
@@ -649,7 +651,7 @@ export async function speakSyllables(word: string): Promise<void> {
  */
 export async function speakBlend(word: string): Promise<void> {
   const key = word.toLowerCase().trim();
-  return playStatic(`blends/${key}.mp3`, key.split('').join('... '));
+  return playStatic(`blends/${key}.mp3`);
 }
 
 /**

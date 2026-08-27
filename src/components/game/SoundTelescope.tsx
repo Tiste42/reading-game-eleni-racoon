@@ -85,7 +85,6 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
   const handleLook = useCallback(() => {
     if (phase !== 'look' || looking) return;
     setLooking(true);
-    playSoundEffect('tap');
     (async () => {
       await soundOut(true); // reveal the letters one at a time as each sound plays
       setChoices(buildChoiceSet(entry, pool, {
@@ -194,7 +193,6 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
 
             {!looking && (
               <PressButton
-                silent
                 onClick={handleLook}
                 className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white px-10 py-5 rounded-full text-2xl font-[Fredoka] flex items-center gap-2"
               >

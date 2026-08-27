@@ -11,6 +11,9 @@ import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speec
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { WORLD_4_PICTURE_ROUNDS, isWorld4PictureRoundSafe, isWorld4RoundDecodable } from '@/content/world4Content';
+import { useContentSession } from '@/lib/useContentSession';
+
+const pictureRoundId = (candidate: (typeof WORLD_4_PICTURE_ROUNDS)[number]) => candidate.word;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -32,9 +35,17 @@ export default function DragonFeed({ worldId, onComplete }: Props) {
   const [showCelebration, setShowCelebration] = useState(false);
   const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
   const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
-  const rounds = useMemo(() => shuffle(WORLD_4_PICTURE_ROUNDS.filter((candidate) =>
+  const candidates = useMemo(() => WORLD_4_PICTURE_ROUNDS.filter((candidate) =>
     isWorld4PictureRoundSafe(candidate) && isWorld4RoundDecodable(candidate, taughtPhonemeSet),
-  )).slice(0, 6), [taughtPhonemeSet]);
+  ), [taughtPhonemeSet]);
+  const session = useContentSession({
+    gameId: 'dragon-feed',
+    historyKey: 'world4-picture-words',
+    candidates,
+    count: 6,
+    getId: pictureRoundId,
+  });
+  const rounds = session.items;
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const current = rounds[round];

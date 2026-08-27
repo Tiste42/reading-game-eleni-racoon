@@ -10,6 +10,9 @@ import { speakPhoneme, speakWord, speakFeedback, speakReveal } from '@/lib/speec
 import { useGameSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { WORLD_4_FAMILY_ROUNDS, isWorld4RoundDecodable } from '@/content/world4Content';
+import { useContentSession } from '@/lib/useContentSession';
+
+const familyRoundId = (candidate: (typeof WORLD_4_FAMILY_ROUNDS)[number]) => `${candidate.pattern}:${candidate.member}`;
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -31,9 +34,11 @@ export default function WordTowers({ worldId, onComplete }: Props) {
   const [showCelebration, setShowCelebration] = useState(false);
   const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
   const taughtPhonemeSet = useMemo(() => new Set(taughtPhonemes), [taughtPhonemes]);
-  const rounds = useMemo(() => shuffle(WORLD_4_FAMILY_ROUNDS.filter((candidate) =>
+  const candidates = useMemo(() => WORLD_4_FAMILY_ROUNDS.filter((candidate) =>
     isWorld4RoundDecodable(candidate, taughtPhonemeSet),
-  )).slice(0, 6), [taughtPhonemeSet]);
+  ), [taughtPhonemeSet]);
+  const session = useContentSession({ gameId: 'word-towers', candidates, count: 6, getId: familyRoundId });
+  const rounds = session.items;
   const { completeGame, addCoins, masterWord, incrementStreak, resetStreak, recordSoundAttempt } = useGameStore();
 
   const { pattern, member } = rounds[round];

@@ -187,7 +187,6 @@ export default function LetterTrace({ worldId, onComplete }: Props) {
           transition={{ type: 'spring', stiffness: 240, damping: 16 }}
         >
           <PressButton
-            silent
             onClick={() => speakWord(current.word)}
             className="bg-white rounded-[2rem] p-4 shadow-xl flex items-center justify-center"
             aria-label={`Hear ${current.word}`}

@@ -10,10 +10,12 @@ import { speakWord, speakFeedback, speakClip } from '@/lib/speech';
 import { useGameSpeech } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { HEART_WORDS, REQUIRED_HEART_WORDS, heartWordPrompt } from '@/content/learningIntegrity';
+import { useContentSession } from '@/lib/useContentSession';
 
-function shuffle<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
-}
+const requiredHeartWords = HEART_WORDS.filter((entry) =>
+  REQUIRED_HEART_WORDS.includes(entry.word as (typeof REQUIRED_HEART_WORDS)[number]),
+);
+const heartWordId = (entry: (typeof HEART_WORDS)[number]) => entry.word;
 
 interface Props {
   worldId: number;
@@ -27,9 +29,13 @@ export default function HeartWordMap({ worldId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('pick');
   const [wrongPick, setWrongPick] = useState<number | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [rounds] = useState(() => shuffle(HEART_WORDS.filter((entry) =>
-    REQUIRED_HEART_WORDS.includes(entry.word as (typeof REQUIRED_HEART_WORDS)[number]),
-  )));
+  const session = useContentSession({
+    gameId: 'heart-word-map',
+    candidates: requiredHeartWords,
+    count: 5,
+    getId: heartWordId,
+  });
+  const rounds = session.items;
   const { completeGame, addCoins, masterWord, recordSoundAttempt, incrementStreak, resetStreak } = useGameStore();
 
   const current = rounds[round];

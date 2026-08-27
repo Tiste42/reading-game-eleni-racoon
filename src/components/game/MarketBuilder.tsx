@@ -92,7 +92,6 @@ export default function MarketBuilder({ worldId, onComplete }: Props) {
       if (done) return;
       const needed = units[placed];
       if (tile.unit.text === needed.text) {
-        playSoundEffect('tap');
         recordSoundAttempt(needed.phonemeId, true);
         setUsedTileIds((current) => new Set(current).add(tile.id));
         const np = placed + 1;

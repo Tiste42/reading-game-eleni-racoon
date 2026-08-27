@@ -1,5 +1,12 @@
 # Durable Lessons
 
+## Sound intent must be explicit and verified game-wide
+
+- Classify every child-facing audio action as letter name, phoneme, word, narration, or outcome feedback; the implementation must route to that exact category.
+- Phoneme playback must use an existing, semantically verified static asset. It must never fall back to browser speech.
+- Neutral selection can be silent. Reserve distinct effects for confirmed correct, confirmed wrong, rewards, and celebrations.
+- After a shared audio or content change, run the acceptance matrix across every world instead of waiting for the child to discover later-world regressions.
+
 ## Narration must never lock a child's input
 
 - Speech is assistance, not a gameplay prerequisite. Keep choices and replay controls tappable while narration is loading or speaking.
