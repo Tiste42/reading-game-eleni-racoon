@@ -2,6 +2,7 @@ import type { ResolvedSoundGroup } from './registry';
 import type { RhymeFamily } from './types';
 import { canShareSoundChoices } from './phonemeConflicts';
 import { canSharePictureChoices } from './pictureConflicts';
+import { selectTargets } from '../lib/roundSelector';
 
 export interface RhymeCandidate {
   id: string;
@@ -15,6 +16,24 @@ export interface SoundPictureCandidate {
   targetLetter: string;
   targetWords: string[];
   distractorWords: string[];
+}
+
+/** Rotate sounds as well as picture variants; never repeat a sound in a run. */
+export function selectSoundPictureTargets(
+  candidates: readonly SoundPictureCandidate[],
+  options: { count: number; seed: string; recentIds?: string[] },
+): SoundPictureCandidate[] {
+  const sounds = [...new Set(candidates.map((candidate) => candidate.targetLetter))];
+  const representatives = sounds.flatMap((sound) => selectTargets(
+    candidates.filter((candidate) => candidate.targetLetter === sound),
+    { ...options, count: 1, seed: `${options.seed}:${sound}`, getId: (candidate) => candidate.id },
+  ));
+  const soundById = new Map(candidates.map((candidate) => [candidate.id, candidate.targetLetter]));
+  return selectTargets(representatives, {
+    ...options,
+    recentIds: (options.recentIds ?? []).flatMap((id) => soundById.has(id) ? [soundById.get(id)!] : []),
+    getId: (candidate) => candidate.targetLetter,
+  });
 }
 
 const rotate = <T>(items: T[], start: number): T[] => {

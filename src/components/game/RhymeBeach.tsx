@@ -129,6 +129,7 @@ export default function RhymeBeach({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={handleBack}
       onReplay={handleReplay}
       round={round}

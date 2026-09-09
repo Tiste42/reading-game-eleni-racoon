@@ -11,7 +11,7 @@ import { speak, speakPhoneme, speakFeedback, speakReveal } from '@/lib/speech';
 import { useComposedSpeech, useWrongAttempts } from '@/lib/useGameSpeech';
 import { playSoundEffect } from '@/lib/audio';
 import { getInitialSoundGroups } from '@/content/registry';
-import { buildSoundPictureCandidates } from '@/content/earlyRoundBuilders';
+import { buildSoundPictureCandidates, selectSoundPictureTargets } from '@/content/earlyRoundBuilders';
 import { useContentSession } from '@/lib/useContentSession';
 import { shuffleSeeded } from '@/lib/roundSelector';
 
@@ -51,6 +51,7 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
     candidates,
     count: 4,
     getId: (candidate) => candidate.id,
+    selectItems: selectSoundPictureTargets,
   });
   const rounds: HuntRound[] = useMemo(() => session.items.map((candidate, index) => ({
     targetSound: candidate.targetLetter,
@@ -146,6 +147,7 @@ export default function SoundHunt({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={replay}
       round={roundIdx}

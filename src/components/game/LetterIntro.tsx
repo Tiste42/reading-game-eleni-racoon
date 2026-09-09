@@ -16,6 +16,7 @@ import type { LetterExample } from '@/content/types';
 import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
 import { canShareSoundChoices } from '@/content/phonemeConflicts';
+import { selectLearningTargets } from '@/lib/learningChallenge';
 
 const exampleId = (example: LetterExample) => example.letter;
 
@@ -34,13 +35,18 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
   const enabledContentPackIds = useGameStore((state) => state.enabledContentPackIds);
   const taughtPhonemes = useGameStore((state) => state.taughtPhonemes);
   const examples = useMemo(() => getLetterExamples(enabledContentPackIds), [enabledContentPackIds]);
-  const candidates = useMemo(() => {
-    const untaught = examples.filter((example) => !taughtPhonemes.includes(example.phonemeId));
-    return untaught.length >= 6
-      ? untaught
-      : [...untaught, ...examples.filter((example) => taughtPhonemes.includes(example.phonemeId))];
-  }, [examples, taughtPhonemes]);
-  const session = useContentSession({ gameId: 'letter-intro', candidates, count: 6, getId: exampleId });
+  const soundStats = useGameStore((state) => state.soundStats);
+  const session = useContentSession({
+    gameId: 'letter-intro', candidates: examples, count: 6, getId: exampleId,
+    selectItems: (items, options) => selectLearningTargets(items, {
+      ...options,
+      isNew: (example) => !taughtPhonemes.includes(example.phonemeId),
+      needsPractice: (example) => {
+        const stat = soundStats[example.phonemeId];
+        return !!stat && stat.correct + stat.wrong >= 3 && stat.correct / (stat.correct + stat.wrong) < 0.7;
+      },
+    }),
+  });
   const rounds = session.items;
   const [choicesByRound] = useState(() => rounds.map((current, index) =>
     buildChoiceSet(current, examples, {
@@ -138,6 +144,7 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={replay}
       round={round}
@@ -170,7 +177,7 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
         </PressButton>
 
         {/* The letter choices */}
-        <div className="flex gap-4">
+        <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
           {choices.map((letter) => {
             const isAnswer = letter === current.letter;
             const highlight = (phase !== 'play' || shouldReveal) && isAnswer;
@@ -181,7 +188,7 @@ export default function LetterIntro({ worldId, onComplete }: Props) {
                 disabled={phase !== 'play'}
                 animate={wrongPick === letter ? { x: [-8, 8, -8, 8, 0] } : highlight ? { scale: [1, 1.15, 1] } : {}}
                 whileTap={{ scale: 0.92 }}
-                className={`w-[104px] h-[112px] rounded-3xl bg-white shadow-xl press-3d flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase transition-all ${
+                className={`min-w-0 h-[112px] rounded-3xl bg-white shadow-xl press-3d flex items-center justify-center text-7xl font-bold font-[Fredoka] text-gray-800 lowercase transition-all ${
                   highlight ? 'ring-4 ring-green-400 animate-hint-pulse' : ''
                 }`}
               >

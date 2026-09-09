@@ -126,6 +126,7 @@ export default function WordTowers({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={replay}
       round={round}

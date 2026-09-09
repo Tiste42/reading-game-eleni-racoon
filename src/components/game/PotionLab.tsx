@@ -158,6 +158,7 @@ export default function PotionLab({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={phase === 'build' ? replay : undefined}
       round={round}

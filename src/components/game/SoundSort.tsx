@@ -197,6 +197,7 @@ export default function SoundSort({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={replay}
       round={sortedCount}

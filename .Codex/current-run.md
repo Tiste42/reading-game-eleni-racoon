@@ -1,3 +1,25 @@
+# Bounded reading refresh — 2026-09-09
+
+## Changes and verified candidate
+
+- Letter Intro selects remaining untaught letters before mixing review; at most two uncertain sounds are prioritized when enough other practice exists.
+- World 1 Sound Hunt and First Sound rotate sound groups, then picture variants.
+- Plaza Puzzle and Sailboat Race earn one closer safe distractor after at least three correct word attempts and 80% accuracy. No extra choices, time limits, answer hints, or audio changes.
+- Shared adventure trail fits phone screens; all 31 game components explicitly signal final completion. Plaza choices and mosaic now fit 375px.
+- One bounded Luna review; main review addressed final-checkpoint feedback and visually found/fixed mosaic clipping.
+- Final production build, typecheck and lint passed; 41 unit tests passed. Content validation: 5 packs, 124 word records, 99 pictures, 262 audio files.
+- Final fixed-build muted Chromium + iPad/WebKit: 50 passed, 18 intentional browser-specific skips. Includes full six-round playthroughs in both browsers, 36-route phone layout/asset/input checks, no-answer-leak contracts, saves/packs, music/replay/toggles, and Apple foreground recovery.
+- Source frozen for publication. Exact deployed commit and public checks are recorded locally in `test-results/reading-refresh-release.md` after publishing; verify that evidence or the live version rather than inferring deployment from this candidate record.
+
+## Boundaries
+
+- No new media, dependencies, audio implementation, save schema, reward rules, or progression IDs.
+- Physical iPad/phone speaker output and Lenny's experience are not confirmed by the muted tests. Earlier ambiguous parent text was not hardware confirmation.
+- Deferred broader work: record actually presented rather than reserved batches; broader diagnostic key unification; new mechanics/artwork. Do not quietly widen this small release.
+- Development HMR once caused transient input-check failures; fixed-build rerun passed. Full-session test initially inspected an exiting picture; corrected by waiting for the target to change. These were not dismissed as success.
+
+---
+
 # Whole-game sound semantics and variety release candidate - 2026-08-27
 
 ## Scope repaired

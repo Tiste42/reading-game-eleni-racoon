@@ -56,14 +56,22 @@ export function buildChoiceSet<T>(
     answerIndex: number;
     getId: (item: T) => string;
     canUseDistractor?: (answer: T, distractor: T) => boolean;
+    /** Prefer one closer alternative; retain a varied second distractor. */
+    distractorScore?: (answer: T, distractor: T) => number;
   },
 ): T[] {
   const { count, seed, answerIndex, getId, canUseDistractor = () => true } = options;
   const answerId = getId(answer);
-  const distractors = shuffleSeeded(
+  const eligible = shuffleSeeded(
     pool.filter((item) => getId(item) !== answerId && canUseDistractor(answer, item)),
     `${seed}:distractors`,
-  ).slice(0, Math.max(0, count - 1));
+  );
+  if (options.distractorScore && eligible.length > 1) {
+    const scores = eligible.map((item) => options.distractorScore!(answer, item));
+    const best = scores.indexOf(Math.max(...scores));
+    if (scores[best] > 0) eligible.unshift(...eligible.splice(best, 1));
+  }
+  const distractors = eligible.slice(0, Math.max(0, count - 1));
   const choices = [...distractors];
   choices.splice(Math.min(answerIndex, choices.length), 0, answer);
   return choices;

@@ -145,6 +145,7 @@ export default function SoundTelescope({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={phase === 'look' ? undefined : () => soundOut()}
       round={round}

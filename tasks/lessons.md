@@ -1,5 +1,13 @@
 # Durable Lessons
 
+## Bounded refresh checks (September 9)
+
+- Choose untaught targets before shuffling the mixed review session; prepending them to a candidate array does not guarantee coverage.
+- Rotate phoneme groups before picture variants so one sound cannot occupy several rounds merely because it has more artwork.
+- Increase reading contrast after repeated accuracy, preserving taught-word and picture-conflict filters. Never raise difficulty by making the answer ambiguous.
+- Give shared progress UI an explicit final-completion signal. Verify a full game, not only the first checkpoint.
+- Inspect phone screenshots as well as overflow assertions: decorative reward strips can be clipped without overflowing the document.
+
 ## Sound intent must be explicit and verified game-wide
 
 - Classify every child-facing audio action as letter name, phoneme, word, narration, or outcome feedback; the implementation must route to that exact category.

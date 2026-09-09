@@ -186,3 +186,15 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - [ ] PWA: add service worker (manifest exists, no SW — offline doesn't work).
 - [ ] Remove unused deps (idb-keyval) or wire them up; clean ~5MB unused PNGs from repo root.
 - [ ] Verify on tablet (touch) end-to-end.
+# September 9 — bounded reading refresh
+
+Success: broader sound practice, a modest earned reading challenge, and a phone-friendly adventure trail without changing recordings, saves, rewards, or answer-reveal rules.
+
+- [x] Review current source and one economical independent review.
+- [x] Guarantee remaining untaught letters appear; reserve at most two review slots for uncertain sounds. Group World 1 hunts by sound before rotating picture variants.
+- [x] Add one closer safe distractor in the two World 3 reading games only after repeated word success.
+- [x] Replace cramped shared progress bar with a responsive checkpoint trail; preserve controls and quiet selection. Wire final completion explicitly in every game and contain Plaza's mosaic at phone widths.
+- [x] Test selection/coverage and challenge boundaries: 41 unit tests, 50 muted Chromium/WebKit checks passed (18 intentional skips), content validation passed.
+- [x] Independent diff review and production build passed. Publication evidence is recorded after release in `test-results/reading-refresh-release.md`; a passing candidate alone is not deployment proof.
+
+Boundaries: no new models/media spending, no audio rewrite, no schema migration, no automatic answer hints. World 1 auditory awareness is not automatically a decoding prerequisite bug; do not narrow its sound pool solely because it precedes Letter Intro. Repeated play remains rewarded deliberately. Physical-device sound remains unverified by automation.

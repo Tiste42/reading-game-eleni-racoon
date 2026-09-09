@@ -6,8 +6,11 @@ export async function seedFreePlay(
   page: Page,
   enabledContentPackIds = allPacks,
   contentSeed = 'e2e-seed',
+  preserveOnReload = false,
 ) {
-  await page.addInitScript(({ packs, seed }) => {
+  await page.addInitScript(({ packs, seed, preserve }) => {
+    if (preserve && sessionStorage.getItem('e2e-save-seeded')) return;
+    if (preserve) sessionStorage.setItem('e2e-save-seeded', 'true');
     const worldProgress = Object.fromEntries(
       [1, 2, 3, 4, 5, 6].map((world) => [world, { gamesCompleted: [], bossCompleted: false, stars: 0 }]),
     );
@@ -38,7 +41,7 @@ export async function seedFreePlay(
         recentContentByGame: {},
       },
     }));
-  }, { packs: enabledContentPackIds, seed: contentSeed });
+  }, { packs: enabledContentPackIds, seed: contentSeed, preserve: preserveOnReload });
 }
 
 export function captureRuntimeFailures(page: Page) {

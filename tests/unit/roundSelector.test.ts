@@ -3,9 +3,99 @@ import test from 'node:test';
 import { buildAssessmentChoiceSet, buildChoiceSet, getBalancedAnswerIndex, selectTargets, shuffleSeeded } from '../../src/lib/roundSelector';
 import { canSharePictureChoices } from '../../src/content/pictureConflicts';
 import { canShareSoundChoices } from '../../src/content/phonemeConflicts';
+import { isReadyForWordChallenge, readingContrastScore, selectLearningTargets } from '../../src/lib/learningChallenge';
+import { selectSoundPictureTargets } from '../../src/content/earlyRoundBuilders';
+
+test('picture variants cannot crowd out different sounds in the same run', () => {
+  const candidates = ['s', 'a', 't', 'p', 'i', 'n', 'm', 'd'].flatMap((targetLetter) =>
+    [0, 1, 2].map((variant) => ({ id: `${targetLetter}:${variant}`, targetLetter, targetWords: [], distractorWords: [] })),
+  );
+  const first = selectSoundPictureTargets(candidates, { count: 4, seed: 'sounds-1' });
+  const second = selectSoundPictureTargets(candidates, { count: 4, seed: 'sounds-2', recentIds: first.map((item) => item.id) });
+  assert.equal(new Set(first.map((item) => item.targetLetter)).size, 4);
+  assert.equal(new Set([...first, ...second].map((item) => item.targetLetter)).size, 8);
+  const third = selectSoundPictureTargets(candidates, { count: 4, seed: 'sounds-3', recentIds: [...first, ...second].map((item) => item.id) });
+  assert.equal(third.some((item) => first.some((previous) => previous.id === item.id)), false);
+  assert.equal(third.some((item) => second.some((previous) => previous.targetLetter === item.targetLetter)), false);
+});
 
 const ids = Array.from({ length: 12 }, (_, index) => ({ id: `item-${index}` }));
 const getId = (item: { id: string }) => item.id;
+
+test('last one to five untaught letters cannot be lost in shuffled review', () => {
+  for (let remaining = 1; remaining <= 5; remaining += 1) {
+    for (let run = 0; run < 100; run += 1) {
+      const newIds = new Set(ids.slice(0, remaining).map(getId));
+      const selected = selectLearningTargets(ids, {
+        count: 6, seed: `coverage-${run}`, getId,
+        recentIds: ids.map(getId), isNew: (item) => newIds.has(item.id), needsPractice: () => false,
+      });
+      assert.equal(selected.length, 6);
+      assert.equal(new Set(selected.map(getId)).size, 6);
+      assert.ok([...newIds].every((id) => selected.some((item) => item.id === id)));
+    }
+  }
+});
+
+test('a full alphabet is covered in five successful six-round sessions', () => {
+  const letters = [...'abcdefghijklmnopqrstuvwxyz'].map((id) => ({ id }));
+  const taught = new Set<string>();
+  let recentIds: string[] = [];
+  for (let run = 0; run < 5; run += 1) {
+    const selected = selectLearningTargets(letters, {
+      count: 6, seed: `alphabet-${run}`, getId, recentIds,
+      isNew: (item) => !taught.has(item.id), needsPractice: () => false,
+    });
+    selected.forEach((item) => taught.add(item.id));
+    recentIds = [...recentIds, ...selected.map(getId)].slice(-24);
+  }
+  assert.equal(taught.size, 26);
+});
+
+test('uncertain review is limited to two slots when varied practice is available', () => {
+  const weak = new Set(ids.slice(0, 4).map(getId));
+  const selected = selectLearningTargets(ids, {
+    count: 6, seed: 'review-limit', getId, isNew: () => false, needsPractice: (item) => weak.has(item.id),
+  });
+  assert.equal(selected.filter((item) => weak.has(item.id)).length, 2);
+  assert.equal(selected.length, 6);
+  const small = selectLearningTargets(ids.slice(0, 2), {
+    count: 6, seed: 'small', getId, isNew: () => false, needsPractice: () => true,
+  });
+  assert.equal(small.length, 2);
+  assert.equal(new Set(small.map(getId)).size, 2);
+});
+
+test('reading challenge requires repeated accurate answers and backs off with errors', () => {
+  assert.equal(isReadyForWordChallenge(), false);
+  assert.equal(isReadyForWordChallenge({ correct: 1, wrong: 0 }), false);
+  assert.equal(isReadyForWordChallenge({ correct: 3, wrong: 0 }), true);
+  assert.equal(isReadyForWordChallenge({ correct: 3, wrong: 1 }), false);
+  assert.equal(isReadyForWordChallenge({ correct: 4, wrong: 1 }), true);
+  assert.equal(readingContrastScore('cat', 'cut'), 2);
+  assert.equal(readingContrastScore('cat', 'bat'), 1);
+  assert.equal(readingContrastScore('cat', 'dog'), 0);
+  assert.equal(readingContrastScore('cat', 'coat'), 0);
+});
+
+test('earned contrast still obeys safety, variety and balanced answer positions', () => {
+  const words = ['cat', 'cut', 'bat', 'dog', 'sun'].map((id) => ({ id }));
+  const otherChoices = new Set<string>();
+  for (let round = 0; round < 90; round += 1) {
+    const answerIndex = getBalancedAnswerIndex(round, 3, 'contrast');
+    const choices = buildChoiceSet(words[0], words, {
+      count: 3, seed: `contrast-${round}`, answerIndex, getId,
+      canUseDistractor: (_, distractor) => distractor.id !== 'cut',
+      distractorScore: (answer, distractor) => readingContrastScore(answer.id, distractor.id),
+    });
+    assert.equal(choices[answerIndex].id, 'cat');
+    assert.equal(choices.some((choice) => choice.id === 'cut'), false);
+    assert.ok(choices.some((choice) => choice.id === 'bat'));
+    assert.equal(new Set(choices.map(getId)).size, 3);
+    choices.filter((choice) => !['cat', 'bat'].includes(choice.id)).forEach((choice) => otherChoices.add(choice.id));
+  }
+  assert.deepEqual([...otherChoices].sort(), ['dog', 'sun']);
+});
 
 test('seeded shuffle is repeatable and does not mutate input', () => {
   const original = [...ids];

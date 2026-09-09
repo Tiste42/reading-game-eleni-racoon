@@ -21,3 +21,6 @@
 - A successful audio request, a `running` AudioContext, or a resolved `play()` promise does not prove that an installed Apple PWA reaches the speakers. Exercise a real start tap, assert decoded audio is non-silent, verify playback time advances, and keep physical-device confirmation as a separate release gate.
 - iPhone/iPad PWA recovery listeners must remain installed for later gestures. Recreate native media sources after foreground/session loss, but only pause/resume the existing music element during speech so the track does not restart after every phoneme.
 - Sound and music switches must be tested at the playback boundary. Turning music on must call `play()` inside the trusted tap, and enabled persisted zero-volume settings must migrate back to audible defaults.
+# September 9 — confirmation and bounded upgrades
+- An ambiguous status message is not evidence of a parent/child playtest. Only record physical-device confirmation when the parent explicitly reports that behavior on that device. The parent has not yet played the cleaned-up release with Lenny.
+- Keep optional reading challenge inside existing taught-sound and picture-safety filters. Increase discrimination after repeated success, not response speed or punitive feedback.

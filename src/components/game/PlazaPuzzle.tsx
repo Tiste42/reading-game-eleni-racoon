@@ -16,6 +16,7 @@ import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
 import { getPracticedPhonemes } from '@/content/progression';
 import { canSharePictureChoices } from '@/content/pictureConflicts';
+import { isReadyForWordChallenge, readingContrastScore } from '@/lib/learningChallenge';
 
 const wordId = (entry: ContentWord) => entry.id;
 
@@ -54,6 +55,9 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
       answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
       getId: wordId,
       canUseDistractor: (answer, distractor) => canSharePictureChoices(answer.text, distractor.text),
+      distractorScore: isReadyForWordChallenge(useGameStore.getState().soundStats[word])
+        ? (answer, distractor) => readingContrastScore(answer.text, distractor.text)
+        : undefined,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
@@ -134,6 +138,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={replay}
       round={round}
@@ -165,7 +170,7 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
         </AnimatePresence>
 
         {/* The word choices — SHE reads these */}
-        <div className="flex gap-4 flex-wrap justify-center">
+        <div className="grid grid-cols-3 gap-2 w-full max-w-md">
           {choices.map((choice) => {
             const isAnswer = choice.id === entry.id;
             const highlight = (phase === 'won' || shouldReveal) && isAnswer;
@@ -176,28 +181,28 @@ export default function PlazaPuzzle({ worldId, onComplete }: Props) {
                 disabled={phase !== 'read'}
                 animate={wrongPick === choice.id ? { x: [-8, 8, -8, 8, 0] } : {}}
                 whileTap={{ scale: 0.92 }}
-                className={`px-7 py-5 rounded-3xl shadow-xl bg-white press-3d transition-all ${
+                className={`min-w-0 px-1 sm:px-4 py-5 rounded-3xl shadow-xl bg-white press-3d transition-all ${
                   highlight ? 'ring-4 ring-green-400 animate-hint-pulse scale-105' : ''
                 }`}
               >
-                <span className="text-5xl font-bold font-[Fredoka] text-gray-800 lowercase">{choice.text}</span>
+                <span className="text-2xl sm:text-4xl font-bold font-[Fredoka] text-gray-800 lowercase">{choice.text}</span>
               </motion.button>
             );
           })}
         </div>
 
         {/* Mosaic strip: solved pieces fill in */}
-        <div className="flex gap-2 bg-white/50 rounded-2xl px-4 py-2 shadow-inner">
+        <div data-testid="plaza-mosaic" className="grid grid-cols-6 gap-1 w-full max-w-md bg-white/50 rounded-2xl px-2 py-2 shadow-inner">
           {pieces.map((piece, i) => (
             <div
               key={i}
-              className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+              className={`min-w-0 aspect-square rounded-xl flex items-center justify-center ${
                 solvedWords.includes(piece.text) ? 'bg-amber-200' : 'bg-white/40 border-2 border-dashed border-amber-300'
               }`}
             >
               {solvedWords.includes(piece.text) && (
                 <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                  <WordCard word={piece.text} size={44} />
+                  <WordCard word={piece.text} size={32} />
                 </motion.span>
               )}
             </div>

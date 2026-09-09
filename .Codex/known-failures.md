@@ -1,5 +1,9 @@
 # Known Release Failures
 
+- Do not edit game source during a development-server browser sweep. HMR compilation can produce false input-readiness failures; release checks should target a fixed production build.
+- A progress count changing does not mean an AnimatePresence exit has finished. Wait for the target picture to change before reading the next answer in a full-session test.
+- Viewport checks must include non-interactive reward strips, not just buttons and document scrollWidth. Clipped mosaic cells can escape both checks.
+
 - Do not pass fallback text to a static phoneme clip. If phoneme media fails, browser TTS can say a letter name, schwa, or arbitrary text and teach the wrong sound; fail silently and keep the control retryable.
 - Do not attach a generic tap clip to every shared button. A short harsh clip is indistinguishable from negative feedback when it plays before both correct and incorrect outcomes.
 - Do not scope a phonics regression audit to the first world where it was reported. Shared speech helpers and content registries affect all six worlds.

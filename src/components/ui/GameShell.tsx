@@ -1,14 +1,15 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import ReplayButton from '@/components/ui/ReplayButton';
 
 interface Props {
   onBack: () => void;
   onReplay?: () => void;
-  /** 0-based current round and total rounds — drives the progress bar */
+  /** Completed rounds (0-based current round) and total rounds. */
   round: number;
   totalRounds: number;
+  complete?: boolean;
   /** emoji that rides the progress bar head (e.g. 🪅) */
   progressIcon?: string;
   /** tailwind gradient classes for a LIGHT themed tint over the world background */
@@ -26,11 +27,14 @@ export default function GameShell({
   onReplay,
   round,
   totalRounds,
+  complete = false,
   progressIcon = '⭐',
   bgClassName = 'from-pink-300/75 to-orange-200/75',
   children,
 }: Props) {
-  const pct = totalRounds > 0 ? Math.min(100, (round / totalRounds) * 100) : 0;
+  const completed = complete ? totalRounds : Math.max(0, Math.min(round, totalRounds));
+  const pct = totalRounds > 0 ? (completed / totalRounds) * 100 : 0;
+  const reducedMotion = useReducedMotion();
 
   return (
     <div className="min-h-screen relative flex flex-col">
@@ -41,7 +45,7 @@ export default function GameShell({
       />
 
       <div className="relative z-10 flex flex-col flex-1 px-4 py-5">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3 pr-[150px] min-h-12">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={onBack}
@@ -52,26 +56,48 @@ export default function GameShell({
           </motion.button>
           {onReplay && <ReplayButton onReplay={onReplay} />}
 
-          {/* Progress bar — extra right margin so the floating music/settings/home
-              buttons (fixed top-right) never cover it */}
-          <div className="relative flex-1 h-6 bg-white/50 backdrop-blur-sm rounded-full shadow-inner mr-[150px]">
+        </div>
+
+        {/* A separate trail stays usable on phones beside the floating controls.
+            It reflects completed rounds only, never which answer to choose. */}
+        <div className="w-full max-w-xl mx-auto mb-3 rounded-3xl border-2 border-white/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-md">
+          <div className="flex items-center justify-between gap-3 mb-2 font-[Fredoka] text-sm font-semibold text-purple-900">
+            <span>Adventure trail</span>
+            <span>{completed} / {totalRounds} complete</span>
+          </div>
+          <div
+            role="progressbar"
+            aria-label="Adventure progress"
+            aria-valuemin={0}
+            aria-valuemax={totalRounds}
+            aria-valuenow={completed}
+            className="relative h-8 mx-3"
+          >
+            <div className="absolute inset-x-0 top-3 h-2 rounded-full bg-purple-200/80" />
             <motion.div
-              className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-yellow-300 to-amber-400"
+              className="absolute left-0 top-3 h-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-400"
               initial={false}
-              animate={{ width: `${Math.max(pct, 6)}%` }}
-              transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: reducedMotion ? 0 : 0.4 }}
             />
+            {Array.from({ length: totalRounds + 1 }, (_, index) => (
+              <span
+                key={index}
+                aria-hidden="true"
+                className={`absolute top-2 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-white ${index <= completed ? 'bg-amber-400' : 'bg-purple-300'}`}
+                style={{ left: `${totalRounds > 0 ? (index / totalRounds) * 100 : 0}%` }}
+              />
+            ))}
             <motion.div
-              className="absolute top-1/2 -translate-y-1/2 text-3xl drop-shadow"
+              aria-hidden="true"
+              className="absolute top-0 -translate-x-1/2 text-3xl leading-8 drop-shadow"
               initial={false}
-              animate={{ left: `calc(${Math.max(pct, 6)}% - 14px)`, rotate: [0, -10, 10, 0] }}
-              transition={{
-                left: { type: 'spring', stiffness: 120, damping: 20 },
-                rotate: { duration: 0.6 },
-              }}
+              animate={{ left: `${pct}%` }}
+              transition={{ duration: reducedMotion ? 0 : 0.4 }}
             >
               {progressIcon}
             </motion.div>
+            <span aria-hidden="true" className="absolute right-0 top-0 translate-x-1/2 text-3xl leading-8">🏁</span>
           </div>
         </div>
 

@@ -16,6 +16,7 @@ import { buildChoiceSet, getBalancedAnswerIndex } from '@/lib/roundSelector';
 import { useContentSession } from '@/lib/useContentSession';
 import { getPracticedPhonemes } from '@/content/progression';
 import { canSharePictureChoices } from '@/content/pictureConflicts';
+import { isReadyForWordChallenge, readingContrastScore } from '@/lib/learningChallenge';
 
 const wordId = (entry: ContentWord) => entry.id;
 
@@ -56,6 +57,9 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
       answerIndex: getBalancedAnswerIndex(round, 3, session.seed),
       getId: wordId,
       canUseDistractor: (answer, distractor) => canSharePictureChoices(answer.text, distractor.text),
+      distractorScore: isReadyForWordChallenge(useGameStore.getState().soundStats[word])
+        ? (answer, distractor) => readingContrastScore(answer.text, distractor.text)
+        : undefined,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
@@ -137,6 +141,7 @@ export default function SailboatRace({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={replay}
       round={round}

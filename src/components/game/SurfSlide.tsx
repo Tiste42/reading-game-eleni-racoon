@@ -183,6 +183,7 @@ export default function SurfSlide({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={handleReplay}
       round={round}

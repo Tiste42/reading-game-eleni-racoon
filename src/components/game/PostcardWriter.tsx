@@ -117,6 +117,7 @@ export default function PostcardWriter({ worldId, onComplete }: Props) {
 
   return (
     <GameShell
+      complete={showCelebration}
       onBack={onComplete}
       onReplay={replay}
       round={round}
