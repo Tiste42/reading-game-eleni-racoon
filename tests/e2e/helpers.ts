@@ -7,8 +7,9 @@ export async function seedFreePlay(
   enabledContentPackIds = allPacks,
   contentSeed = 'e2e-seed',
   preserveOnReload = false,
+  initialProgress: { coins?: number; passportStamps?: string[] } = {},
 ) {
-  await page.addInitScript(({ packs, seed, preserve }) => {
+  await page.addInitScript(({ packs, seed, preserve, progress }) => {
     if (preserve && sessionStorage.getItem('e2e-save-seeded')) return;
     if (preserve) sessionStorage.setItem('e2e-save-seeded', 'true');
     const worldProgress = Object.fromEntries(
@@ -19,10 +20,10 @@ export async function seedFreePlay(
       state: {
         currentWorld: 0,
         worldProgress,
-        coins: 0,
+        coins: progress.coins ?? 0,
         companions: [],
         costumes: [],
-        passportStamps: [],
+        passportStamps: progress.passportStamps ?? [],
         masteredPhonemes: [],
         taughtPhonemes: [...'abcdefghijklmnopqrstuvwxyz'.split(''), 'sh', 'ch', 'th', 'th-voiced'],
         masteredWords: ['the', 'was', 'said', 'is', 'to', 'he', 'she'],
@@ -41,7 +42,7 @@ export async function seedFreePlay(
         recentContentByGame: {},
       },
     }));
-  }, { packs: enabledContentPackIds, seed: contentSeed, preserve: preserveOnReload });
+  }, { packs: enabledContentPackIds, seed: contentSeed, preserve: preserveOnReload, progress: initialProgress });
 }
 
 export function captureRuntimeFailures(page: Page) {

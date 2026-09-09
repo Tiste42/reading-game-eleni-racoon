@@ -1,5 +1,7 @@
 # Known Release Failures
 
+- Seed progress before app hydration in browser tests. Mutating localStorage behind a live Zustand store is unsafe: the home page's setCurrentWorld effect persists old in-memory state, overwriting the fixture. Assert starting balances before exercising reload.
+
 - Do not edit game source during a development-server browser sweep. HMR compilation can produce false input-readiness failures; release checks should target a fixed production build.
 - A progress count changing does not mean an AnimatePresence exit has finished. Wait for the target picture to change before reading the next answer in a full-session test.
 - Viewport checks must include non-interactive reward strips, not just buttons and document scrollWidth. Clipped mosaic cells can escape both checks.

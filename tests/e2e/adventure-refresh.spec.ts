@@ -24,18 +24,14 @@ test('adventure trail and controls fit every world at phone width', async ({ pag
 
 test('trail advances after solving, not selecting a wrong word; reload preserves rewards', async ({ page }, testInfo) => {
   if (testInfo.project.name === 'chromium') await page.setViewportSize({ width: 375, height: 812 });
-  await seedFreePlay(page, allPacks, 'adventure-save', true);
-  await page.goto('/');
-  await page.evaluate(() => {
-    const saved = JSON.parse(localStorage.getItem('eleni-sound-safari')!);
-    saved.state.coins = 37;
-    saved.state.passportStamps = ['test-stamp'];
-    localStorage.setItem('eleni-sound-safari', JSON.stringify(saved));
-  });
+  // Seed before Zustand hydrates; editing storage behind a mounted store can be
+  // overwritten by its next legitimate persistence write (e.g. home-screen effects).
+  await seedFreePlay(page, allPacks, 'adventure-save', true, { coins: 37, passportStamps: ['test-stamp'] });
   await page.goto('/world/3/plaza-puzzle');
   const trail = page.getByRole('progressbar', { name: 'Adventure progress' });
   const target = page.getByTestId('plaza-target-picture').getByRole('img');
   await expect(target).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('eleni-sound-safari')!).state.coins)).toBe(37);
   const word = (await target.getAttribute('alt'))!;
   const answer = page.getByRole('button', { name: word, exact: true });
   const wrong = page.locator('button').filter({ has: page.locator('span.lowercase') }).filter({ hasNotText: new RegExp(`^${word}$`) }).first();

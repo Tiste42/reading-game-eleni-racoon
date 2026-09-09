@@ -13,6 +13,8 @@
 
 ## Boundaries
 
+- Public validation: all unique smoke/gameplay/audio checks passed after correcting one fixture race. The initial live run had 13 passes and one tablet save assertion failure. Pre-hydration progress seeding fixed the fixture; the corrected save test passed six consecutive public runs (three per browser), including starting balance, post-reload balance/stamps, and recorded word success. Application save/audio code did not change. Test-only follow-up commit records this correction.
+
 - No new media, dependencies, audio implementation, save schema, reward rules, or progression IDs.
 - Physical iPad/phone speaker output and Lenny's experience are not confirmed by the muted tests. Earlier ambiguous parent text was not hardware confirmation.
 - Deferred broader work: record actually presented rather than reserved batches; broader diagnostic key unification; new mechanics/artwork. Do not quietly widen this small release.
