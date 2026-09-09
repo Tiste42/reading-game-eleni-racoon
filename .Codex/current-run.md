@@ -1,4 +1,30 @@
+# Phoneme repair release candidate — 2026-09-09
+
+FINAL CANDIDATE supersedes the historical notes below: all 30 files have human-library provenance and file-bound audio identity reviews. L now uses a normalized isolated light-L from Peter Isotalo (CC BY-SA 3.0); X removes its leading letter-name vowel from buzzphonics; voiced TH uses the isolated initial sound from a CC0 American-English recording of this. Final L/TH passed both current Flash and Pro checks. No synthesized phonemes.
+
+Audio judgments are NOT uniformly reliable. Retained raw disagreements in tasks/phoneme-*-review*.json. tasks/phoneme-release-review.json distinguishes correct sound identity from pure-articulation quality: ten original stop/glide cues have brief release vowels; this is NOT a claim of zero-schwa blending or physical iPad listening. Final per-file hashes are locked in unit/browser tests.
+
+Full local built-app Chromium+WebKit suite: 55 passed, 21 intentional browser-specific skips. Unit (44), typecheck, lint, build, content validation passed. Final-media focused browser rerun pending completion. Publication must verify all 30 public file hashes, exact production SHA, and live audio/progress routes.
+
+This release repairs phonemes/shared initial-sound picture selection, not the separately blocked rhyme-narration prefix/voice continuity. Preserve that follow-up below and do not call it fixed. Rollback only the release if new regressions occur; do not erase user saves. Previous production SHA: 3ad7dca7954eb7f3db1625e19caabc2c56d4600b.
+
+## Historical investigation — superseded by final candidate above
+
+Root cause: alphabet expansion 1369321 replaced 28 original phoneme MP3s while leaving buzzphonics credits unchanged. Restored those bytes from 8783e74 and imported upstream qu.m4a at f51eeb71 as q.mp3 (format conversion only). Library hashes are pinned. th-voiced.mp3 remains unresolved; do not represent all sounds as verified. No ElevenLabs phoneme generation is permitted; generator manifest removed and old fixer disabled. AUDIO_VERSION bumped locally.
+
+Shared initial-sound groups now merge duplicate letter/sound entries across packs and exclude the bug asset depicting a ladybug. SoundSafari's correct picture now uses the actual target instead of independently choosing another word. No save schema or reward changes.
+
+Checks: 44 unit tests, typecheck, production build, content validation, seven muted Chromium browser checks passed. Browser checks compare 29 served MP3 hashes, three sound-request/answer mappings, trail layout and saved rewards. These are not audible phoneme-quality or physical iPad proof. No commit, push, or deployment this follow-up. Release still needs voiced-th provenance/listening and the separately blocked rhyme narration repair below. Original 28-file recovery script does not touch Q or voiced TH.
+
 # Bounded reading refresh — 2026-09-09
+
+## Rhyme narration follow-up — blocked before runtime changes
+
+Parent reports missing question opening, jarring timing and backup voice. Source: RhymeBeach passes only current.target to useGameSpeechWithOptions, which has no pause before naming the first choice. Wrong retry builds a full dynamic question, while speech.ts only has recorded full questions for cat/bug/log/hen/pin; newer targets hit browser TTS. Correct feedback may also be cut off by the 700ms next-round handoff.
+
+Needed repair: recorded question prefix, target, deliberate pause, evenly highlighted recorded choices; recorded-only retry and interruption ownership. Preserve trail/candies and choices remaining touchable when narration stalls.
+
+Generating just narration/inst-what-rhymes-with.mp3 failed: ElevenLabs HTTP 400 api_key_id_used_as_api_key. User must securely repair ELEVENLABS_API_KEY in .env.local. No new audio or runtime changes were made, and nothing was published in this follow-up. Local changes are the generator's exact --only filter/manifest and diagnosis notes. Do not substitute a voice or guess an audio-trim boundary to bypass the missing recording.
 
 ## Changes and verified candidate
 

@@ -15,50 +15,19 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY!;
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'JQLMoxrGsJub4hRarykA';
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'audio');
 const RATE_LIMIT_MS = 500;
-const FORCE_PHONEMES = process.argv.includes('--force-phonemes');
+if (process.argv.includes('--force-phonemes') || process.argv.some((arg) => arg.startsWith('--only=phonemes/'))) {
+  throw new Error('Phonemes are protected library recordings. ElevenLabs generation is prohibited.');
+}
 
 interface AudioClip {
   id: string;
   text: string;
   outputPath: string;
-  category: 'phoneme' | 'word' | 'blend' | 'narration' | 'sfx';
+  category: 'word' | 'blend' | 'narration' | 'sfx';
 }
-
-// Natural pronunciation text for phonemes — spoken by the same voice model
-// Exact build-time phoneme tags keep vowels short and stop sounds free of schwa.
-const cmu = (letter: string, phoneme: string) =>
-  `<phoneme alphabet="cmu-arpabet" ph="${phoneme}">${letter}</phoneme>`;
-
-const PHONEME_TEXT: Record<string, string> = {
-  a: cmu('a', 'AE1'), b: cmu('b', 'B'), c: cmu('c', 'K'), d: cmu('d', 'D'),
-  e: cmu('e', 'EH1'), f: cmu('f', 'F'), g: cmu('g', 'G'), h: cmu('h', 'HH'),
-  i: cmu('i', 'IH1'), j: cmu('j', 'JH'), k: cmu('k', 'K'), l: cmu('l', 'L'),
-  m: cmu('m', 'M'), n: cmu('n', 'N'), o: cmu('o', 'AA1'), p: cmu('p', 'P'),
-  q: cmu('q', 'K W'), r: cmu('r', 'R'), s: cmu('s', 'S'), t: cmu('t', 'T'),
-  u: cmu('u', 'AH1'), v: cmu('v', 'V'), w: cmu('w', 'W'), x: cmu('x', 'K S'),
-  y: cmu('y', 'Y'), z: cmu('z', 'Z'), sh: cmu('sh', 'SH'),
-  ch: cmu('ch', 'CH'), th: cmu('th', 'TH'), 'th-voiced': cmu('th', 'DH'),
-};
-
 
 function buildManifest(): AudioClip[] {
   const clips: AudioClip[] = [];
-
-  // --- Phonemes ---
-  const phonemeLetters = [
-    's', 'a', 't', 'p', 'i', 'n', 'e', 'l', 'c', 'k',
-    'h', 'r', 'm', 'd', 'g', 'o', 'u', 'f', 'b', 'j',
-    'q', 'v', 'w', 'x', 'y', 'z', 'sh', 'ch', 'th', 'th-voiced',
-  ];
-
-  for (const ph of phonemeLetters) {
-    clips.push({
-      id: `phoneme-${ph}`,
-      text: PHONEME_TEXT[ph] || ph,
-      outputPath: `phonemes/${ph}.mp3`,
-      category: 'phoneme',
-    });
-  }
 
   // --- CVC Words + game option words (clean pronunciation) ---
   const words = [
@@ -327,6 +296,7 @@ function buildManifest(): AudioClip[] {
     // World 1: SyllableClap
     { text: 'How many beats does this word have? Clap for each beat!' },
     // World 1: RhymeBeach
+    { text: 'What rhymes with' },
     { text: 'What rhymes with cat?' },
     { text: 'What rhymes with bug?' },
     { text: 'What rhymes with log?' },
@@ -698,7 +668,8 @@ async function generateClip(clip: AudioClip): Promise<boolean> {
   const outputFile = path.join(OUTPUT_DIR, clip.outputPath);
   const dir = path.dirname(outputFile);
 
-  if (fs.existsSync(outputFile) && !(FORCE_PHONEMES && clip.category === 'phoneme')) {
+  if (clip.outputPath.startsWith('phonemes/')) throw new Error('Protected library recording');
+  if (fs.existsSync(outputFile)) {
     console.log(`  SKIP: ${clip.outputPath} (exists)`);
     return true;
   }
@@ -708,7 +679,7 @@ async function generateClip(clip: AudioClip): Promise<boolean> {
   try {
     const body: Record<string, unknown> = {
       text: clip.text,
-      model_id: clip.category === 'phoneme' ? 'eleven_turbo_v2' : 'eleven_multilingual_v2',
+      model_id: 'eleven_multilingual_v2',
       voice_settings: {
         stability: 0.75,
         similarity_boost: 0.75,
@@ -763,10 +734,12 @@ async function main() {
     process.exit(1);
   }
 
-  const clips = buildManifest();
+  const only = process.argv.find((arg) => arg.startsWith('--only='))?.slice('--only='.length);
+  const clips = buildManifest().filter((clip) => !only || clip.outputPath === only);
+  if (!clips.length) throw new Error('No matching audio clip; nothing generated.');
   console.log(`Total clips to generate: ${clips.length}\n`);
 
-  const categories = ['phoneme', 'word', 'blend', 'narration'] as const;
+  const categories = ['word', 'blend', 'narration'] as const;
   let successCount = 0;
   let failCount = 0;
   const failures: string[] = [];
@@ -784,7 +757,7 @@ async function main() {
         failCount++;
         failures.push(clip.outputPath);
       }
-      if (!existed || (FORCE_PHONEMES && clip.category === 'phoneme')) {
+      if (!existed) {
         await sleep(RATE_LIMIT_MS);
       }
     }
@@ -793,6 +766,7 @@ async function main() {
   console.log('\n=== SUMMARY ===');
   console.log(`Success: ${successCount}`);
   console.log(`Failed: ${failCount}`);
+  if (failCount) process.exitCode = 1;
   if (failures.length > 0) {
     console.log('\nFailed clips (need manual review/fallback):');
     failures.forEach((f) => console.log(`  - ${f}`));

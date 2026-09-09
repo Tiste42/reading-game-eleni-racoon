@@ -16,7 +16,41 @@ import { buildRhymeCandidates, buildSoundPictureCandidates } from '../../src/con
 import { getRhymeFamilies } from '../../src/content/registry';
 import { hasChildIdentifiablePicture } from '../../src/content/pictureQuality';
 import { canSharePictureChoices } from '../../src/content/pictureConflicts';
+import { buildChoiceSet } from '../../src/lib/roundSelector';
+import { canShareSoundChoices } from '../../src/content/phonemeConflicts';
 
+test('sound pools merge packs without duplicate letters or the ladybug-as-bug asset', () => {
+  const groups = getInitialSoundGroups(['alphabet-adventure']);
+  assert.equal(new Set(groups.map((group) => group.letter)).size, groups.length);
+  assert.ok(groups.every((group) => group.words.every((word) => word.text !== 'bug')));
+  for (const answer of groups) {
+    for (let seed = 0; seed < 100; seed++) {
+      const choices = buildChoiceSet(answer, groups, {
+        count: 3, seed: String(seed), answerIndex: seed % 3,
+        getId: (group) => group.id,
+        canUseDistractor: (a, b) => canShareSoundChoices(a.phonemeId, b.phonemeId),
+      });
+      assert.equal(choices.length, 3);
+      assert.equal(choices.filter((choice) => choice.letter === answer.letter).length, 1);
+    }
+  }
+});
+
+test('every letter-sound assessment includes exactly one matching letter across shuffled seeds', () => {
+  const examples = getLetterExamples(['alphabet-adventure']);
+  assert.equal(examples.length, 26);
+  for (const answer of examples) {
+    for (let seed = 0; seed < 100; seed++) {
+      const choices = buildChoiceSet(answer, examples, {
+        count: 3, seed: String(seed), answerIndex: seed % 3,
+        getId: (example) => example.letter,
+        canUseDistractor: (a, b) => canShareSoundChoices(a.phonemeId, b.phonemeId),
+      });
+      assert.equal(choices.filter((choice) => choice.letter === answer.letter).length, 1);
+      assert.equal(choices[seed % 3].phonemeId, answer.phonemeId);
+    }
+  }
+});
 test('core stays active while optional packs can be removed', () => {
   assert.deepEqual(getEnabledPacks([]).map((pack) => pack.id), ['core']);
   assert.ok(getWordsForActivity([], 'blend-to-picture').every((word) => word.id.startsWith('core:')));

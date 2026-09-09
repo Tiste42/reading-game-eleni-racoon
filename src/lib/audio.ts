@@ -6,7 +6,7 @@ import { shouldUseNativeMediaAudio } from './audioPlatform';
 
 // Bump this whenever pre-generated audio files are regenerated so browsers
 // fetch the new versions instead of stale cached ones.
-export const AUDIO_VERSION = '7-sound-semantics';
+export const AUDIO_VERSION = '8-original-library-phonemes';
 
 const audioCache = new Map<string, Howl>();
 let audioUnlocked = false;

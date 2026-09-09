@@ -1,0 +1,547 @@
+{
+  "scope": "Correct phonics sound versus alphabet name, wrong phoneme, word or phrase. Not a claim of perfectly pure consonants or physical-device listening.",
+  "reviewMethod": "Google audio analysis, with stronger-model review for disputed identity and source-verified human replacements. Raw disagreements are retained in sibling review files.",
+  "releaseVowelPolicy": "Existing human stop/glide cues with brief neutral releases are identified separately. They are not alphabet names; further pure-blending refinement remains a quality limitation.",
+  "clips": [
+    {
+      "id": "a",
+      "sha256": "b5e539b0adf0fed06482e86813658f2d4144bd7d299e37e0dd0f78b3ca723589",
+      "expected": "æ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "b5e539b0adf0fed06482e86813658f2d4144bd7d299e37e0dd0f78b3ca723589",
+        "reviewedAt": "2026-09-09T17:39:34.936Z",
+        "result": {
+          "hear": "/æ/",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clear short vowel sound matches the target"
+        }
+      }
+    },
+    {
+      "id": "b",
+      "sha256": "bf17cec6107ac33bc479e3fcc1bac5932dd5a5021b32ce5f8472f51a6b9f05e9",
+      "expected": "b",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "bf17cec6107ac33bc479e3fcc1bac5932dd5a5021b32ce5f8472f51a6b9f05e9",
+        "reviewedAt": "2026-09-09T17:39:38.026Z",
+        "result": {
+          "hear": "b",
+          "type": "sound",
+          "matches_target": true,
+          "note": "isolated voiced bilabial plosive"
+        }
+      }
+    },
+    {
+      "id": "c",
+      "sha256": "6a139e559e359d130b346b128f170e81f70e6ada5c63e55b2ee208bcc21fa8a7",
+      "expected": "k",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "6a139e559e359d130b346b128f170e81f70e6ada5c63e55b2ee208bcc21fa8a7",
+        "reviewedAt": "2026-09-09T17:39:42.000Z",
+        "result": {
+          "hear": "kə",
+          "type": "sound",
+          "matches_target": false,
+          "note": "consonant pronounced with an audible added schwa"
+        }
+      }
+    },
+    {
+      "id": "d",
+      "sha256": "8ba8d9ea184b74c57a4867b8ea327770a8999fd4ac6f2cae75f52358b0fe0aa8",
+      "expected": "d",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "8ba8d9ea184b74c57a4867b8ea327770a8999fd4ac6f2cae75f52358b0fe0aa8",
+        "reviewedAt": "2026-09-09T17:39:44.576Z",
+        "result": {
+          "hear": "dʌ",
+          "type": "sound",
+          "matches_target": false,
+          "note": "pronounced with an intrusive trailing schwa"
+        }
+      }
+    },
+    {
+      "id": "e",
+      "sha256": "77faabb5265d8d5e1945d51072c06ac75ee2eda54a9369258cfa3b352e7e5f2f",
+      "expected": "ɛ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.1-pro-preview",
+        "sha256": "77faabb5265d8d5e1945d51072c06ac75ee2eda54a9369258cfa3b352e7e5f2f",
+        "reviewedAt": "2026-09-09T17:42:11.786Z",
+        "result": {
+          "hear": "ɛ",
+          "type": "sound",
+          "matches_target": true,
+          "note": "Clear short vowel /ɛ/ sound."
+        }
+      }
+    },
+    {
+      "id": "f",
+      "sha256": "0f2ccb9a96e0a53f0992fd3fcc7ce19dbf24af464f634d10ec855358e9965c60",
+      "expected": "f",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "0f2ccb9a96e0a53f0992fd3fcc7ce19dbf24af464f634d10ec855358e9965c60",
+        "reviewedAt": "2026-09-09T17:39:49.540Z",
+        "result": {
+          "hear": "f",
+          "type": "sound",
+          "matches_target": true,
+          "note": "isolated voiceless labiodental fricative"
+        }
+      }
+    },
+    {
+      "id": "g",
+      "sha256": "0ac6e7ab0059efbf37a799424894d075da7bb6f8d8e99a4ba9c0bfdfa12d6586",
+      "expected": "ɡ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "0ac6e7ab0059efbf37a799424894d075da7bb6f8d8e99a4ba9c0bfdfa12d6586",
+        "reviewedAt": "2026-09-09T17:39:52.033Z",
+        "result": {
+          "hear": "ɡə",
+          "type": "sound",
+          "matches_target": false,
+          "note": "Voiced velar plosive with an added schwa vowel sound"
+        }
+      }
+    },
+    {
+      "id": "h",
+      "sha256": "9748016cf05e40657bdfe04bf1b89df374717f3567833ffa9ce051829515a208",
+      "expected": "h",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "9748016cf05e40657bdfe04bf1b89df374717f3567833ffa9ce051829515a208",
+        "reviewedAt": "2026-09-09T17:39:54.691Z",
+        "result": {
+          "hear": "hə",
+          "type": "sound",
+          "matches_target": false,
+          "note": "pronounced with an audible added schwa vowel"
+        }
+      }
+    },
+    {
+      "id": "i",
+      "sha256": "8aeac4296fc82b7adb4304f84d772e930e419136fe0348c40a24bc527059f0f5",
+      "expected": "ɪ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "8aeac4296fc82b7adb4304f84d772e930e419136fe0348c40a24bc527059f0f5",
+        "reviewedAt": "2026-09-09T17:39:57.411Z",
+        "result": {
+          "hear": "ɪ",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clear short vowel /ɪ/"
+        }
+      }
+    },
+    {
+      "id": "j",
+      "sha256": "85331d842e78e912f6bfe136632951b8c93f00cf97f95307c6d3b72e8e6153f0",
+      "expected": "dʒ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "85331d842e78e912f6bfe136632951b8c93f00cf97f95307c6d3b72e8e6153f0",
+        "reviewedAt": "2026-09-09T17:39:59.863Z",
+        "result": {
+          "hear": "dʒə",
+          "type": "sound",
+          "matches_target": false,
+          "note": "Target phoneme has a conspicuous added schwa vowel sound."
+        }
+      }
+    },
+    {
+      "id": "k",
+      "sha256": "6a139e559e359d130b346b128f170e81f70e6ada5c63e55b2ee208bcc21fa8a7",
+      "expected": "k",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "6a139e559e359d130b346b128f170e81f70e6ada5c63e55b2ee208bcc21fa8a7",
+        "reviewedAt": "2026-09-09T17:40:02.721Z",
+        "result": {
+          "hear": "kə",
+          "type": "sound",
+          "matches_target": false,
+          "note": "Spoken with an intrusive schwa after the stop consonant"
+        }
+      }
+    },
+    {
+      "id": "l",
+      "sha256": "18b609d5d2d147cb5f6ec442f7d4db434864fec849705a6c9ce8f454abb360b3",
+      "expected": "l",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.1-pro-preview",
+        "sha256": "18b609d5d2d147cb5f6ec442f7d4db434864fec849705a6c9ce8f454abb360b3",
+        "reviewedAt": "2026-09-09T17:48:18.414Z",
+        "result": {
+          "hear": "l",
+          "type": "sound",
+          "matches_target": true,
+          "note": "Clear and accurate pronunciation of the phoneme /l/."
+        }
+      }
+    },
+    {
+      "id": "m",
+      "sha256": "3fa1cb11c9ad37ce6a42804079b89186df824bb82bfcba24908db9cfd28c2080",
+      "expected": "m",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "3fa1cb11c9ad37ce6a42804079b89186df824bb82bfcba24908db9cfd28c2080",
+        "reviewedAt": "2026-09-09T17:40:10.609Z",
+        "result": {
+          "hear": "mː",
+          "type": "sound",
+          "matches_target": true,
+          "note": "Isolated voiced bilabial nasal consonant."
+        }
+      }
+    },
+    {
+      "id": "n",
+      "sha256": "461a144f31c870867a4f864fde507bb08b99f21f66780f83b9081cc303e19315",
+      "expected": "n",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "461a144f31c870867a4f864fde507bb08b99f21f66780f83b9081cc303e19315",
+        "reviewedAt": "2026-09-09T17:40:14.049Z",
+        "result": {
+          "hear": "n",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean isolated alveolar nasal sound"
+        }
+      }
+    },
+    {
+      "id": "o",
+      "sha256": "08ed8502e4f89fb5f365cc15183fe451e7ed13bab493a9b8c45c66fda29ab719",
+      "expected": "ɑ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "08ed8502e4f89fb5f365cc15183fe451e7ed13bab493a9b8c45c66fda29ab719",
+        "reviewedAt": "2026-09-09T17:40:17.019Z",
+        "result": {
+          "hear": "ɑː",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean American short-o vowel sound"
+        }
+      }
+    },
+    {
+      "id": "p",
+      "sha256": "5443aebea52ac532b1a1f4598e78db6041af8c0e49aa6970d70389979973fe2c",
+      "expected": "p",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "5443aebea52ac532b1a1f4598e78db6041af8c0e49aa6970d70389979973fe2c",
+        "reviewedAt": "2026-09-09T17:40:19.408Z",
+        "result": {
+          "hear": "[pʰə]",
+          "type": "sound",
+          "matches_target": false,
+          "note": "Voiceless bilabial plosive with a short schwa vowel"
+        }
+      }
+    },
+    {
+      "id": "q",
+      "sha256": "4c7bf7855d4dc17a05436cc1045e4ae6c641118f4d87e6439ab2c30b13af8a86",
+      "expected": "kw",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "4c7bf7855d4dc17a05436cc1045e4ae6c641118f4d87e6439ab2c30b13af8a86",
+        "reviewedAt": "2026-09-09T17:40:21.647Z",
+        "result": {
+          "hear": "/kwə/",
+          "type": "sound",
+          "matches_target": true,
+          "note": "Target initial sound for qu spoken clearly with brief schwa."
+        }
+      }
+    },
+    {
+      "id": "r",
+      "sha256": "473e667e4a9004997c61cf61fe99d6d798c59c7610cb22d5a8b0b608c1c0f580",
+      "expected": "ɹ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "473e667e4a9004997c61cf61fe99d6d798c59c7610cb22d5a8b0b608c1c0f580",
+        "reviewedAt": "2026-09-09T17:40:23.984Z",
+        "result": {
+          "hear": "/ɹ/",
+          "type": "sound",
+          "matches_target": true,
+          "note": "isolated voiced postalveolar approximant"
+        }
+      }
+    },
+    {
+      "id": "s",
+      "sha256": "ee7317419c9f12683f40b0aa4045af653ed87333e3b56cb754a0e5ecf40d7331",
+      "expected": "s",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "ee7317419c9f12683f40b0aa4045af653ed87333e3b56cb754a0e5ecf40d7331",
+        "reviewedAt": "2026-09-09T17:40:28.998Z",
+        "result": {
+          "hear": "[s]",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clear voiceless alveolar fricative phoneme"
+        }
+      }
+    },
+    {
+      "id": "t",
+      "sha256": "9fc0da2a26aa24c360059f6faf9bf424c3005d7b4619491e1f8450ebd640a9c4",
+      "expected": "t",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "9fc0da2a26aa24c360059f6faf9bf424c3005d7b4619491e1f8450ebd640a9c4",
+        "reviewedAt": "2026-09-09T17:40:31.680Z",
+        "result": {
+          "hear": "[tʰ]",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean voiceless alveolar plosive"
+        }
+      }
+    },
+    {
+      "id": "u",
+      "sha256": "1e6c5dcbe7c4d3cea50d1b0ed8a466162233ec158201df408cd4038069d88ab7",
+      "expected": "ʌ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "1e6c5dcbe7c4d3cea50d1b0ed8a466162233ec158201df408cd4038069d88ab7",
+        "reviewedAt": "2026-09-09T17:40:35.583Z",
+        "result": {
+          "hear": "ʌ",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean short u vowel sound"
+        }
+      }
+    },
+    {
+      "id": "v",
+      "sha256": "c86442f76befe7d56068569b2a0e145d65007ddb44d179a1a7fdf9da3877663b",
+      "expected": "v",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "c86442f76befe7d56068569b2a0e145d65007ddb44d179a1a7fdf9da3877663b",
+        "reviewedAt": "2026-09-09T17:40:41.651Z",
+        "result": {
+          "hear": "v",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean voiced labiodental fricative"
+        }
+      }
+    },
+    {
+      "id": "w",
+      "sha256": "647303b7bcec2cba301a1346a1d4e90374b7f0399e2ad759b70aa5e9e94053c4",
+      "expected": "w",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "647303b7bcec2cba301a1346a1d4e90374b7f0399e2ad759b70aa5e9e94053c4",
+        "reviewedAt": "2026-09-09T17:40:44.947Z",
+        "result": {
+          "hear": "wə",
+          "type": "sound",
+          "matches_target": false,
+          "note": "pronounced with an audible schwa after the consonant"
+        }
+      }
+    },
+    {
+      "id": "x",
+      "sha256": "5b69ca5a6ea9e590e219a80877ac6f02adc927404fde47bedf5f4a26907b5b60",
+      "expected": "ks",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.1-pro-preview",
+        "sha256": "5b69ca5a6ea9e590e219a80877ac6f02adc927404fde47bedf5f4a26907b5b60",
+        "reviewedAt": "2026-09-09T17:38:11.171Z",
+        "result": {
+          "hear": "ks",
+          "type": "sound",
+          "matches_target": true,
+          "note": "Clear /ks/ sound matching the target phoneme."
+        }
+      }
+    },
+    {
+      "id": "y",
+      "sha256": "81fde111018d1557799c1d3a2c7702de1c54b51da6964687c6d8d63dd18e72e1",
+      "expected": "j",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": true,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "81fde111018d1557799c1d3a2c7702de1c54b51da6964687c6d8d63dd18e72e1",
+        "reviewedAt": "2026-09-09T17:40:49.435Z",
+        "result": {
+          "hear": "/jə/",
+          "type": "sound",
+          "matches_target": false,
+          "note": "Target /j/ includes an unwanted added schwa vowel sound."
+        }
+      }
+    },
+    {
+      "id": "z",
+      "sha256": "c777a8ecd98b4cfd943d4d8d81b831c9873bbb1068ea58425ca379b84080d9ff",
+      "expected": "z",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "c777a8ecd98b4cfd943d4d8d81b831c9873bbb1068ea58425ca379b84080d9ff",
+        "reviewedAt": "2026-09-09T17:40:51.892Z",
+        "result": {
+          "hear": "z",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean voiced alveolar fricative sound"
+        }
+      }
+    },
+    {
+      "id": "sh",
+      "sha256": "6ac3ca813c06c84f18e9b0d2e25c32f208dd1213ff2cc66d39e988f9678326b4",
+      "expected": "ʃ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "6ac3ca813c06c84f18e9b0d2e25c32f208dd1213ff2cc66d39e988f9678326b4",
+        "reviewedAt": "2026-09-09T17:40:57.681Z",
+        "result": {
+          "hear": "ʃ",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean voiceless postalveolar fricative sh sound"
+        }
+      }
+    },
+    {
+      "id": "ch",
+      "sha256": "b54e342aadc25a5a1dab6324950b411c2fb7b04843e951d95a9419ce1e5e1798",
+      "expected": "tʃ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "b54e342aadc25a5a1dab6324950b411c2fb7b04843e951d95a9419ce1e5e1798",
+        "reviewedAt": "2026-09-09T17:41:00.309Z",
+        "result": {
+          "hear": "tʃ",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean voiceless postalveolar affricate sound"
+        }
+      }
+    },
+    {
+      "id": "th",
+      "sha256": "c3ab91a832bad6b0d3f1b4dd93989b033b6f51a7f1f231cef9874fdff56fba56",
+      "expected": "θ",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.8-flash",
+        "sha256": "c3ab91a832bad6b0d3f1b4dd93989b033b6f51a7f1f231cef9874fdff56fba56",
+        "reviewedAt": "2026-09-09T17:41:04.419Z",
+        "result": {
+          "hear": "θ",
+          "type": "sound",
+          "matches_target": true,
+          "note": "clean unvoiced dental fricative th sound"
+        }
+      }
+    },
+    {
+      "id": "th-voiced",
+      "sha256": "bdc344ddc33c013227d1d27a3c9887b5aefd9e2639a050226dbee37a502ac4cb",
+      "expected": "ð",
+      "soundIdentityMatches": true,
+      "hasReleaseVowel": false,
+      "evidence": {
+        "model": "gemini-3.1-pro-preview",
+        "sha256": "bdc344ddc33c013227d1d27a3c9887b5aefd9e2639a050226dbee37a502ac4cb",
+        "reviewedAt": "2026-09-09T17:48:26.773Z",
+        "result": {
+          "hear": "ð",
+          "type": "sound",
+          "matches_target": true,
+          "note": "Isolated voiced th phoneme heard clearly without trailing schwa."
+        }
+      }
+    }
+  ]
+}

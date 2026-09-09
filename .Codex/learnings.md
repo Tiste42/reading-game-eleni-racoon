@@ -1,5 +1,13 @@
 # Learning Integrity
 
+- Final phoneme review must check what each file says, not just source credits or non-silence. The old library X included a letter-name vowel and L was unclear. New L/voiced-TH edits required gain normalization before both audio reviewers agreed. Keep raw disagreements and brief-release observations; do not conflate sound identity with perfectly pure blending or physical-device listening.
+
+- 2026-09-09: Commit 1369321 replaced 28 original library phonemes while retaining old credits. Pin original bytes and hashes; never regenerate phonemes with ElevenLabs. Routing/non-silence tests cannot establish pronunciation.
+- A ladybug cannot be scored solely as `bug` in initial-sound assessment. Exclude it from sound pools and merge duplicate letter groups across packs.
+
+- A spoken question must include its question phrase, not merely its target word. Rhyme prompts need an explicit target-to-choice pause and evenly timed naming highlights. Asset-existence and muted-playback checks alone did not establish a coherent listening experience.
+- Never restore a dynamically composed TTS question on the retry path after making the opening recorded-only. Audit opening, replay, target tap, wrong retry, and next-round handoff together.
+
 - Audio intent is part of the learning contract: letter-name prompts may say a letter name, but phoneme/sound prompts must play the verified isolated phoneme recording.
 - A whole-game content upgrade cannot be certified from one anchor world. Audit all games and all child-facing audio call sites before release, including worlds the current child save has not reached.
 - A neutral tap effect must be perceptually neutral. If a child or parent hears it as the wrong-answer buzzer, remove it from selection paths rather than debating the filename or implementation intent.

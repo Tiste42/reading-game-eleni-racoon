@@ -1,0 +1,55 @@
+{
+  "method": "Gemini 2.5 Flash automated audio analysis; not physical-device or human listening proof",
+  "clips": {
+    "i": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "263a7af23ca9aaa94a03db4858312cc3ea814f71fb6ec05dc7a93a9bd415883f",
+      "reviewedAt": "2026-09-09T17:34:19.111Z",
+      "result": {
+        "hear": "e",
+        "type": "sound",
+        "note": "Isolated vowel sound."
+      }
+    },
+    "o": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "02b5665a0533d3b30e4593521689f5c8278b14a7b7c03eb574c1226857ec6e60",
+      "reviewedAt": "2026-09-09T17:34:25.142Z",
+      "result": {
+        "hear": "ɑ",
+        "type": "sound",
+        "note": "Isolated open back unrounded vowel sound."
+      }
+    },
+    "q": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "d91393f83c9fe0992748c9b9d18a0d2c7967fe1dd05a9c68575284b34a2752ca",
+      "reviewedAt": "2026-09-09T17:34:32.851Z",
+      "result": {
+        "hear": "kʰə wə",
+        "type": "sound",
+        "note": "Isolated consonant sounds with added schwa vowels."
+      }
+    },
+    "x": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "be23d0651b53bc23a26f4bc075f4a54b859ac0daeb37684672e4ec9319f6880a",
+      "reviewedAt": "2026-09-09T17:34:37.363Z",
+      "result": {
+        "hear": "k s",
+        "type": "sound",
+        "note": "Two isolated consonant sounds"
+      }
+    },
+    "th-voiced": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "ad09b73b977c9797902e4aa4732fe9a2d6a1fffba95eb8e3e13f0ea6c39c1144",
+      "reviewedAt": "2026-09-09T17:34:41.996Z",
+      "result": {
+        "hear": "aza",
+        "type": "sound",
+        "note": "Isolated sound sequence of aza."
+      }
+    }
+  }
+}

@@ -1,3 +1,15 @@
+# Phoneme library regression — 2026-09-09
+
+- [x] Locate replacement of original library recordings in commit 1369321
+- [x] Source all 30 cues from human libraries; replace unclear L/X/voiced TH and pin hashes
+- [x] Block generated phonemes and bump audio cache version (local candidate)
+- [x] Remove ladybug/bug ambiguity and duplicate sound groups
+- [x] Test sound-to-letter answer inclusion and shared sound choice generation
+- [x] Resolve voiced-th provenance and run file-bound audio analysis, not decoding alone
+- [ ] Verify restored bytes in production before calling this live
+- [x] Keep audio analysis distinct from structural playback; retain 10 release-vowel quality observations
+- [ ] Physical speaker listening on the user's actual iPad/phone remains unverified
+
 # Production Incident — Whole-game sound semantics and variety (2026-08-27)
 
 Success: all six worlds distinguish letter-name prompts from phoneme prompts;
@@ -187,6 +199,22 @@ Full audit findings: see `tasks/audit-2026-06-11.md`. This is the execution chec
 - [ ] Remove unused deps (idb-keyval) or wire them up; clean ~5MB unused PNGs from repo root.
 - [ ] Verify on tablet (touch) end-to-end.
 # September 9 — bounded reading refresh
+
+## Follow-up: rhyme narration repair
+
+Blocked at recording generation: ElevenLabs returned HTTP 400 `api_key_id_used_as_api_key`. The saved ELEVENLABS_API_KEY is an ID, not a usable secret. No new audio was created; no game runtime changes or deployment were made. Do not truncate an existing question by guessed timing or substitute another voice. Generator now supports exact --only output-path filtering for one bounded clip once credentials are repaired.
+
+- [x] Trace missing question prefix, dynamic retry TTS, and missing target-to-choice pause.
+- [ ] Add one recorded question prefix in the existing ElevenLabs voice; keep existing word recordings.
+- [ ] Use a cancellable, recorded-only rhyme sequence with clear pauses and per-choice highlighting; retain touch availability, trail and candy jar.
+- [ ] Verify opening/replay/retry ordering, no browser TTS even on missing media, interruption safety, and complete-game progression in Chromium/WebKit; publish only after checks.
+
+## Follow-up: rhyme narration repair
+
+- [x] Trace missing question prefix, dynamic retry TTS, and missing target-to-choice pause.
+- [ ] Add one recorded question prefix in the existing ElevenLabs voice; keep existing word recordings.
+- [ ] Use a cancellable, recorded-only rhyme sequence with clear pauses and per-choice highlighting; retain touch availability, trail and candy jar.
+- [ ] Verify opening/replay/retry ordering, no browser TTS even on missing media, interruption safety, and complete-game progression in Chromium/WebKit; publish only after checks.
 
 Success: broader sound practice, a modest earned reading challenge, and a phone-friendly adventure trail without changing recordings, saves, rewards, or answer-reveal rules.
 

@@ -1,0 +1,49 @@
+{
+  "method": "Gemini 2.5 Flash automated audio analysis; not physical-device or human listening proof",
+  "clips": {
+    "q": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "e98d5e9834da5922b546243f46df4e4ada8528f5e8353c84661cd5c14a39dda2",
+      "reviewedAt": "2026-09-09T17:35:36.750Z",
+      "result": {
+        "hear": "kju",
+        "type": "letter-name",
+        "matches_target": false,
+        "note": "Speaker says the letter name instead of the phoneme /kw/."
+      }
+    },
+    "x": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "5b69ca5a6ea9e590e219a80877ac6f02adc927404fde47bedf5f4a26907b5b60",
+      "reviewedAt": "2026-09-09T17:38:11.171Z",
+      "result": {
+        "hear": "ks",
+        "type": "sound",
+        "matches_target": true,
+        "note": "Clear /ks/ sound matching the target phoneme."
+      }
+    },
+    "th-voiced": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "bdc344ddc33c013227d1d27a3c9887b5aefd9e2639a050226dbee37a502ac4cb",
+      "reviewedAt": "2026-09-09T17:48:26.773Z",
+      "result": {
+        "hear": "ð",
+        "type": "sound",
+        "matches_target": true,
+        "note": "Isolated voiced th phoneme heard clearly without trailing schwa."
+      }
+    },
+    "l": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "18b609d5d2d147cb5f6ec442f7d4db434864fec849705a6c9ce8f454abb360b3",
+      "reviewedAt": "2026-09-09T17:48:18.414Z",
+      "result": {
+        "hear": "l",
+        "type": "sound",
+        "matches_target": true,
+        "note": "Clear and accurate pronunciation of the phoneme /l/."
+      }
+    }
+  }
+}

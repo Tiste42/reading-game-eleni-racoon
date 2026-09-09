@@ -15,6 +15,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 
+throw new Error('Retired: phonemes must use the original human-recorded library, never generated or trimmed TTS.');
+
 const envPath = path.join(process.cwd(), '.env.local');
 for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
   const [key, ...val] = line.split('=');

@@ -66,7 +66,9 @@ export default function SoundSafari({ worldId, onComplete }: Props) {
       word: target.text,
       choices: choiceGroups.map((choiceGroup) => ({
         letter: choiceGroup.letter,
-        word: shuffleSeeded(choiceGroup.words, `${session.seed}:${group.id}:${choiceGroup.id}`)[0].text,
+        word: choiceGroup.id === group.id
+          ? target.text
+          : shuffleSeeded(choiceGroup.words, `${session.seed}:${group.id}:${choiceGroup.id}`)[0].text,
       })),
     };
   }));

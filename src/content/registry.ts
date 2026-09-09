@@ -118,12 +118,24 @@ export function getInitialSoundGroups(
   optionalIds: readonly string[],
   allowedPhonemes?: ReadonlySet<string>,
 ): ResolvedSoundGroup[] {
-  return getEnabledPacks(optionalIds).flatMap((pack) =>
-    pack.initialSoundGroups.filter((group) => !allowedPhonemes || allowedPhonemes.has(group.phonemeId)).map((group) => ({
-      ...group,
-      words: group.wordIds.map(getWord),
-    })),
-  );
+  const bySound = new Map<string, ResolvedSoundGroup>();
+  for (const pack of getEnabledPacks(optionalIds)) {
+    for (const group of pack.initialSoundGroups) {
+      if (allowedPhonemes && !allowedPhonemes.has(group.phonemeId)) continue;
+      // The bug asset depicts a ladybug. Its plausible /l/ name makes it
+      // unsuitable for initial-sound assessment, even when labeled /b/ internally.
+      const words = group.wordIds.map(getWord).filter((word) => word.text !== 'bug');
+      if (!words.length) continue;
+      const key = `${group.letter}:${group.phonemeId}`;
+      const existing = bySound.get(key);
+      if (existing) {
+        existing.words = [...new Map([...existing.words, ...words].map((word) => [word.text, word])).values()];
+      } else {
+        bySound.set(key, { ...group, words });
+      }
+    }
+  }
+  return [...bySound.values()];
 }
 
 export function getLetterExamples(optionalIds: readonly string[]): LetterExample[] {

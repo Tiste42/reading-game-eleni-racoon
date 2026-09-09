@@ -1,0 +1,144 @@
+{
+  "source": "https://github.com/hellodeborahuk/buzzphonics",
+  "recordings": {
+    "a.mp3": {
+      "sha256": "b5e539b0adf0fed06482e86813658f2d4144bd7d299e37e0dd0f78b3ca723589",
+      "sourceCommit": "8783e74"
+    },
+    "b.mp3": {
+      "sha256": "bf17cec6107ac33bc479e3fcc1bac5932dd5a5021b32ce5f8472f51a6b9f05e9",
+      "sourceCommit": "8783e74"
+    },
+    "c.mp3": {
+      "sha256": "6a139e559e359d130b346b128f170e81f70e6ada5c63e55b2ee208bcc21fa8a7",
+      "sourceCommit": "8783e74"
+    },
+    "ch.mp3": {
+      "sha256": "b54e342aadc25a5a1dab6324950b411c2fb7b04843e951d95a9419ce1e5e1798",
+      "sourceCommit": "8783e74"
+    },
+    "d.mp3": {
+      "sha256": "8ba8d9ea184b74c57a4867b8ea327770a8999fd4ac6f2cae75f52358b0fe0aa8",
+      "sourceCommit": "8783e74"
+    },
+    "e.mp3": {
+      "sha256": "77faabb5265d8d5e1945d51072c06ac75ee2eda54a9369258cfa3b352e7e5f2f",
+      "sourceCommit": "8783e74"
+    },
+    "f.mp3": {
+      "sha256": "0f2ccb9a96e0a53f0992fd3fcc7ce19dbf24af464f634d10ec855358e9965c60",
+      "sourceCommit": "8783e74"
+    },
+    "g.mp3": {
+      "sha256": "0ac6e7ab0059efbf37a799424894d075da7bb6f8d8e99a4ba9c0bfdfa12d6586",
+      "sourceCommit": "8783e74"
+    },
+    "h.mp3": {
+      "sha256": "9748016cf05e40657bdfe04bf1b89df374717f3567833ffa9ce051829515a208",
+      "sourceCommit": "8783e74"
+    },
+    "i.mp3": {
+      "sha256": "8aeac4296fc82b7adb4304f84d772e930e419136fe0348c40a24bc527059f0f5",
+      "sourceCommit": "8783e74"
+    },
+    "j.mp3": {
+      "sha256": "85331d842e78e912f6bfe136632951b8c93f00cf97f95307c6d3b72e8e6153f0",
+      "sourceCommit": "8783e74"
+    },
+    "k.mp3": {
+      "sha256": "6a139e559e359d130b346b128f170e81f70e6ada5c63e55b2ee208bcc21fa8a7",
+      "sourceCommit": "8783e74"
+    },
+    "m.mp3": {
+      "sha256": "3fa1cb11c9ad37ce6a42804079b89186df824bb82bfcba24908db9cfd28c2080",
+      "sourceCommit": "8783e74"
+    },
+    "n.mp3": {
+      "sha256": "461a144f31c870867a4f864fde507bb08b99f21f66780f83b9081cc303e19315",
+      "sourceCommit": "8783e74"
+    },
+    "o.mp3": {
+      "sha256": "08ed8502e4f89fb5f365cc15183fe451e7ed13bab493a9b8c45c66fda29ab719",
+      "sourceCommit": "8783e74"
+    },
+    "p.mp3": {
+      "sha256": "5443aebea52ac532b1a1f4598e78db6041af8c0e49aa6970d70389979973fe2c",
+      "sourceCommit": "8783e74"
+    },
+    "r.mp3": {
+      "sha256": "473e667e4a9004997c61cf61fe99d6d798c59c7610cb22d5a8b0b608c1c0f580",
+      "sourceCommit": "8783e74"
+    },
+    "s.mp3": {
+      "sha256": "ee7317419c9f12683f40b0aa4045af653ed87333e3b56cb754a0e5ecf40d7331",
+      "sourceCommit": "8783e74"
+    },
+    "sh.mp3": {
+      "sha256": "6ac3ca813c06c84f18e9b0d2e25c32f208dd1213ff2cc66d39e988f9678326b4",
+      "sourceCommit": "8783e74"
+    },
+    "t.mp3": {
+      "sha256": "9fc0da2a26aa24c360059f6faf9bf424c3005d7b4619491e1f8450ebd640a9c4",
+      "sourceCommit": "8783e74"
+    },
+    "th.mp3": {
+      "sha256": "c3ab91a832bad6b0d3f1b4dd93989b033b6f51a7f1f231cef9874fdff56fba56",
+      "sourceCommit": "8783e74"
+    },
+    "u.mp3": {
+      "sha256": "1e6c5dcbe7c4d3cea50d1b0ed8a466162233ec158201df408cd4038069d88ab7",
+      "sourceCommit": "8783e74"
+    },
+    "v.mp3": {
+      "sha256": "c86442f76befe7d56068569b2a0e145d65007ddb44d179a1a7fdf9da3877663b",
+      "sourceCommit": "8783e74"
+    },
+    "w.mp3": {
+      "sha256": "647303b7bcec2cba301a1346a1d4e90374b7f0399e2ad759b70aa5e9e94053c4",
+      "sourceCommit": "8783e74"
+    },
+    "y.mp3": {
+      "sha256": "81fde111018d1557799c1d3a2c7702de1c54b51da6964687c6d8d63dd18e72e1",
+      "sourceCommit": "8783e74"
+    },
+    "z.mp3": {
+      "sha256": "c777a8ecd98b4cfd943d4d8d81b831c9873bbb1068ea58425ca379b84080d9ff",
+      "sourceCommit": "8783e74"
+    }
+  },
+  "additionalLibraryRecordings": {
+    "q.mp3": {
+      "sha256": "4c7bf7855d4dc17a05436cc1045e4ae6c641118f4d87e6439ab2c30b13af8a86",
+      "source": "https://raw.githubusercontent.com/hellodeborahuk/buzzphonics/f51eeb71cba61334328a37e6eda9733a89ffcb82/public/sounds/qu.m4a",
+      "sourceSha256": "98a91925c678ac68c2624f3fc51f79d539fd5ca0927d3282cb3f6e09f3081947",
+      "processing": "ffmpeg libmp3lame q:a 2; no trimming"
+    },
+    "x.mp3": {
+      "sha256": "5b69ca5a6ea9e590e219a80877ac6f02adc927404fde47bedf5f4a26907b5b60",
+      "sourceCommit": "8783e74",
+      "sourceFile": "public/audio/phonemes/x.mp3",
+      "processing": "Keep 0.47-0.90 seconds of original library recording (/ks/); remove leading letter-name vowel; fade final 0.03s and pad 0.1s.",
+      "license": "MIT (buzzphonics)"
+    },
+    "th-voiced.mp3": {
+      "sha256": "bdc344ddc33c013227d1d27a3c9887b5aefd9e2639a050226dbee37a502ac4cb",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/a/a0/This-prounciation-audio-nonlabial.ogg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:This-prounciation-audio-nonlabial.ogg",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceSha256": "d3ecd997f69de8bd1743801496f69ed677d0c12b70386c7140e78efd29ec1289",
+      "processing": "Keep isolated initial consonant at 0.39-0.54 seconds of human American-English this; remove following vowel and s, +12.7dB, pad 0.15s; convert to MP3."
+    },
+    "l.mp3": {
+      "sha256": "18b609d5d2d147cb5f6ec442f7d4db434864fec849705a6c9ce8f454abb360b3",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Alveolar_lateral_approximant.ogg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Alveolar_lateral_approximant.ogg",
+      "author": "Peter Isotalo",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "sourceSha256": "b1978e058755b7da635661119d48223ec67ddeda04237084bac3bc57b3197c35",
+      "processing": "Keep isolated consonant at 0.26-0.48 seconds, +14.9dB, pad 0.15s; convert to MP3."
+    }
+  },
+  "pendingProvenance": []
+}

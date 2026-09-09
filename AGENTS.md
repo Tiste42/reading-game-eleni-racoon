@@ -28,7 +28,7 @@ A phonics-based reading game for a 4-year-old girl named Eleni. The main charact
 ## Audio Architecture
 - All audio is pre-generated static .mp3 files in /public/audio/
 - ElevenLabs generates: Leni narration, full word pronunciations, sentences
-- For isolated phonemes: try ElevenLabs with SSML phoneme tags first, fall back to University of Iowa Sounds of Speech clips
+- Isolated phonemes MUST use the downloaded human-recorded library, never ElevenLabs or browser TTS. Preserve original recordings and verify hashes/provenance; a non-silent MP3 is not proof of the correct sound.
 - Howler.js handles all playback — use audio sprites where possible
 - The app NEVER calls external APIs at runtime — everything is pre-baked
 

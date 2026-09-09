@@ -1,0 +1,59 @@
+{
+  "method": "Gemini 2.5 Flash automated audio analysis; not physical-device or human listening proof",
+  "clips": {
+    "e": {
+      "sha256": "e3777cfb2396fb0c04128c25a38f117dba5f772968742403ab5a86c4d3740120",
+      "reviewedAt": "2026-09-09T17:31:47.960Z",
+      "result": {
+        "hear": "[ə]",
+        "type": "sound",
+        "note": "schwa"
+      }
+    },
+    "i": {
+      "sha256": "263a7af23ca9aaa94a03db4858312cc3ea814f71fb6ec05dc7a93a9bd415883f",
+      "reviewedAt": "2026-09-09T17:31:50.942Z",
+      "result": {
+        "hear": "ɪs",
+        "type": "sound",
+        "note": "isolated sound"
+      }
+    },
+    "o": {
+      "sha256": "02b5665a0533d3b30e4593521689f5c8278b14a7b7c03eb574c1226857ec6e60",
+      "reviewedAt": "2026-09-09T17:31:53.567Z",
+      "result": {
+        "hear": "ə",
+        "type": "sound",
+        "note": "schwa sound"
+      }
+    },
+    "q": {
+      "sha256": "d91393f83c9fe0992748c9b9d18a0d2c7967fe1dd05a9c68575284b34a2752ca",
+      "reviewedAt": "2026-09-09T17:31:56.445Z",
+      "result": {
+        "hear": "k",
+        "type": "sound",
+        "note": "Voiceless velar plosive"
+      }
+    },
+    "x": {
+      "sha256": "be23d0651b53bc23a26f4bc075f4a54b859ac0daeb37684672e4ec9319f6880a",
+      "reviewedAt": "2026-09-09T17:31:59.677Z",
+      "result": {
+        "hear": "k",
+        "type": "sound",
+        "note": "Isolated sound"
+      }
+    },
+    "th-voiced": {
+      "sha256": "ad09b73b977c9797902e4aa4732fe9a2d6a1fffba95eb8e3e13f0ea6c39c1144",
+      "reviewedAt": "2026-09-09T17:32:02.483Z",
+      "result": {
+        "hear": "ˈɪz ðɪs ən ˈaɪsəˌleɪtɪd ˈsaʊnd",
+        "type": "phrase",
+        "note": "Is this an isolated sound"
+      }
+    }
+  }
+}

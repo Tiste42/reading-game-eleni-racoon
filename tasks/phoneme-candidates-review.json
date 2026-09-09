@@ -1,0 +1,77 @@
+{
+  "method": "Gemini 2.5 Flash automated audio analysis; not physical-device or human listening proof",
+  "clips": {
+    "i": {
+      "sha256": "263a7af23ca9aaa94a03db4858312cc3ea814f71fb6ec05dc7a93a9bd415883f",
+      "reviewedAt": "2026-09-09T17:28:50.514Z",
+      "result": {
+        "hear": "ɪ",
+        "type": "sound",
+        "matches_target": true,
+        "note": "The sound is a short /ɪ/."
+      }
+    },
+    "th-voiced": {
+      "model": "gemini-3.8-flash",
+      "sha256": "bdc344ddc33c013227d1d27a3c9887b5aefd9e2639a050226dbee37a502ac4cb",
+      "reviewedAt": "2026-09-09T17:48:33.779Z",
+      "result": {
+        "hear": "ð",
+        "type": "sound",
+        "matches_target": true,
+        "note": "isolated voiced th phoneme without extraneous vowel sound"
+      }
+    },
+    "e": {
+      "sha256": "e3777cfb2396fb0c04128c25a38f117dba5f772968742403ab5a86c4d3740120",
+      "reviewedAt": "2026-09-09T17:29:30.877Z",
+      "result": {
+        "hear": "eh",
+        "type": "sound",
+        "matches_target": true,
+        "note": "The short vowel /ɛ/ is clearly audible."
+      }
+    },
+    "o": {
+      "sha256": "02b5665a0533d3b30e4593521689f5c8278b14a7b7c03eb574c1226857ec6e60",
+      "reviewedAt": "2026-09-09T17:29:33.442Z",
+      "result": {
+        "hear": "ɑː",
+        "type": "sound",
+        "matches_target": true,
+        "note": "The sound is a clear American short-o vowel."
+      }
+    },
+    "q": {
+      "sha256": "d91393f83c9fe0992748c9b9d18a0d2c7967fe1dd05a9c68575284b34a2752ca",
+      "reviewedAt": "2026-09-09T17:31:13.849Z",
+      "result": {
+        "hear": "k",
+        "type": "sound",
+        "matches_target": false,
+        "note": "The sound is /k/, not /kw/."
+      }
+    },
+    "x": {
+      "sha256": "be23d0651b53bc23a26f4bc075f4a54b859ac0daeb37684672e4ec9319f6880a",
+      "reviewedAt": "2026-09-09T17:31:16.846Z",
+      "result": {
+        "hear": "k s",
+        "type": "sound",
+        "matches_target": true,
+        "note": "The 'x' phoneme is clearly articulated as /ks/."
+      }
+    },
+    "l": {
+      "model": "gemini-3.8-flash",
+      "sha256": "18b609d5d2d147cb5f6ec442f7d4db434864fec849705a6c9ce8f454abb360b3",
+      "reviewedAt": "2026-09-09T17:48:30.913Z",
+      "result": {
+        "hear": "l",
+        "type": "sound",
+        "matches_target": true,
+        "note": "clean isolated alveolar lateral liquid sound"
+      }
+    }
+  }
+}

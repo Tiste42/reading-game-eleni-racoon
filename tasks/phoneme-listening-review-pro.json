@@ -1,0 +1,82 @@
+{
+  "method": "Gemini 2.5 Flash automated audio analysis; not physical-device or human listening proof",
+  "clips": {
+    "e": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "77faabb5265d8d5e1945d51072c06ac75ee2eda54a9369258cfa3b352e7e5f2f",
+      "reviewedAt": "2026-09-09T17:42:11.786Z",
+      "result": {
+        "hear": "ɛ",
+        "type": "sound",
+        "matches_target": true,
+        "note": "Clear short vowel /ɛ/ sound."
+      }
+    },
+    "i": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "8aeac4296fc82b7adb4304f84d772e930e419136fe0348c40a24bc527059f0f5",
+      "reviewedAt": "2026-09-09T17:33:57.451Z",
+      "result": {
+        "hear": "ɪ",
+        "type": "sound",
+        "matches_target": true,
+        "note": "Clear short vowel /ɪ/ sound."
+      }
+    },
+    "o": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "08ed8502e4f89fb5f365cc15183fe451e7ed13bab493a9b8c45c66fda29ab719",
+      "reviewedAt": "2026-09-09T17:34:02.254Z",
+      "result": {
+        "hear": "ɑ",
+        "type": "sound",
+        "matches_target": true,
+        "note": "Clear American short-o vowel sound."
+      }
+    },
+    "q": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "4c7bf7855d4dc17a05436cc1045e4ae6c641118f4d87e6439ab2c30b13af8a86",
+      "reviewedAt": "2026-09-09T17:34:08.979Z",
+      "result": {
+        "hear": "kwə",
+        "type": "sound",
+        "matches_target": false,
+        "note": "Contains a conspicuous added schwa vowel after the consonant sound."
+      }
+    },
+    "x": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "d6de42c59b630c1686630e71cb0488d4f944d2183f33e83fbf9284bc82f8a33e",
+      "reviewedAt": "2026-09-09T17:34:13.792Z",
+      "result": {
+        "hear": "ɛks",
+        "type": "letter-name",
+        "matches_target": false,
+        "note": "The audio plays the letter name instead of the phoneme /ks/."
+      }
+    },
+    "l": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "288bc890f5e3896e39497d058ce5d7e08cc5612acd41f8a9186e5a3fe3778d91",
+      "reviewedAt": "2026-09-09T17:42:15.209Z",
+      "result": {
+        "hear": "ə",
+        "type": "sound",
+        "matches_target": false,
+        "note": "The audio contains a schwa sound, not the /l/ phoneme."
+      }
+    },
+    "th-voiced": {
+      "model": "gemini-3.1-pro-preview",
+      "sha256": "2bf93f318fbacbd947fc420e572aacc6452ea7f82f87cdba15d237d0c77c659d",
+      "reviewedAt": "2026-09-09T17:42:21.635Z",
+      "result": {
+        "hear": "/v/",
+        "type": "sound",
+        "matches_target": false,
+        "note": "Audio is the /v/ sound, not the voiced /ð/ sound."
+      }
+    }
+  }
+}
